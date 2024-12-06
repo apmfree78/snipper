@@ -1,0 +1,88 @@
+use ethers::types::Chain;
+use once_cell::sync::Lazy;
+use serde::Deserialize;
+use std::{collections::HashMap, fs};
+
+//*****************************************
+//*****************************************
+//*****************************************
+//*****************************************
+//*****************************************
+// CHANGE THIS VALUE TO SET CHAIN FOR BUILD
+pub const CHAIN: Chain = Chain::Base;
+//*****************************************
+//*****************************************
+//*****************************************
+//*****************************************
+//*****************************************
+pub const ETH: &str = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+pub const BTC: &str = "0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB";
+pub const USD: &str = "0x0000000000000000000000000000000000000348";
+
+pub struct ContractAddresses {
+    pub weth: String,
+    pub uniswap_swap_router: String,
+    pub uniswap_factory: String,
+    pub ws_url: String,
+}
+
+pub struct ContractAddressMap {
+    pub addresses: HashMap<Chain, ContractAddresses>,
+}
+
+impl ContractAddressMap {
+    fn new(chains: Chains) -> Self {
+        let mut addresses = HashMap::<Chain, ContractAddresses>::new();
+        addresses.insert(
+            Chain::Base,
+            ContractAddresses {
+                uniswap_factory: chains.base.uniswap_factory,
+                uniswap_swap_router: chains.base.uniswap_swap_router,
+                weth: chains.base.weth,
+                ws_url: chains.base.ws_url,
+            },
+        );
+        addresses.insert(
+            Chain::Mainnet,
+            ContractAddresses {
+                uniswap_factory: chains.mainnet.uniswap_factory,
+                uniswap_swap_router: chains.mainnet.uniswap_swap_router,
+                weth: chains.mainnet.weth,
+                ws_url: chains.mainnet.ws_url,
+            },
+        );
+        Self { addresses }
+    }
+
+    pub fn get_address(&self) -> &ContractAddresses {
+        self.addresses.get(&CHAIN).expect("Chain not supported")
+    }
+}
+
+#[derive(Deserialize)]
+struct Chains {
+    base: ChainContracts,
+    mainnet: ChainContracts,
+}
+
+#[derive(Deserialize)]
+struct ChainContracts {
+    uniswap_swap_router: String,
+    uniswap_factory: String,
+    weth: String,
+    ws_url: String,
+}
+
+impl Chains {
+    fn load() -> Self {
+        let config = fs::read_to_string("contracts.toml").expect("failed to read toml file");
+        toml::from_str(&config).expect("failed to parse toml to chain config")
+    }
+}
+
+// CREATE GLOBAL INSTANCE OF ALL CONTRACT ADDRESS FOR A GIVEN CHAIN
+pub static CONTRACT: Lazy<ContractAddressMap> = Lazy::new(|| {
+    let chains = Chains::load();
+
+    ContractAddressMap::new(chains)
+});
