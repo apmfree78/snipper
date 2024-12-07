@@ -1,9 +1,14 @@
 use anyhow::{anyhow, Result};
-use ethers::abi::Address;
+use ethers::abi::{Address, Bytes};
 use ethers::core::types::U256;
 use ethers::types::{H256, I256};
 use ethers::utils::keccak256;
 use std::convert::TryInto;
+
+pub fn get_function_selector(function_signature: &str) -> Bytes {
+    let hash = H256::from(keccak256(function_signature.as_bytes()));
+    Bytes::from(&hash[0..4])
+}
 
 pub fn str_to_h256_hash(str: &str) -> H256 {
     H256::from(keccak256(str.as_bytes()))

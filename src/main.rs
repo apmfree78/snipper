@@ -6,9 +6,13 @@ use ethers::{
     types::BlockNumber,
 };
 use futures::{lock::Mutex, stream, StreamExt};
-use log::{error, info};
-use snipper::{data::contracts::CHAIN, utils::logging::setup_logger};
+use log::{error, info, warn};
 use snipper::{data::contracts::CONTRACT, events};
+use snipper::{
+    data::{contracts::CHAIN, tokens::add_validate_buy_new_token},
+    swap::anvil_simlator::AnvilSimulator,
+    utils::logging::setup_logger,
+};
 use std::sync::Arc;
 
 enum Event {
@@ -25,10 +29,17 @@ async fn main() -> Result<()> {
     let ws_url = CONTRACT.get_address().ws_url.clone();
     // setup provider
 
-    let provider = Provider::<Ws>::connect(ws_url).await?;
+    let provider = Provider::<Ws>::connect(ws_url.clone()).await?;
     let client = Arc::new(provider);
     info!("Connected to {:#?}", CHAIN);
 
+    // creating anvil mainnet fork for testing
+    info!("Connecting to Anvil...");
+    let anvil = AnvilSimulator::new(&ws_url).await?;
+    let anvil = Arc::new(anvil);
+    info!("Anvil conected!");
+
+    // TRACT TIME
     let initial_block = client.get_block(BlockNumber::Latest).await?.unwrap();
     let last_block_timestamp = initial_block.timestamp.as_u32();
     info!("initial block timestamp => {}", last_block_timestamp);
@@ -66,12 +77,24 @@ async fn main() -> Result<()> {
     combined_stream
         .for_each(|event| async {
             let client = Arc::clone(&client);
+            let anvil = Arc::clone(&anvil);
             let last_timestamp = Arc::clone(&last_block_timestamp);
 
             match event {
                 Ok(Event::Log(log)) => match events::decode_poolcreated_event(&log) {
                     Ok(pool_created_event) => {
-                        info!("pool created event {:#?}", pool_created_event)
+                        info!("pool created event {:#?}", pool_created_event);
+
+                        if let Err(error) = add_validate_buy_new_token(
+                            &pool_created_event,
+                            &client,
+                            &anvil,
+                            last_timestamp,
+                        )
+                        .await
+                        {
+                            warn!("Could not run add_validate_buy_new_token => {}", error);
+                        }
                     }
                     Err(error) => error!("error extracting pool created event => {}", error),
                 },
@@ -81,6 +104,10 @@ async fn main() -> Result<()> {
                     let current_block_timestamp = block.timestamp.as_u32();
 
                     *last_time = current_block_timestamp;
+
+                    // TODO - sell tokens that were first bought 30 mins ago
+
+                    // TODO - purchase unbought tokens
                 }
                 Err(e) => error!("Error: {:?}", e),
             }
