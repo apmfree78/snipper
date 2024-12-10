@@ -9,7 +9,7 @@ use std::{collections::HashMap, fs};
 //*****************************************
 //*****************************************
 // CHANGE THIS VALUE TO SET CHAIN FOR BUILD
-pub const CHAIN: Chain = Chain::Base;
+pub const CHAIN: Chain = Chain::Mainnet;
 //*****************************************
 //*****************************************
 //*****************************************
@@ -21,9 +21,11 @@ pub const USD: &str = "0x0000000000000000000000000000000000000348";
 
 pub struct ContractAddresses {
     pub weth: String,
+    pub link: String,
     pub uniswap_swap_router: String,
     pub uniswap_factory: String,
     pub ws_url: String,
+    pub http_url: String,
 }
 
 pub struct ContractAddressMap {
@@ -39,7 +41,9 @@ impl ContractAddressMap {
                 uniswap_factory: chains.base.uniswap_factory,
                 uniswap_swap_router: chains.base.uniswap_swap_router,
                 weth: chains.base.weth,
+                link: chains.base.link,
                 ws_url: chains.base.ws_url,
+                http_url: chains.base.http_url,
             },
         );
         addresses.insert(
@@ -48,7 +52,9 @@ impl ContractAddressMap {
                 uniswap_factory: chains.mainnet.uniswap_factory,
                 uniswap_swap_router: chains.mainnet.uniswap_swap_router,
                 weth: chains.mainnet.weth,
+                link: chains.mainnet.link,
                 ws_url: chains.mainnet.ws_url,
+                http_url: chains.mainnet.http_url,
             },
         );
         Self { addresses }
@@ -70,7 +76,9 @@ struct ChainContracts {
     uniswap_swap_router: String,
     uniswap_factory: String,
     weth: String,
+    link: String,
     ws_url: String,
+    http_url: String,
 }
 
 impl Chains {

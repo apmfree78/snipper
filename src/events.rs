@@ -6,7 +6,6 @@ use ethers::{
 };
 
 use crate::data::contracts::CONTRACT;
-
 pub const PAIRCREATED_SIGNATURE: &str = "PoolCreated(address,address,uint24,int24,address)";
 
 #[derive(Debug, Clone)]

@@ -1,5 +1,9 @@
 pub mod abi {
     pub mod erc20;
+    pub mod uniswap_factory_base;
+    pub mod uniswap_pool;
+    pub mod uniswap_router_base;
+    pub mod uniswap_v3_factory;
     pub mod uniswap_v3_router;
 }
 
@@ -19,4 +23,5 @@ pub mod events;
 pub mod swap {
     pub mod anvil_simlator;
     pub mod swap_token;
+    pub mod token_price;
 }

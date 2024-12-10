@@ -1,13 +1,18 @@
-use crate::abi::erc20::ERC20;
+use crate::abi::erc20::{DecimalsCall, ERC20};
+use crate::abi::uniswap_router_base::{
+    ExactInputSingleParams as ExactInputSingleParamsBase, UNISWAP_V3_ROUTER_BASE,
+};
+use crate::abi::uniswap_v3_factory::UNISWAP_V3_FACTORY;
 use crate::abi::uniswap_v3_router::{ExactInputSingleParams, UNISWAP_V3_ROUTER};
 use crate::data::contracts::{CHAIN, CONTRACT};
 use crate::data::tokens::Erc20Token;
-use crate::utils::type_conversion::get_function_selector;
+use crate::utils::type_conversion::{address_to_string, get_function_selector};
 use anyhow::Result;
 use ethers::types::{
     CallFrame, GethDebugTracerType, GethDebugTracingOptions, GethTrace, GethTraceFrame,
     TransactionRequest, H256, U256,
 };
+use ethers::utils::format_units;
 use ethers::{
     core::k256::ecdsa::SigningKey,
     middleware::SignerMiddleware,
@@ -23,6 +28,11 @@ pub struct AnvilSimulator {
     pub client: Arc<SignerMiddleware<Provider<Ws>, Wallet<SigningKey>>>,
     pub anvil: AnvilInstance,
     pub from_address: Address,
+}
+
+pub enum SwapRouter {
+    Mainnet(UNISWAP_V3_ROUTER<SignerMiddleware<Provider<Ws>, Wallet<SigningKey>>>),
+    Base(UNISWAP_V3_ROUTER_BASE<SignerMiddleware<Provider<Ws>, Wallet<SigningKey>>>),
 }
 
 impl AnvilSimulator {
@@ -143,15 +153,11 @@ impl AnvilSimulator {
         Ok(())
     }
 
-    pub async fn simulate_buying_token_for_eth(&self, token: &Erc20Token) -> Result<U256> {
+    pub async fn simulate_buying_token_for_weth(&self, token: &Erc20Token) -> Result<U256> {
         let swap_router_address: Address = CONTRACT.get_address().uniswap_swap_router.parse()?;
         let weth_address: Address = CONTRACT.get_address().weth.parse()?;
-        let token_address: Address = token.address.parse()?;
-        let swap_router = UNISWAP_V3_ROUTER::new(swap_router_address, self.client.clone());
-        let weth_contract = ERC20::new(weth_address, self.client.clone());
-
-        // final token balance to return
         let mut new_token_balance = U256::from(0);
+        let swap_router = UNISWAP_V3_ROUTER::new(swap_router_address, self.client.clone());
 
         // Impersonate the account you want to send the transaction from
         self.client
@@ -159,31 +165,26 @@ impl AnvilSimulator {
             .request::<_, ()>("anvil_impersonateAccount", [self.from_address])
             .await?;
 
-        let weth_balance = weth_contract.balance_of(self.from_address).call().await?;
-        let allowance = weth_contract
-            .allowance(self.from_address, swap_router_address)
-            .call()
-            .await?;
-        debug!("WETH Balance of anvil mock account: {}", weth_balance);
-        debug!("Allowance of anvil mock account:  {}", allowance);
-
+        self.get_weth_balance().await?;
         let amount_to_buy =
             std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
+        println!("buying {} WETH of {}", amount_to_buy, token.name);
         let amount_in = ethers::utils::parse_ether(amount_to_buy)?;
 
-        let swap_params = ExactInputSingleParams {
-            token_in: weth_address,
-            token_out: token_address,
-            fee: token.fee,
-            recipient: self.from_address,
-            amount_in,
-            amount_out_minimum: U256::from(0),
-            sqrt_price_limit_x96: U256::from(0),
+        let tx = {
+            let swap_params = ExactInputSingleParams {
+                token_in: weth_address,
+                token_out: token.address,
+                fee: token.fee,
+                recipient: self.from_address,
+                amount_in,
+                amount_out_minimum: U256::from(0),
+                sqrt_price_limit_x96: U256::from(0),
+            };
+
+            debug!("swap params: {:?}", swap_params);
+            swap_router.exact_input_single(swap_params)
         };
-
-        debug!("swap params: {:?}", swap_params);
-
-        let tx = swap_router.exact_input_single(swap_params);
 
         info!("set gas limit for transaction");
         let tx = tx.gas(U256::from(1_000_000));
@@ -195,9 +196,9 @@ impl AnvilSimulator {
         match pending_tx_result {
             Ok(pending_tx) => {
                 // Transaction sent successfully
-                info!("Transaction sent, awaiting receipt");
-                let tx_hash = pending_tx.tx_hash();
-                debug!("tx_hash => {:?}", tx_hash);
+                // info!("Transaction sent, awaiting receipt");
+                // let tx_hash = pending_tx.tx_hash();
+                // debug!("tx_hash => {:?}", tx_hash);
 
                 // wait for transaction receipt
                 info!("awaiting transaction receipt");
@@ -208,15 +209,98 @@ impl AnvilSimulator {
 
                 self.trace_transaction(tx_hash).await?;
 
-                // TODO - get account balance to see how much of new token recieved
-                let token_contract = ERC20::new(token_address, self.client.clone());
+                new_token_balance = self.get_token_balance(&token).await?;
+                self.get_weth_balance().await?;
+            }
+            Err(tx_err) => {
+                // Sending the transaction failed
+                error!("Failed to send transaction: {:?}", tx_err);
 
-                new_token_balance = token_contract.balance_of(self.from_address).call().await?;
+                // Try to extract more information from the error
+                // if let Some(revert_reason) = extract_revert_reason(&tx_err) {
+                //     error!("Revert reason: {}", revert_reason);
+                // } else {
+                //     error!("Failed to extract revert reason");
+                // }
+            }
+        }
 
-                info!(
-                    "YOU HAVE BOUGHT {} of {}, ({})",
-                    new_token_balance, token.name, token.symbol
-                );
+        // Stop impersonating the account after the transaction is complete
+        self.client
+            .provider()
+            .request::<_, ()>("anvil_stopImpersonatingAccount", [self.from_address])
+            .await?;
+        Ok(new_token_balance)
+    }
+
+    pub async fn simulate_selling_token_for_weth(&self, token: &Erc20Token) -> Result<U256> {
+        let swap_router_address: Address = CONTRACT.get_address().uniswap_swap_router.parse()?;
+        let weth_address: Address = CONTRACT.get_address().weth.parse()?;
+        let token_contract = ERC20::new(token.address, self.client.clone());
+
+        let mut new_token_balance = U256::from(0);
+        let swap_router = UNISWAP_V3_ROUTER::new(swap_router_address, self.client.clone());
+
+        // Impersonate the account you want to send the transaction from
+        self.client
+            .provider()
+            .request::<_, ()>("anvil_impersonateAccount", [self.from_address])
+            .await?;
+
+        self.show_weth_allowance_balance_sender_and_pool(&token)
+            .await?;
+
+        self.get_weth_balance().await?;
+        println!("balance prior to selling {}", token.name);
+        let amount_to_sell = self.get_token_balance(&token).await?;
+
+        //approve swap router to trade token
+        token_contract
+            .approve(swap_router_address, amount_to_sell)
+            .send()
+            .await?;
+
+        let tx = {
+            let swap_params = ExactInputSingleParams {
+                token_in: token.address,
+                token_out: weth_address,
+                fee: token.fee,
+                recipient: self.from_address,
+                amount_in: amount_to_sell,
+                amount_out_minimum: U256::from(0),
+                sqrt_price_limit_x96: U256::from(0),
+            };
+
+            debug!("swap params: {:?}", swap_params);
+            swap_router.exact_input_single(swap_params)
+        };
+
+        info!("set gas limit for transaction");
+        let tx = tx.gas(U256::from(1_000_000));
+
+        // sent transaction
+        info!("sending liquidate transcation");
+        let pending_tx_result = tx.send().await;
+
+        match pending_tx_result {
+            Ok(pending_tx) => {
+                // Transaction sent successfully
+                // info!("Transaction sent, awaiting receipt");
+                // let tx_hash = pending_tx.tx_hash();
+                // debug!("tx_hash => {:?}", tx_hash);
+
+                // wait for transaction receipt
+                info!("awaiting transaction receipt");
+                let receipt = pending_tx.await?.unwrap();
+                // info!("transaction receipt obtained ==> {:#?}", receipt);
+
+                let tx_hash = receipt.transaction_hash;
+
+                self.trace_transaction(tx_hash).await?;
+
+                println!("balance AFTER to selling {}", token.name);
+                new_token_balance = self.get_token_balance(&token).await?;
+                self.get_weth_balance().await?;
             }
             Err(tx_err) => {
                 // Sending the transaction failed
@@ -253,7 +337,7 @@ impl AnvilSimulator {
             .debug_trace_transaction(tx_hash, tracing_options)
             .await?;
 
-        println!("Transaction trace: {:?}", trace);
+        // println!("Transaction trace: {:?}", trace);
 
         match trace {
             GethTrace::Known(GethTraceFrame::CallTracer(ref call_frame)) => {
@@ -271,6 +355,194 @@ impl AnvilSimulator {
             }
         }
         Ok(())
+    }
+
+    pub async fn simulate_buying_link_for_weth(&self) -> Result<U256> {
+        let swap_router_address: Address = CONTRACT.get_address().uniswap_swap_router.parse()?;
+        let weth_address: Address = CONTRACT.get_address().weth.parse()?;
+        let link_address: Address = CONTRACT.get_address().link.parse()?;
+
+        let swap_router = if CHAIN == Chain::Mainnet {
+            SwapRouter::Mainnet(UNISWAP_V3_ROUTER::new(
+                swap_router_address,
+                self.client.clone(),
+            ))
+        } else {
+            SwapRouter::Base(UNISWAP_V3_ROUTER_BASE::new(
+                swap_router_address,
+                self.client.clone(),
+            ))
+        };
+
+        // final token balance to return
+        let mut new_token_balance = U256::from(0);
+
+        // Impersonate the account you want to send the transaction from
+        self.client
+            .provider()
+            .request::<_, ()>("anvil_impersonateAccount", [self.from_address])
+            .await?;
+
+        // self.show_weth_allowance_balance_sender_and_pool(link_address)
+        //     .await?;
+
+        let amount_to_buy =
+            std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
+        let amount_in = ethers::utils::parse_ether(amount_to_buy)?;
+
+        let tx = match swap_router {
+            SwapRouter::Base(router) => {
+                let swap_params = ExactInputSingleParamsBase {
+                    token_in: weth_address,
+                    token_out: link_address,
+                    fee: 10000u32,
+                    recipient: self.from_address,
+                    amount_in,
+                    amount_out_minimum: U256::from(0),
+                    sqrt_price_limit_x96: U256::from(0),
+                };
+
+                debug!("swap params: {:?}", swap_params);
+                router.exact_input_single(swap_params)
+            }
+            SwapRouter::Mainnet(router) => {
+                let swap_params = ExactInputSingleParams {
+                    token_in: weth_address,
+                    token_out: link_address,
+                    fee: 10000u32,
+                    recipient: self.from_address,
+                    amount_in,
+                    amount_out_minimum: U256::from(0),
+                    sqrt_price_limit_x96: U256::from(0),
+                };
+
+                debug!("swap params: {:?}", swap_params);
+                router.exact_input_single(swap_params)
+            }
+        };
+
+        info!("set gas limit for transaction");
+        let tx = tx.gas(U256::from(1_000_000));
+
+        // sent transaction
+        info!("sending liquidate transcation");
+        let pending_tx_result = tx.send().await;
+
+        match pending_tx_result {
+            Ok(pending_tx) => {
+                // Transaction sent successfully
+                info!("Transaction sent, awaiting receipt");
+                let tx_hash = pending_tx.tx_hash();
+                debug!("tx_hash => {:?}", tx_hash);
+
+                // wait for transaction receipt
+                info!("awaiting transaction receipt");
+                let receipt = pending_tx.await?.unwrap();
+                // info!("transaction receipt obtained ==> {:#?}", receipt);
+
+                let tx_hash = receipt.transaction_hash;
+
+                self.trace_transaction(tx_hash).await?;
+
+                // TODO - get account balance to see how much of new token recieved
+                let token_contract = ERC20::new(link_address, self.client.clone());
+
+                new_token_balance = token_contract.balance_of(self.from_address).call().await?;
+
+                info!("YOU HAVE BOUGHT {} LINK", new_token_balance);
+            }
+            Err(tx_err) => {
+                // Sending the transaction failed
+                error!("Failed to send transaction: {:?}", tx_err);
+
+                // Try to extract more information from the error
+                // if let Some(revert_reason) = extract_revert_reason(&tx_err) {
+                //     error!("Revert reason: {}", revert_reason);
+                // } else {
+                //     error!("Failed to extract revert reason");
+                // }
+            }
+        }
+
+        // Stop impersonating the account after the transaction is complete
+        self.client
+            .provider()
+            .request::<_, ()>("anvil_stopImpersonatingAccount", [self.from_address])
+            .await?;
+        Ok(new_token_balance)
+    }
+
+    async fn show_weth_allowance_balance_sender_and_pool(
+        &self,
+        token: &Erc20Token,
+    ) -> anyhow::Result<()> {
+        let factory_address: Address = CONTRACT.get_address().uniswap_factory.parse()?;
+        let swap_router_address: Address = CONTRACT.get_address().uniswap_swap_router.parse()?;
+        let weth_address: Address = CONTRACT.get_address().weth.parse()?;
+        let weth_contract = ERC20::new(weth_address, self.client.clone());
+
+        let weth_balance = weth_contract.balance_of(self.from_address).call().await?;
+        let allowance = weth_contract
+            .allowance(self.from_address, swap_router_address)
+            .call()
+            .await?;
+        debug!("WETH Balance of anvil mock account: {}", weth_balance);
+        debug!("Allowance of anvil mock account:  {}", allowance);
+        debug!(
+            "Transaction sender (self.from_address): {:?}",
+            self.from_address
+        );
+
+        let factory = UNISWAP_V3_FACTORY::new(factory_address, self.client.clone());
+
+        if token.is_token_0 {
+            let pool_address = factory
+                .get_pool(token.address, weth_address, token.fee)
+                .call()
+                .await?;
+            debug!("Pool address for WETH-{}: {:?}", token.name, pool_address);
+        } else {
+            let pool_address = factory
+                .get_pool(weth_address, token.address, token.fee)
+                .call()
+                .await?;
+            debug!("Pool address for WETH-{}: {:?}", token.name, pool_address);
+        }
+
+        let pool_address = address_to_string(token.pool_address);
+        debug!(
+            "REAL Pool address for WETH-{}: {:?}",
+            token.name, pool_address
+        );
+
+        Ok(())
+    }
+
+    async fn get_token_balance(&self, token: &Erc20Token) -> anyhow::Result<U256> {
+        // get account balance to see how much of new token recieved
+        let token_contract = ERC20::new(token.address, self.client.clone());
+
+        println!(" getting account balance for {}", token.name);
+        let new_token_balance_u256 = token_contract.balance_of(self.from_address).call().await?;
+        let token_balance = format_units(new_token_balance_u256, u32::from(token.decimals))?;
+
+        println!(
+            "YOU HAVE {} of {}, ({})",
+            token_balance, token.name, token.symbol
+        );
+        Ok(new_token_balance_u256)
+    }
+
+    async fn get_weth_balance(&self) -> anyhow::Result<U256> {
+        let weth_address: Address = CONTRACT.get_address().weth.parse()?;
+        // get account balance to see how much of new token recieved
+        let token_contract = ERC20::new(weth_address, self.client.clone());
+
+        let new_token_balance_u256 = token_contract.balance_of(self.from_address).call().await?;
+        let token_balance = format_units(new_token_balance_u256, u32::from(18u32))?;
+
+        println!("YOU HAVE {} of WETH", token_balance);
+        Ok(new_token_balance_u256)
     }
 }
 
