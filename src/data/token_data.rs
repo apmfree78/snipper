@@ -115,10 +115,27 @@ pub async fn remove_token(token_address: Address) -> Option<Erc20Token> {
     tokens.remove(&token_address_string)
 }
 
+pub async fn is_token_tradable(token_address: Address) -> bool {
+    let token_data_hash = Arc::clone(&TOKEN_HASH);
+    let tokens = token_data_hash.lock().await;
+    let token_address_string = address_to_string(token_address).to_lowercase();
+
+    let token = tokens.get(&token_address_string).unwrap();
+
+    token.is_tradable
+}
+
 pub async fn update_token(updated_token: &Erc20Token) {
     let token_data_hash = Arc::clone(&TOKEN_HASH);
     let mut tokens = token_data_hash.lock().await;
     let token_address = address_to_string(updated_token.address).to_lowercase();
 
     tokens.insert(token_address, updated_token.clone());
+}
+
+pub async fn get_number_of_tokens() -> usize {
+    let token_data_hash = Arc::clone(&TOKEN_HASH);
+    let tokens = token_data_hash.lock().await;
+
+    tokens.len()
 }
