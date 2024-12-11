@@ -30,7 +30,7 @@ pub async fn add_validate_buy_new_token(
     pool_created_event: &PoolCreatedEvent,
     client: &Arc<Provider<Ws>>,
     anvil: &Arc<AnvilSimulator>,
-    timestamp: Arc<Mutex<u32>>,
+    current_time: u32,
 ) -> anyhow::Result<()> {
     // TODO - VALIDATE TOKEN HERE - IF SCAM exit out
 
@@ -44,7 +44,7 @@ pub async fn add_validate_buy_new_token(
                 "{} has immediate liquidity of {} and ready for trading",
                 token.name, token_liquidity
             );
-            purchase_token_on_anvil(&token, anvil, &timestamp).await?;
+            purchase_token_on_anvil(&token, anvil, current_time).await?;
         } else {
             info!("{} has no liquidity, cannot purchase yet!", token.name);
         }
@@ -55,44 +55,54 @@ pub async fn add_validate_buy_new_token(
 
 pub async fn buy_eligible_tokens_on_anvil(
     anvil: &Arc<AnvilSimulator>,
-    timestamp: &Arc<Mutex<u32>>,
+    timestamp: u32,
 ) -> anyhow::Result<()> {
     let tokens = get_tokens().await;
 
+    println!("finding tokens to buy");
     for token in tokens.values() {
         if !token.done_buying && token.is_tradable {
             purchase_token_on_anvil(token, anvil, timestamp).await?;
         }
     }
-
+    println!("done with purchasing...");
     Ok(())
 }
 
-pub async fn sell_eligible_tokens_on_anvil(anvil: &Arc<AnvilSimulator>) -> anyhow::Result<()> {
+pub async fn sell_eligible_tokens_on_anvil(
+    anvil: &Arc<AnvilSimulator>,
+    current_time: u32,
+) -> anyhow::Result<()> {
     let tokens = get_tokens().await;
+    let time_to_sell =
+        std::env::var("SELL_TOKEN_AFTER").expect("SELL_TOKEN_AFTER not found in .env");
+    let time_to_sell: u32 = time_to_sell.parse()?;
 
+    println!("finding tokens to sell");
     for token in tokens.values() {
-        if token.done_buying {
+        let sell_time = time_to_sell + token.time_of_purchase;
+
+        if token.done_buying && current_time >= sell_time {
             sell_token_on_anvil(token, anvil).await?;
         }
     }
 
+    println!("done with selling...");
     Ok(())
 }
 
 pub async fn purchase_token_on_anvil(
     token: &Erc20Token,
     anvil: &Arc<AnvilSimulator>,
-    timestamp: &Arc<Mutex<u32>>,
+    current_time: u32,
 ) -> anyhow::Result<()> {
     let token_balance = anvil.simulate_buying_token_for_weth(&token).await?;
 
     if token_balance > U256::from(0) {
-        let time = timestamp.lock().await;
         let updated_token = Erc20Token {
             is_tradable: true,
             amount_bought: token_balance,
-            time_of_purchase: *time,
+            time_of_purchase: current_time,
             done_buying: true,
             ..token.clone()
         };

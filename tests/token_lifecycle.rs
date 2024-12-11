@@ -1,7 +1,6 @@
 use dotenv::dotenv;
 use ethers::providers::{Middleware, Provider, Ws};
 use ethers::types::{Address, BlockNumber};
-use futures::lock::Mutex;
 use snipper::abi::uniswap_pool::UNISWAP_V3_POOL;
 use snipper::abi::uniswap_v3_factory::UNISWAP_V3_FACTORY;
 use snipper::data::contracts::CONTRACT;
@@ -22,10 +21,9 @@ async fn test_simulate_anvil_transaction_test() -> anyhow::Result<()> {
     let client = Arc::new(provider);
 
     let initial_block = client.get_block(BlockNumber::Latest).await?.unwrap();
-    let last_block_timestamp = initial_block.timestamp.as_u32();
+    let mut last_block_timestamp = initial_block.timestamp.as_u32();
     println!("initial block timestamp => {}", last_block_timestamp);
 
-    let last_block_timestamp = Arc::new(Mutex::new(last_block_timestamp));
     let factory_address: Address = CONTRACT.get_address().uniswap_factory.parse()?;
     let link_address: Address = CONTRACT.get_address().link.parse()?;
     let weth_address: Address = CONTRACT.get_address().weth.parse()?;
@@ -61,12 +59,14 @@ async fn test_simulate_anvil_transaction_test() -> anyhow::Result<()> {
         println!("could not check token tradability => {}", error);
     }
 
-    if let Err(error) = buy_eligible_tokens_on_anvil(&anvil_simulator, &last_block_timestamp).await
-    {
+    if let Err(error) = buy_eligible_tokens_on_anvil(&anvil_simulator, last_block_timestamp).await {
         println!("error running buy_eligible_tokens_on_anvil => {}", error);
     }
 
-    if let Err(error) = sell_eligible_tokens_on_anvil(&anvil_simulator).await {
+    last_block_timestamp += 1800;
+
+    if let Err(error) = sell_eligible_tokens_on_anvil(&anvil_simulator, last_block_timestamp).await
+    {
         println!("error running sell_eligible_tokens_on_anvil => {}", error);
     }
     Ok(())

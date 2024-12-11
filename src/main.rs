@@ -1,9 +1,8 @@
 use anyhow::Result;
-use core::panic;
 use dotenv::dotenv;
 use ethers::{
     core::types::{Log, TxHash},
-    providers::{Http, Middleware, Provider, Ws},
+    providers::{Middleware, Provider, Ws},
     types::BlockNumber,
 };
 use futures::{lock::Mutex, stream, StreamExt};
@@ -45,9 +44,7 @@ async fn main() -> Result<()> {
     info!("Connecting to Anvil...");
     let anvil = AnvilSimulator::new(&ws_url).await?;
     let anvil = Arc::new(anvil);
-    info!("Anvil connected..now testing!");
-    anvil.simulate_buying_link_for_weth().await?;
-    panic!("end testing");
+    info!("Anvil connected!");
 
     // TRACT TIME
     let initial_block = client.get_block(BlockNumber::Latest).await?.unwrap();
@@ -94,12 +91,13 @@ async fn main() -> Result<()> {
                 Ok(Event::Log(log)) => match events::decode_poolcreated_event(&log) {
                     Ok(pool_created_event) => {
                         info!("pool created event {:#?}", pool_created_event);
+                        let last_time = last_timestamp.lock().await;
 
                         if let Err(error) = add_validate_buy_new_token(
                             &pool_created_event,
                             &client,
                             &anvil,
-                            last_timestamp,
+                            last_time.clone(),
                         )
                         .await
                         {
@@ -120,12 +118,15 @@ async fn main() -> Result<()> {
                         error!("could not check token tradability => {}", error);
                     }
 
-                    if let Err(error) = buy_eligible_tokens_on_anvil(&anvil, &last_timestamp).await
+                    if let Err(error) =
+                        buy_eligible_tokens_on_anvil(&anvil, current_block_timestamp).await
                     {
                         error!("error running buy_eligible_tokens_on_anvil => {}", error);
                     }
 
-                    if let Err(error) = sell_eligible_tokens_on_anvil(&anvil).await {
+                    if let Err(error) =
+                        sell_eligible_tokens_on_anvil(&anvil, current_block_timestamp).await
+                    {
                         error!("error running sell_eligible_tokens_on_anvil => {}", error);
                     }
                 }

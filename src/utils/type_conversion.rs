@@ -2,12 +2,21 @@ use anyhow::{anyhow, Result};
 use ethers::abi::{Address, Bytes};
 use ethers::core::types::U256;
 use ethers::types::{H256, I256};
-use ethers::utils::keccak256;
+use ethers::utils::{format_units, keccak256};
 use std::convert::TryInto;
+use std::str::FromStr;
 
 pub fn get_function_selector(function_signature: &str) -> Bytes {
     let hash = H256::from(keccak256(function_signature.as_bytes()));
     Bytes::from(&hash[0..4])
+}
+
+pub fn u256_to_f64_with_decimals(value: U256, decimals: u32) -> anyhow::Result<f64> {
+    // Convert U256 to a string with the given decimals
+    let value_str = format_units(value, decimals)?;
+    // Parse the decimal string into a f64
+    let value_f64 = f64::from_str(&value_str)?;
+    Ok(value_f64)
 }
 
 pub fn str_to_h256_hash(str: &str) -> H256 {

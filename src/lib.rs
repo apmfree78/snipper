@@ -1,8 +1,7 @@
 pub mod abi {
     pub mod erc20;
-    pub mod uniswap_factory_base;
     pub mod uniswap_pool;
-    pub mod uniswap_router_base;
+    pub mod uniswap_quoter;
     pub mod uniswap_v3_factory;
     pub mod uniswap_v3_router;
 }

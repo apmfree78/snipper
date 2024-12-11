@@ -24,6 +24,7 @@ pub struct ContractAddresses {
     pub link: String,
     pub uniswap_swap_router: String,
     pub uniswap_factory: String,
+    pub uniswap_quoter: String,
     pub ws_url: String,
     pub http_url: String,
 }
@@ -40,6 +41,7 @@ impl ContractAddressMap {
             ContractAddresses {
                 uniswap_factory: chains.base.uniswap_factory,
                 uniswap_swap_router: chains.base.uniswap_swap_router,
+                uniswap_quoter: chains.base.uniswap_quoter,
                 weth: chains.base.weth,
                 link: chains.base.link,
                 ws_url: chains.base.ws_url,
@@ -51,6 +53,7 @@ impl ContractAddressMap {
             ContractAddresses {
                 uniswap_factory: chains.mainnet.uniswap_factory,
                 uniswap_swap_router: chains.mainnet.uniswap_swap_router,
+                uniswap_quoter: chains.mainnet.uniswap_quoter,
                 weth: chains.mainnet.weth,
                 link: chains.mainnet.link,
                 ws_url: chains.mainnet.ws_url,
@@ -75,6 +78,7 @@ struct Chains {
 struct ChainContracts {
     uniswap_swap_router: String,
     uniswap_factory: String,
+    uniswap_quoter: String,
     weth: String,
     link: String,
     ws_url: String,
