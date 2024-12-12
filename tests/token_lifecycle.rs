@@ -55,12 +55,11 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
         pair: pair_address,
     };
 
-    get_and_save_erc20_by_token_address(&pair_created_event, &client).await?;
-
     // Create an instance of AnvilSimulator
     let anvil_simulator = AnvilSimulator::new(&ws_url).await?;
     let anvil_simulator = Arc::new(anvil_simulator);
 
+    get_and_save_erc20_by_token_address(&pair_created_event, &client, &anvil_simulator).await?;
     // check token liquidity
     if let Err(error) = check_all_tokens_and_update_if_are_tradable(&client).await {
         println!("could not check token tradability => {}", error);
@@ -77,8 +76,8 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
 #[tokio::test]
 // #[ignore]
 async fn test_anvil_meme_token_buy_sell_test() -> anyhow::Result<()> {
-    let token_address: Address = "0x616d4b42197cff456a80a8b93f6ebef2307dfb8c".parse()?;
-    // let token_address: Address = "0xc5a07C9594C4d5138AA00feBbDEC048B6f0ad7D6".parse()?;
+    // let token_address: Address = "0x616d4b42197cff456a80a8b93f6ebef2307dfb8c".parse()?;
+    let token_address: Address = "0xc5a07C9594C4d5138AA00feBbDEC048B6f0ad7D6".parse()?;
     let mut setup = setup(token_address).await?;
 
     let mut number_of_tokens = get_number_of_tokens().await;

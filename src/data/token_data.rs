@@ -1,5 +1,7 @@
 use crate::abi::erc20::ERC20;
 use crate::events::PairCreatedEvent;
+use crate::swap::anvil_simlator::AnvilSimulator;
+use crate::swap::anvil_validation::{self, TokenStatus};
 use crate::swap::token_price::get_token_weth_total_supply;
 use crate::utils::type_conversion::address_to_string;
 use anyhow::Result;
@@ -20,6 +22,7 @@ static TOKEN_HASH: Lazy<Arc<Mutex<HashMap<String, Erc20Token>>>> =
 pub async fn get_and_save_erc20_by_token_address(
     pair_created_event: &PairCreatedEvent,
     client: &Arc<Provider<Ws>>,
+    anvil: &Arc<AnvilSimulator>,
 ) -> Result<Option<Erc20Token>> {
     let token_data_hash = Arc::clone(&TOKEN_HASH);
     let mut tokens = token_data_hash.lock().await;
@@ -35,8 +38,6 @@ pub async fn get_and_save_erc20_by_token_address(
         return Ok(None);
     };
 
-    // TODO - VALIDATE TOKEN HERE - IF SCAM exit out
-    //
     let token_address_string = address_to_string(token_address).to_lowercase();
 
     // make sure token is not already in hashmap
@@ -62,9 +63,23 @@ pub async fn get_and_save_erc20_by_token_address(
         ..Default::default()
     };
 
-    tokens.insert(token_address_string, token.clone());
+    // TODO - ADD VALIDATION
+    let token_status = anvil.validate_token_with_simulated_buy_sell(&token).await?;
 
-    Ok(Some(token))
+    match token_status {
+        TokenStatus::Legit => {
+            tokens.insert(token_address_string, token.clone());
+            Ok(Some(token))
+        }
+        TokenStatus::CannotBuy => {
+            warn!("cannot buy {} token! maybe no liquidity yet?", token.name);
+            Ok(Some(token))
+        }
+        TokenStatus::CannotSell => {
+            warn!("SCAM ALERT: cannot buy {} token!", token.name);
+            Ok(None)
+        }
+    }
 }
 
 pub async fn get_tokens() -> HashMap<String, Erc20Token> {

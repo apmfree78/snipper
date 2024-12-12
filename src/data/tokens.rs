@@ -34,7 +34,9 @@ pub async fn add_validate_buy_new_token(
     // TODO - VALIDATE TOKEN HERE - IF SCAM exit out
 
     // SAVE TOKEN TO GLOBAL STATE
-    if let Some(token) = get_and_save_erc20_by_token_address(&pair_created_event, client).await? {
+    if let Some(token) =
+        get_and_save_erc20_by_token_address(&pair_created_event, client, anvil).await?
+    {
         // check liqudity
         let total_supply = get_token_weth_total_supply(&token, client).await?;
 
