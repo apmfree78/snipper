@@ -6,7 +6,8 @@ use ethers::{
 };
 
 use crate::data::contracts::CONTRACT;
-pub const PAIRCREATED_SIGNATURE: &str = "PoolCreated(address,address,uint24,int24,address)";
+pub const POOL_CREATED_SIGNATURE: &str = "PoolCreated(address,address,uint24,int24,address)";
+pub const PAIR_CREATED_SIGNATURE: &str = "PairCreated(address,address,address)";
 
 #[derive(Debug, Clone)]
 pub struct PoolCreatedEvent {
@@ -17,16 +18,48 @@ pub struct PoolCreatedEvent {
     pub pool: Address,
 }
 
+#[derive(Debug, Clone)]
+pub struct PairCreatedEvent {
+    pub token0: Address,
+    pub token1: Address,
+    pub pair: Address,
+}
+
 pub fn set_signature_filter() -> anyhow::Result<Filter> {
-    let factory_address = CONTRACT.get_address().uniswap_factory.clone();
+    let factory_address = CONTRACT.get_address().uniswap_v2_factory.clone();
 
     let filter = Filter::new()
         .address(factory_address.parse::<Address>()?)
-        .events([PAIRCREATED_SIGNATURE].to_vec());
+        // .events([POOL_CREATED_SIGNATURE].to_vec());
+        .events([PAIR_CREATED_SIGNATURE].to_vec());
     Ok(filter)
 }
 
-pub fn decode_poolcreated_event(log: &Log) -> anyhow::Result<PoolCreatedEvent> {
+pub fn decode_pair_created_event(log: &Log) -> anyhow::Result<PairCreatedEvent> {
+    let token0: Address = log.topics[1].into();
+    let token1: Address = log.topics[2].into();
+
+    // Assuming the data contains the rest in order: user, amount, interestRateMode, borrowRate
+    // Proceed with decoding data which is just raw binary (not RLP encoded)
+    let raw_log: RawLog = RawLog::from(log.clone());
+    let data_slice = raw_log.data;
+    if data_slice.len() < 32 {
+        return Err(anyhow!("Data field too short to decode all fields"));
+    }
+
+    // tickSpacing (int24) is in the first 32 bytes of data
+    let pair = Address::from_slice(&data_slice[20..32]);
+
+    let pair_created_event = PairCreatedEvent {
+        token0,
+        token1,
+        pair,
+    };
+
+    Ok(pair_created_event)
+}
+
+pub fn decode_pool_created_event(log: &Log) -> anyhow::Result<PoolCreatedEvent> {
     let token0: Address = log.topics[1].into();
     let token1: Address = log.topics[2].into();
     // fee is indexed and stored in topics[3]

@@ -88,13 +88,13 @@ async fn main() -> Result<()> {
             let last_timestamp = Arc::clone(&last_block_timestamp);
 
             match event {
-                Ok(Event::Log(log)) => match events::decode_poolcreated_event(&log) {
-                    Ok(pool_created_event) => {
-                        info!("pool created event {:#?}", pool_created_event);
+                Ok(Event::Log(log)) => match events::decode_pair_created_event(&log) {
+                    Ok(pair_created_event) => {
+                        info!("pair created event {:#?}", pair_created_event);
                         let last_time = last_timestamp.lock().await;
 
                         if let Err(error) = add_validate_buy_new_token(
-                            &pool_created_event,
+                            &pair_created_event,
                             &client,
                             &anvil,
                             last_time.clone(),

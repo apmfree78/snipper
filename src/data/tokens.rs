@@ -1,13 +1,13 @@
 use super::token_data::{get_and_save_erc20_by_token_address, get_tokens, update_token};
 use crate::data::token_data::remove_token;
-use crate::swap::token_price::get_token_weth_liquidity;
-use crate::{events::PoolCreatedEvent, swap::anvil_simlator::AnvilSimulator};
+use crate::events::PairCreatedEvent;
+use crate::swap::anvil_simlator::AnvilSimulator;
+use crate::swap::token_price::get_token_weth_total_supply;
 use ethers::{
     abi::Address,
     core::types::U256,
     providers::{Provider, Ws},
 };
-use futures::lock::Mutex;
 use log::info;
 use std::sync::Arc;
 
@@ -16,9 +16,8 @@ pub struct Erc20Token {
     pub name: String,
     pub symbol: String,
     pub decimals: u8,
-    pub fee: u32,
     pub address: Address,
-    pub pool_address: Address,
+    pub pair_address: Address,
     pub is_tradable: bool,
     pub is_token_0: bool,
     pub done_buying: bool,
@@ -27,7 +26,7 @@ pub struct Erc20Token {
 }
 
 pub async fn add_validate_buy_new_token(
-    pool_created_event: &PoolCreatedEvent,
+    pair_created_event: &PairCreatedEvent,
     client: &Arc<Provider<Ws>>,
     anvil: &Arc<AnvilSimulator>,
     current_time: u32,
@@ -35,14 +34,14 @@ pub async fn add_validate_buy_new_token(
     // TODO - VALIDATE TOKEN HERE - IF SCAM exit out
 
     // SAVE TOKEN TO GLOBAL STATE
-    if let Some(token) = get_and_save_erc20_by_token_address(&pool_created_event, client).await? {
+    if let Some(token) = get_and_save_erc20_by_token_address(&pair_created_event, client).await? {
         // check liqudity
-        let token_liquidity = get_token_weth_liquidity(&token, client).await?;
+        let total_supply = get_token_weth_total_supply(&token, client).await?;
 
-        if token_liquidity > 0 {
+        if total_supply > U256::from(0) {
             info!(
                 "{} has immediate liquidity of {} and ready for trading",
-                token.name, token_liquidity
+                token.name, total_supply
             );
             purchase_token_on_anvil(&token, anvil, current_time).await?;
         } else {

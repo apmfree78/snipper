@@ -1,10 +1,10 @@
 use crate::abi::erc20::ERC20;
-use crate::events::PoolCreatedEvent;
-use crate::swap::token_price::get_token_weth_liquidity;
+use crate::events::PairCreatedEvent;
+use crate::swap::token_price::get_token_weth_total_supply;
 use crate::utils::type_conversion::address_to_string;
 use anyhow::Result;
 use ethers::providers::{Provider, Ws};
-use ethers::types::Address;
+use ethers::types::{Address, U256};
 use futures::lock::Mutex;
 use log::warn;
 use once_cell::sync::Lazy;
@@ -18,7 +18,7 @@ static TOKEN_HASH: Lazy<Arc<Mutex<HashMap<String, Erc20Token>>>> =
     Lazy::new(|| Arc::new(Mutex::new(HashMap::<String, Erc20Token>::new())));
 
 pub async fn get_and_save_erc20_by_token_address(
-    pool_created_event: &PoolCreatedEvent,
+    pair_created_event: &PairCreatedEvent,
     client: &Arc<Provider<Ws>>,
 ) -> Result<Option<Erc20Token>> {
     let token_data_hash = Arc::clone(&TOKEN_HASH);
@@ -26,17 +26,17 @@ pub async fn get_and_save_erc20_by_token_address(
     let weth_address: Address = CONTRACT.get_address().weth.parse()?;
 
     // find address of new token
-    let (token_address, is_token_0) = if weth_address == pool_created_event.token0 {
-        (pool_created_event.token1, false)
-    } else if weth_address == pool_created_event.token1 {
-        (pool_created_event.token0, true)
+    let (token_address, is_token_0) = if weth_address == pair_created_event.token0 {
+        (pair_created_event.token1, false)
+    } else if weth_address == pair_created_event.token1 {
+        (pair_created_event.token0, true)
     } else {
-        warn!("not weth pool, skipping");
+        warn!("not weth pair, skipping");
         return Ok(None);
     };
 
     // TODO - VALIDATE TOKEN HERE - IF SCAM exit out
-
+    //
     let token_address_string = address_to_string(token_address).to_lowercase();
 
     // make sure token is not already in hashmap
@@ -56,9 +56,8 @@ pub async fn get_and_save_erc20_by_token_address(
         name,
         symbol,
         decimals,
-        fee: pool_created_event.fee,
         address: token_address,
-        pool_address: pool_created_event.pool,
+        pair_address: pair_created_event.pair,
         is_token_0,
         ..Default::default()
     };
@@ -96,9 +95,9 @@ pub async fn check_all_tokens_and_update_if_are_tradable(
     for token in tokens.values_mut() {
         if !token.is_tradable {
             // check liquidity
-            let token_liquidity = get_token_weth_liquidity(&token, client).await?;
+            let total_supply = get_token_weth_total_supply(&token, client).await?;
 
-            if token_liquidity > 0 {
+            if total_supply > U256::from(0) {
                 token.is_tradable = true;
             }
         }

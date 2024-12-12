@@ -1,15 +1,15 @@
 use dotenv::dotenv;
 use ethers::providers::{Middleware, Provider, Ws};
 use ethers::types::{Address, BlockNumber, U256};
-use snipper::abi::uniswap_pool::UNISWAP_V3_POOL;
-use snipper::abi::uniswap_v3_factory::UNISWAP_V3_FACTORY;
+use snipper::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
+use snipper::abi::uniswap_pair::UNISWAP_PAIR;
 use snipper::data::contracts::CONTRACT;
 use snipper::data::token_data::{
     check_all_tokens_and_update_if_are_tradable, get_and_save_erc20_by_token_address,
     get_number_of_tokens, is_token_tradable,
 };
 use snipper::data::tokens::{buy_eligible_tokens_on_anvil, sell_eligible_tokens_on_anvil};
-use snipper::events::PoolCreatedEvent;
+use snipper::events::PairCreatedEvent;
 use snipper::swap::anvil_simlator::AnvilSimulator;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -38,38 +38,24 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
         std::env::var("SELL_TOKEN_AFTER").expect("SELL_TOKEN_AFTER not found in .env");
     let sell_after = u32::from_str(&sell_after_str)?;
 
-    let factory_address: Address = CONTRACT.get_address().uniswap_factory.parse()?;
+    let factory_address: Address = CONTRACT.get_address().uniswap_v2_factory.parse()?;
     let weth_address: Address = CONTRACT.get_address().weth.parse()?;
-    let factory = UNISWAP_V3_FACTORY::new(factory_address, client.clone());
+    let factory = UNISWAP_V2_FACTORY::new(factory_address, client.clone());
 
-    let mut pool_address = factory
-        .get_pool(token_address, weth_address, 10000u32)
-        .call()
-        .await?;
-    println!("Pool address for WETH-TOKEN: {:?}", pool_address);
+    let pair_address = factory.get_pair(token_address, weth_address).call().await?;
+    println!("pair address for WETH-TOKEN: {:?}", pair_address);
 
-    if pool_address == Address::zero() {
-        pool_address = factory
-            .get_pool(weth_address, token_address, 10000u32)
-            .call()
-            .await?;
-    }
-    println!("Pool address for WETH-TOKEN: {:?}", pool_address);
+    let pair = UNISWAP_PAIR::new(pair_address, client.clone());
+    let token_0 = pair.token_0().call().await?;
+    let token_1 = pair.token_1().call().await?;
 
-    let pool = UNISWAP_V3_POOL::new(pool_address, client.clone());
-    let token_0 = pool.token_0().call().await?;
-    let token_1 = pool.token_1().call().await?;
-    let fee = pool.fee().call().await?;
-
-    let pool_created_event = PoolCreatedEvent {
+    let pair_created_event = PairCreatedEvent {
         token0: token_0,
         token1: token_1,
-        fee,
-        tick_spacing: 200,
-        pool: pool_address,
+        pair: pair_address,
     };
 
-    get_and_save_erc20_by_token_address(&pool_created_event, &client).await?;
+    get_and_save_erc20_by_token_address(&pair_created_event, &client).await?;
 
     // Create an instance of AnvilSimulator
     let anvil_simulator = AnvilSimulator::new(&ws_url).await?;
@@ -89,8 +75,10 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
 }
 
 #[tokio::test]
-async fn test_anvil_ai_token_buy_sell_test() -> anyhow::Result<()> {
-    let token_address: Address = "0x821b37dc08e534207d8beae9b42a60443fd067b2".parse()?;
+// #[ignore]
+async fn test_anvil_meme_token_buy_sell_test() -> anyhow::Result<()> {
+    let token_address: Address = "0x616d4b42197cff456a80a8b93f6ebef2307dfb8c".parse()?;
+    // let token_address: Address = "0xc5a07C9594C4d5138AA00feBbDEC048B6f0ad7D6".parse()?;
     let mut setup = setup(token_address).await?;
 
     let mut number_of_tokens = get_number_of_tokens().await;
