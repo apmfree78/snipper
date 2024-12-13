@@ -30,7 +30,6 @@ pub fn set_signature_filter() -> anyhow::Result<Filter> {
 
     let filter = Filter::new()
         .address(factory_address.parse::<Address>()?)
-        // .events([POOL_CREATED_SIGNATURE].to_vec());
         .events([PAIR_CREATED_SIGNATURE].to_vec());
     Ok(filter)
 }

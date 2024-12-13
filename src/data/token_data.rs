@@ -73,8 +73,9 @@ pub async fn get_and_save_erc20_by_token_address(
         }
         TokenStatus::CannotBuy => {
             warn!("cannot buy {} token! maybe no liquidity?", token.name);
-            tokens.insert(token_address_string, token.clone());
-            Ok(Some(token))
+            // tokens.insert(token_address_string, token.clone());
+            // Ok(Some(token))
+            Ok(None)
         }
         TokenStatus::CannotSell => {
             warn!("SCAM ALERT: cannot buy {} token!", token.name);
