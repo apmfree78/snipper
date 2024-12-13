@@ -72,7 +72,8 @@ pub async fn get_and_save_erc20_by_token_address(
             Ok(Some(token))
         }
         TokenStatus::CannotBuy => {
-            warn!("cannot buy {} token! maybe no liquidity yet?", token.name);
+            warn!("cannot buy {} token! maybe no liquidity?", token.name);
+            tokens.insert(token_address_string, token.clone());
             Ok(Some(token))
         }
         TokenStatus::CannotSell => {
@@ -152,4 +153,52 @@ pub async fn get_number_of_tokens() -> usize {
     let tokens = token_data_hash.lock().await;
 
     tokens.len()
+}
+
+pub async fn get_and_save_erc20_by_token_address_no_validation(
+    pair_created_event: &PairCreatedEvent,
+    client: &Arc<Provider<Ws>>,
+) -> Result<Option<Erc20Token>> {
+    let token_data_hash = Arc::clone(&TOKEN_HASH);
+    let mut tokens = token_data_hash.lock().await;
+    let weth_address: Address = CONTRACT.get_address().weth.parse()?;
+
+    // find address of new token
+    let (token_address, is_token_0) = if weth_address == pair_created_event.token0 {
+        (pair_created_event.token1, false)
+    } else if weth_address == pair_created_event.token1 {
+        (pair_created_event.token0, true)
+    } else {
+        warn!("not weth pair, skipping");
+        return Ok(None);
+    };
+
+    let token_address_string = address_to_string(token_address).to_lowercase();
+
+    // make sure token is not already in hashmap
+    if tokens.contains_key(&token_address_string) {
+        let token = tokens.get(&token_address_string).unwrap();
+        return Ok(Some(token.clone()));
+    }
+
+    let token_contract = ERC20::new(token_address, client.clone());
+
+    // get basic toke data
+    let symbol = token_contract.symbol().call().await?;
+    let decimals = token_contract.decimals().call().await?;
+    let name = token_contract.name().call().await?;
+
+    let token = Erc20Token {
+        name,
+        symbol,
+        decimals,
+        address: token_address,
+        pair_address: pair_created_event.pair,
+        is_token_0,
+        ..Default::default()
+    };
+
+    tokens.insert(token_address_string, token.clone());
+
+    Ok(Some(token))
 }

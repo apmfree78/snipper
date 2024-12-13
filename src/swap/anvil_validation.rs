@@ -2,6 +2,7 @@ use super::anvil_simlator::AnvilSimulator;
 use crate::data::tokens::Erc20Token;
 use ethers::types::U256;
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum TokenStatus {
     Legit,
     CannotSell,
@@ -42,7 +43,7 @@ impl AnvilSimulator {
             Ok(_) => {
                 let balance_after_sell = self.get_token_balance(token).await?;
                 if balance_after_sell != U256::from(0) {
-                    println!("Unable to fully sell the token, revert if desired...");
+                    println!("cannot sell {}, scam alert", token.name);
                     // If you must revert because the sale is unsuccessful, do it here
                     self.revert_snapshot(&snapshot_id).await?;
                     return Ok(TokenStatus::CannotSell);

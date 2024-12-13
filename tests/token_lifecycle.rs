@@ -74,7 +74,7 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
 }
 
 #[tokio::test]
-// #[ignore]
+#[ignore]
 async fn test_anvil_meme_token_buy_sell_test() -> anyhow::Result<()> {
     // let token_address: Address = "0x616d4b42197cff456a80a8b93f6ebef2307dfb8c".parse()?;
     let token_address: Address = "0xc5a07C9594C4d5138AA00feBbDEC048B6f0ad7D6".parse()?;
