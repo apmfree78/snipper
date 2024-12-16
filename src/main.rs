@@ -10,7 +10,7 @@ use log::{error, info, warn};
 use snipper::{
     data::{
         contracts::CHAIN,
-        token_data::check_all_tokens_and_update_if_are_tradable,
+        token_data::{check_all_tokens_are_tradable, validate_tradable_tokens},
         tokens::{add_validate_buy_new_token, sell_eligible_tokens_on_anvil},
     },
     swap::anvil_simlator::AnvilSimulator,
@@ -43,7 +43,7 @@ async fn main() -> Result<()> {
     // creating anvil mainnet fork for testing
     info!("Connecting to Anvil...");
     let anvil = AnvilSimulator::new(&ws_url).await?;
-    let anvil = Arc::new(anvil);
+    let anvil = Arc::new(Mutex::new(anvil));
     info!("Anvil connected!");
 
     // TRACT TIME
@@ -114,8 +114,13 @@ async fn main() -> Result<()> {
                     *last_time = current_block_timestamp;
 
                     // check token liquidty
-                    if let Err(error) = check_all_tokens_and_update_if_are_tradable(&client).await {
+                    if let Err(error) = check_all_tokens_are_tradable(&client).await {
                         error!("could not check token tradability => {}", error);
+                    }
+
+                    // validate tokens
+                    if let Err(error) = validate_tradable_tokens().await {
+                        error!("could not validate tradable tokens => {}", error);
                     }
 
                     if let Err(error) =

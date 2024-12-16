@@ -7,13 +7,11 @@ pub use uniswap_quoter::*;
     clippy::upper_case_acronyms,
     clippy::type_complexity,
     dead_code,
-    non_camel_case_types,
+    non_camel_case_types
 )]
 pub mod uniswap_quoter {
     const _: () = {
-        ::core::include_bytes!(
-            "/Users/apmfree/Desktop/rust/learn_ethers/examples/abi/quoter.json",
-        );
+        ::core::include_bytes!("/Users/apmfree/Desktop/rust/learn_ethers/examples/abi/quoter.json",);
     };
     #[allow(deprecated)]
     fn __abi() -> ::ethers::core::abi::Abi {
@@ -39,365 +37,301 @@ pub mod uniswap_quoter {
             functions: ::core::convert::From::from([
                 (
                     ::std::borrow::ToOwned::to_owned("WETH9"),
-                    ::std::vec![
-                        ::ethers::core::abi::ethabi::Function {
-                            name: ::std::borrow::ToOwned::to_owned("WETH9"),
-                            inputs: ::std::vec![],
-                            outputs: ::std::vec![
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::string::String::new(),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Address,
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("address"),
-                                    ),
-                                },
-                            ],
-                            constant: ::core::option::Option::None,
-                            state_mutability: ::ethers::core::abi::ethabi::StateMutability::View,
-                        },
-                    ],
+                    ::std::vec![::ethers::core::abi::ethabi::Function {
+                        name: ::std::borrow::ToOwned::to_owned("WETH9"),
+                        inputs: ::std::vec![],
+                        outputs: ::std::vec![::ethers::core::abi::ethabi::Param {
+                            name: ::std::string::String::new(),
+                            kind: ::ethers::core::abi::ethabi::ParamType::Address,
+                            internal_type: ::core::option::Option::Some(
+                                ::std::borrow::ToOwned::to_owned("address"),
+                            ),
+                        },],
+                        constant: ::core::option::Option::None,
+                        state_mutability: ::ethers::core::abi::ethabi::StateMutability::View,
+                    },],
                 ),
                 (
                     ::std::borrow::ToOwned::to_owned("factory"),
-                    ::std::vec![
-                        ::ethers::core::abi::ethabi::Function {
-                            name: ::std::borrow::ToOwned::to_owned("factory"),
-                            inputs: ::std::vec![],
-                            outputs: ::std::vec![
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::string::String::new(),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Address,
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("address"),
-                                    ),
-                                },
-                            ],
-                            constant: ::core::option::Option::None,
-                            state_mutability: ::ethers::core::abi::ethabi::StateMutability::View,
-                        },
-                    ],
+                    ::std::vec![::ethers::core::abi::ethabi::Function {
+                        name: ::std::borrow::ToOwned::to_owned("factory"),
+                        inputs: ::std::vec![],
+                        outputs: ::std::vec![::ethers::core::abi::ethabi::Param {
+                            name: ::std::string::String::new(),
+                            kind: ::ethers::core::abi::ethabi::ParamType::Address,
+                            internal_type: ::core::option::Option::Some(
+                                ::std::borrow::ToOwned::to_owned("address"),
+                            ),
+                        },],
+                        constant: ::core::option::Option::None,
+                        state_mutability: ::ethers::core::abi::ethabi::StateMutability::View,
+                    },],
                 ),
                 (
                     ::std::borrow::ToOwned::to_owned("quoteExactInput"),
-                    ::std::vec![
-                        ::ethers::core::abi::ethabi::Function {
-                            name: ::std::borrow::ToOwned::to_owned("quoteExactInput"),
-                            inputs: ::std::vec![
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("path"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Bytes,
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("bytes"),
+                    ::std::vec![::ethers::core::abi::ethabi::Function {
+                        name: ::std::borrow::ToOwned::to_owned("quoteExactInput"),
+                        inputs: ::std::vec![
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("path"),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Bytes,
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("bytes"),
+                                ),
+                            },
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("amountIn"),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Uint(256usize,),
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("uint256"),
+                                ),
+                            },
+                        ],
+                        outputs: ::std::vec![
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("amountOut"),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Uint(256usize,),
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("uint256"),
+                                ),
+                            },
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("sqrtPriceX96AfterList",),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Array(
+                                    ::std::boxed::Box::new(
+                                        ::ethers::core::abi::ethabi::ParamType::Uint(160usize),
                                     ),
-                                },
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("amountIn"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Uint(
-                                        256usize,
+                                ),
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("uint160[]"),
+                                ),
+                            },
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned(
+                                    "initializedTicksCrossedList",
+                                ),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Array(
+                                    ::std::boxed::Box::new(
+                                        ::ethers::core::abi::ethabi::ParamType::Uint(32usize),
                                     ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("uint256"),
-                                    ),
-                                },
-                            ],
-                            outputs: ::std::vec![
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("amountOut"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Uint(
-                                        256usize,
-                                    ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("uint256"),
-                                    ),
-                                },
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned(
-                                        "sqrtPriceX96AfterList",
-                                    ),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Array(
-                                        ::std::boxed::Box::new(
-                                            ::ethers::core::abi::ethabi::ParamType::Uint(160usize),
-                                        ),
-                                    ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("uint160[]"),
-                                    ),
-                                },
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned(
-                                        "initializedTicksCrossedList",
-                                    ),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Array(
-                                        ::std::boxed::Box::new(
-                                            ::ethers::core::abi::ethabi::ParamType::Uint(32usize),
-                                        ),
-                                    ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("uint32[]"),
-                                    ),
-                                },
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("gasEstimate"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Uint(
-                                        256usize,
-                                    ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("uint256"),
-                                    ),
-                                },
-                            ],
-                            constant: ::core::option::Option::None,
-                            state_mutability: ::ethers::core::abi::ethabi::StateMutability::NonPayable,
-                        },
-                    ],
+                                ),
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("uint32[]"),
+                                ),
+                            },
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("gasEstimate"),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Uint(256usize,),
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("uint256"),
+                                ),
+                            },
+                        ],
+                        constant: ::core::option::Option::None,
+                        state_mutability: ::ethers::core::abi::ethabi::StateMutability::NonPayable,
+                    },],
                 ),
                 (
                     ::std::borrow::ToOwned::to_owned("quoteExactInputSingle"),
-                    ::std::vec![
-                        ::ethers::core::abi::ethabi::Function {
-                            name: ::std::borrow::ToOwned::to_owned(
-                                "quoteExactInputSingle",
+                    ::std::vec![::ethers::core::abi::ethabi::Function {
+                        name: ::std::borrow::ToOwned::to_owned("quoteExactInputSingle",),
+                        inputs: ::std::vec![::ethers::core::abi::ethabi::Param {
+                            name: ::std::borrow::ToOwned::to_owned("params"),
+                            kind: ::ethers::core::abi::ethabi::ParamType::Tuple(::std::vec![
+                                ::ethers::core::abi::ethabi::ParamType::Address,
+                                ::ethers::core::abi::ethabi::ParamType::Address,
+                                ::ethers::core::abi::ethabi::ParamType::Uint(256usize),
+                                ::ethers::core::abi::ethabi::ParamType::Uint(24usize),
+                                ::ethers::core::abi::ethabi::ParamType::Uint(160usize),
+                            ],),
+                            internal_type: ::core::option::Option::Some(
+                                ::std::borrow::ToOwned::to_owned(
+                                    "struct IQuoterV2.QuoteExactInputSingleParams",
+                                ),
                             ),
-                            inputs: ::std::vec![
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("params"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Tuple(
-                                        ::std::vec![
-                                            ::ethers::core::abi::ethabi::ParamType::Address,
-                                            ::ethers::core::abi::ethabi::ParamType::Address,
-                                            ::ethers::core::abi::ethabi::ParamType::Uint(256usize),
-                                            ::ethers::core::abi::ethabi::ParamType::Uint(24usize),
-                                            ::ethers::core::abi::ethabi::ParamType::Uint(160usize),
-                                        ],
-                                    ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned(
-                                            "struct IQuoterV2.QuoteExactInputSingleParams",
-                                        ),
-                                    ),
-                                },
-                            ],
-                            outputs: ::std::vec![
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("amountOut"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Uint(
-                                        256usize,
-                                    ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("uint256"),
-                                    ),
-                                },
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("sqrtPriceX96After"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Uint(
-                                        160usize,
-                                    ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("uint160"),
-                                    ),
-                                },
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned(
-                                        "initializedTicksCrossed",
-                                    ),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Uint(32usize),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("uint32"),
-                                    ),
-                                },
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("gasEstimate"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Uint(
-                                        256usize,
-                                    ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("uint256"),
-                                    ),
-                                },
-                            ],
-                            constant: ::core::option::Option::None,
-                            state_mutability: ::ethers::core::abi::ethabi::StateMutability::NonPayable,
-                        },
-                    ],
+                        },],
+                        outputs: ::std::vec![
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("amountOut"),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Uint(256usize,),
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("uint256"),
+                                ),
+                            },
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("sqrtPriceX96After"),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Uint(160usize,),
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("uint160"),
+                                ),
+                            },
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("initializedTicksCrossed",),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Uint(32usize),
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("uint32"),
+                                ),
+                            },
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("gasEstimate"),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Uint(256usize,),
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("uint256"),
+                                ),
+                            },
+                        ],
+                        constant: ::core::option::Option::None,
+                        state_mutability: ::ethers::core::abi::ethabi::StateMutability::NonPayable,
+                    },],
                 ),
                 (
                     ::std::borrow::ToOwned::to_owned("quoteExactOutput"),
-                    ::std::vec![
-                        ::ethers::core::abi::ethabi::Function {
-                            name: ::std::borrow::ToOwned::to_owned("quoteExactOutput"),
-                            inputs: ::std::vec![
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("path"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Bytes,
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("bytes"),
+                    ::std::vec![::ethers::core::abi::ethabi::Function {
+                        name: ::std::borrow::ToOwned::to_owned("quoteExactOutput"),
+                        inputs: ::std::vec![
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("path"),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Bytes,
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("bytes"),
+                                ),
+                            },
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("amountOut"),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Uint(256usize,),
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("uint256"),
+                                ),
+                            },
+                        ],
+                        outputs: ::std::vec![
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("amountIn"),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Uint(256usize,),
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("uint256"),
+                                ),
+                            },
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("sqrtPriceX96AfterList",),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Array(
+                                    ::std::boxed::Box::new(
+                                        ::ethers::core::abi::ethabi::ParamType::Uint(160usize),
                                     ),
-                                },
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("amountOut"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Uint(
-                                        256usize,
+                                ),
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("uint160[]"),
+                                ),
+                            },
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned(
+                                    "initializedTicksCrossedList",
+                                ),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Array(
+                                    ::std::boxed::Box::new(
+                                        ::ethers::core::abi::ethabi::ParamType::Uint(32usize),
                                     ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("uint256"),
-                                    ),
-                                },
-                            ],
-                            outputs: ::std::vec![
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("amountIn"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Uint(
-                                        256usize,
-                                    ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("uint256"),
-                                    ),
-                                },
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned(
-                                        "sqrtPriceX96AfterList",
-                                    ),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Array(
-                                        ::std::boxed::Box::new(
-                                            ::ethers::core::abi::ethabi::ParamType::Uint(160usize),
-                                        ),
-                                    ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("uint160[]"),
-                                    ),
-                                },
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned(
-                                        "initializedTicksCrossedList",
-                                    ),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Array(
-                                        ::std::boxed::Box::new(
-                                            ::ethers::core::abi::ethabi::ParamType::Uint(32usize),
-                                        ),
-                                    ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("uint32[]"),
-                                    ),
-                                },
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("gasEstimate"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Uint(
-                                        256usize,
-                                    ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("uint256"),
-                                    ),
-                                },
-                            ],
-                            constant: ::core::option::Option::None,
-                            state_mutability: ::ethers::core::abi::ethabi::StateMutability::NonPayable,
-                        },
-                    ],
+                                ),
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("uint32[]"),
+                                ),
+                            },
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("gasEstimate"),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Uint(256usize,),
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("uint256"),
+                                ),
+                            },
+                        ],
+                        constant: ::core::option::Option::None,
+                        state_mutability: ::ethers::core::abi::ethabi::StateMutability::NonPayable,
+                    },],
                 ),
                 (
                     ::std::borrow::ToOwned::to_owned("quoteExactOutputSingle"),
-                    ::std::vec![
-                        ::ethers::core::abi::ethabi::Function {
-                            name: ::std::borrow::ToOwned::to_owned(
-                                "quoteExactOutputSingle",
+                    ::std::vec![::ethers::core::abi::ethabi::Function {
+                        name: ::std::borrow::ToOwned::to_owned("quoteExactOutputSingle",),
+                        inputs: ::std::vec![::ethers::core::abi::ethabi::Param {
+                            name: ::std::borrow::ToOwned::to_owned("params"),
+                            kind: ::ethers::core::abi::ethabi::ParamType::Tuple(::std::vec![
+                                ::ethers::core::abi::ethabi::ParamType::Address,
+                                ::ethers::core::abi::ethabi::ParamType::Address,
+                                ::ethers::core::abi::ethabi::ParamType::Uint(256usize),
+                                ::ethers::core::abi::ethabi::ParamType::Uint(24usize),
+                                ::ethers::core::abi::ethabi::ParamType::Uint(160usize),
+                            ],),
+                            internal_type: ::core::option::Option::Some(
+                                ::std::borrow::ToOwned::to_owned(
+                                    "struct IQuoterV2.QuoteExactOutputSingleParams",
+                                ),
                             ),
-                            inputs: ::std::vec![
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("params"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Tuple(
-                                        ::std::vec![
-                                            ::ethers::core::abi::ethabi::ParamType::Address,
-                                            ::ethers::core::abi::ethabi::ParamType::Address,
-                                            ::ethers::core::abi::ethabi::ParamType::Uint(256usize),
-                                            ::ethers::core::abi::ethabi::ParamType::Uint(24usize),
-                                            ::ethers::core::abi::ethabi::ParamType::Uint(160usize),
-                                        ],
-                                    ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned(
-                                            "struct IQuoterV2.QuoteExactOutputSingleParams",
-                                        ),
-                                    ),
-                                },
-                            ],
-                            outputs: ::std::vec![
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("amountIn"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Uint(
-                                        256usize,
-                                    ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("uint256"),
-                                    ),
-                                },
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("sqrtPriceX96After"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Uint(
-                                        160usize,
-                                    ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("uint160"),
-                                    ),
-                                },
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned(
-                                        "initializedTicksCrossed",
-                                    ),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Uint(32usize),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("uint32"),
-                                    ),
-                                },
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("gasEstimate"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Uint(
-                                        256usize,
-                                    ),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("uint256"),
-                                    ),
-                                },
-                            ],
-                            constant: ::core::option::Option::None,
-                            state_mutability: ::ethers::core::abi::ethabi::StateMutability::NonPayable,
-                        },
-                    ],
+                        },],
+                        outputs: ::std::vec![
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("amountIn"),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Uint(256usize,),
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("uint256"),
+                                ),
+                            },
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("sqrtPriceX96After"),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Uint(160usize,),
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("uint160"),
+                                ),
+                            },
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("initializedTicksCrossed",),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Uint(32usize),
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("uint32"),
+                                ),
+                            },
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("gasEstimate"),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Uint(256usize,),
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("uint256"),
+                                ),
+                            },
+                        ],
+                        constant: ::core::option::Option::None,
+                        state_mutability: ::ethers::core::abi::ethabi::StateMutability::NonPayable,
+                    },],
                 ),
                 (
                     ::std::borrow::ToOwned::to_owned("uniswapV3SwapCallback"),
-                    ::std::vec![
-                        ::ethers::core::abi::ethabi::Function {
-                            name: ::std::borrow::ToOwned::to_owned(
-                                "uniswapV3SwapCallback",
-                            ),
-                            inputs: ::std::vec![
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("amount0Delta"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Int(256usize),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("int256"),
-                                    ),
-                                },
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("amount1Delta"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Int(256usize),
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("int256"),
-                                    ),
-                                },
-                                ::ethers::core::abi::ethabi::Param {
-                                    name: ::std::borrow::ToOwned::to_owned("path"),
-                                    kind: ::ethers::core::abi::ethabi::ParamType::Bytes,
-                                    internal_type: ::core::option::Option::Some(
-                                        ::std::borrow::ToOwned::to_owned("bytes"),
-                                    ),
-                                },
-                            ],
-                            outputs: ::std::vec![],
-                            constant: ::core::option::Option::None,
-                            state_mutability: ::ethers::core::abi::ethabi::StateMutability::View,
-                        },
-                    ],
+                    ::std::vec![::ethers::core::abi::ethabi::Function {
+                        name: ::std::borrow::ToOwned::to_owned("uniswapV3SwapCallback",),
+                        inputs: ::std::vec![
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("amount0Delta"),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Int(256usize),
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("int256"),
+                                ),
+                            },
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("amount1Delta"),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Int(256usize),
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("int256"),
+                                ),
+                            },
+                            ::ethers::core::abi::ethabi::Param {
+                                name: ::std::borrow::ToOwned::to_owned("path"),
+                                kind: ::ethers::core::abi::ethabi::ParamType::Bytes,
+                                internal_type: ::core::option::Option::Some(
+                                    ::std::borrow::ToOwned::to_owned("bytes"),
+                                ),
+                            },
+                        ],
+                        outputs: ::std::vec![],
+                        constant: ::core::option::Option::None,
+                        state_mutability: ::ethers::core::abi::ethabi::StateMutability::View,
+                    },],
                 ),
             ]),
             events: ::std::collections::BTreeMap::new(),
@@ -407,9 +341,8 @@ pub mod uniswap_quoter {
         }
     }
     ///The parsed JSON ABI of the contract.
-    pub static UNISWAP_QUOTER_ABI: ::ethers::contract::Lazy<::ethers::core::abi::Abi> = ::ethers::contract::Lazy::new(
-        __abi,
-    );
+    pub static UNISWAP_QUOTER_ABI: ::ethers::contract::Lazy<::ethers::core::abi::Abi> =
+        ::ethers::contract::Lazy::new(__abi);
     pub struct UNISWAP_QUOTER<M>(::ethers::contract::Contract<M>);
     impl<M> ::core::clone::Clone for UNISWAP_QUOTER<M> {
         fn clone(&self) -> Self {
@@ -441,21 +374,16 @@ pub mod uniswap_quoter {
             address: T,
             client: ::std::sync::Arc<M>,
         ) -> Self {
-            Self(
-                ::ethers::contract::Contract::new(
-                    address.into(),
-                    UNISWAP_QUOTER_ABI.clone(),
-                    client,
-                ),
-            )
+            Self(::ethers::contract::Contract::new(
+                address.into(),
+                UNISWAP_QUOTER_ABI.clone(),
+                client,
+            ))
         }
         ///Calls the contract's `WETH9` (0x4aa4a4fc) function
         pub fn weth9(
             &self,
-        ) -> ::ethers::contract::builders::ContractCall<
-            M,
-            ::ethers::core::types::Address,
-        > {
+        ) -> ::ethers::contract::builders::ContractCall<M, ::ethers::core::types::Address> {
             self.0
                 .method_hash([74, 164, 164, 252], ())
                 .expect("method not found (this should never happen)")
@@ -463,10 +391,7 @@ pub mod uniswap_quoter {
         ///Calls the contract's `factory` (0xc45a0155) function
         pub fn factory(
             &self,
-        ) -> ::ethers::contract::builders::ContractCall<
-            M,
-            ::ethers::core::types::Address,
-        > {
+        ) -> ::ethers::contract::builders::ContractCall<M, ::ethers::core::types::Address> {
             self.0
                 .method_hash([196, 90, 1, 85], ())
                 .expect("method not found (this should never happen)")
@@ -554,7 +479,8 @@ pub mod uniswap_quoter {
         }
     }
     impl<M: ::ethers::providers::Middleware> From<::ethers::contract::Contract<M>>
-    for UNISWAP_QUOTER<M> {
+        for UNISWAP_QUOTER<M>
+    {
         fn from(contract: ::ethers::contract::Contract<M>) -> Self {
             Self::new(contract.address(), contract.client())
         }
@@ -568,7 +494,7 @@ pub mod uniswap_quoter {
         Debug,
         PartialEq,
         Eq,
-        Hash
+        Hash,
     )]
     #[ethcall(name = "WETH9", abi = "WETH9()")]
     pub struct Weth9Call;
@@ -581,7 +507,7 @@ pub mod uniswap_quoter {
         Debug,
         PartialEq,
         Eq,
-        Hash
+        Hash,
     )]
     #[ethcall(name = "factory", abi = "factory()")]
     pub struct FactoryCall;
@@ -594,7 +520,7 @@ pub mod uniswap_quoter {
         Debug,
         PartialEq,
         Eq,
-        Hash
+        Hash,
     )]
     #[ethcall(name = "quoteExactInput", abi = "quoteExactInput(bytes,uint256)")]
     pub struct QuoteExactInputCall {
@@ -610,7 +536,7 @@ pub mod uniswap_quoter {
         Debug,
         PartialEq,
         Eq,
-        Hash
+        Hash,
     )]
     #[ethcall(
         name = "quoteExactInputSingle",
@@ -628,7 +554,7 @@ pub mod uniswap_quoter {
         Debug,
         PartialEq,
         Eq,
-        Hash
+        Hash,
     )]
     #[ethcall(name = "quoteExactOutput", abi = "quoteExactOutput(bytes,uint256)")]
     pub struct QuoteExactOutputCall {
@@ -644,7 +570,7 @@ pub mod uniswap_quoter {
         Debug,
         PartialEq,
         Eq,
-        Hash
+        Hash,
     )]
     #[ethcall(
         name = "quoteExactOutputSingle",
@@ -662,7 +588,7 @@ pub mod uniswap_quoter {
         Debug,
         PartialEq,
         Eq,
-        Hash
+        Hash,
     )]
     #[ethcall(
         name = "uniswapV3SwapCallback",
@@ -689,39 +615,35 @@ pub mod uniswap_quoter {
             data: impl AsRef<[u8]>,
         ) -> ::core::result::Result<Self, ::ethers::core::abi::AbiError> {
             let data = data.as_ref();
-            if let Ok(decoded) = <Weth9Call as ::ethers::core::abi::AbiDecode>::decode(
-                data,
-            ) {
+            if let Ok(decoded) = <Weth9Call as ::ethers::core::abi::AbiDecode>::decode(data) {
                 return Ok(Self::Weth9(decoded));
             }
-            if let Ok(decoded) = <FactoryCall as ::ethers::core::abi::AbiDecode>::decode(
-                data,
-            ) {
+            if let Ok(decoded) = <FactoryCall as ::ethers::core::abi::AbiDecode>::decode(data) {
                 return Ok(Self::Factory(decoded));
             }
-            if let Ok(decoded) = <QuoteExactInputCall as ::ethers::core::abi::AbiDecode>::decode(
-                data,
-            ) {
+            if let Ok(decoded) =
+                <QuoteExactInputCall as ::ethers::core::abi::AbiDecode>::decode(data)
+            {
                 return Ok(Self::QuoteExactInput(decoded));
             }
-            if let Ok(decoded) = <QuoteExactInputSingleCall as ::ethers::core::abi::AbiDecode>::decode(
-                data,
-            ) {
+            if let Ok(decoded) =
+                <QuoteExactInputSingleCall as ::ethers::core::abi::AbiDecode>::decode(data)
+            {
                 return Ok(Self::QuoteExactInputSingle(decoded));
             }
-            if let Ok(decoded) = <QuoteExactOutputCall as ::ethers::core::abi::AbiDecode>::decode(
-                data,
-            ) {
+            if let Ok(decoded) =
+                <QuoteExactOutputCall as ::ethers::core::abi::AbiDecode>::decode(data)
+            {
                 return Ok(Self::QuoteExactOutput(decoded));
             }
-            if let Ok(decoded) = <QuoteExactOutputSingleCall as ::ethers::core::abi::AbiDecode>::decode(
-                data,
-            ) {
+            if let Ok(decoded) =
+                <QuoteExactOutputSingleCall as ::ethers::core::abi::AbiDecode>::decode(data)
+            {
                 return Ok(Self::QuoteExactOutputSingle(decoded));
             }
-            if let Ok(decoded) = <UniswapV3SwapCallbackCall as ::ethers::core::abi::AbiDecode>::decode(
-                data,
-            ) {
+            if let Ok(decoded) =
+                <UniswapV3SwapCallbackCall as ::ethers::core::abi::AbiDecode>::decode(data)
+            {
                 return Ok(Self::UniswapV3SwapCallback(decoded));
             }
             Err(::ethers::core::abi::Error::InvalidData.into())
@@ -732,15 +654,11 @@ pub mod uniswap_quoter {
             match self {
                 Self::Weth9(element) => ::ethers::core::abi::AbiEncode::encode(element),
                 Self::Factory(element) => ::ethers::core::abi::AbiEncode::encode(element),
-                Self::QuoteExactInput(element) => {
-                    ::ethers::core::abi::AbiEncode::encode(element)
-                }
+                Self::QuoteExactInput(element) => ::ethers::core::abi::AbiEncode::encode(element),
                 Self::QuoteExactInputSingle(element) => {
                     ::ethers::core::abi::AbiEncode::encode(element)
                 }
-                Self::QuoteExactOutput(element) => {
-                    ::ethers::core::abi::AbiEncode::encode(element)
-                }
+                Self::QuoteExactOutput(element) => ::ethers::core::abi::AbiEncode::encode(element),
                 Self::QuoteExactOutputSingle(element) => {
                     ::ethers::core::abi::AbiEncode::encode(element)
                 }
@@ -756,16 +674,10 @@ pub mod uniswap_quoter {
                 Self::Weth9(element) => ::core::fmt::Display::fmt(element, f),
                 Self::Factory(element) => ::core::fmt::Display::fmt(element, f),
                 Self::QuoteExactInput(element) => ::core::fmt::Display::fmt(element, f),
-                Self::QuoteExactInputSingle(element) => {
-                    ::core::fmt::Display::fmt(element, f)
-                }
+                Self::QuoteExactInputSingle(element) => ::core::fmt::Display::fmt(element, f),
                 Self::QuoteExactOutput(element) => ::core::fmt::Display::fmt(element, f),
-                Self::QuoteExactOutputSingle(element) => {
-                    ::core::fmt::Display::fmt(element, f)
-                }
-                Self::UniswapV3SwapCallback(element) => {
-                    ::core::fmt::Display::fmt(element, f)
-                }
+                Self::QuoteExactOutputSingle(element) => ::core::fmt::Display::fmt(element, f),
+                Self::UniswapV3SwapCallback(element) => ::core::fmt::Display::fmt(element, f),
             }
         }
     }
@@ -813,7 +725,7 @@ pub mod uniswap_quoter {
         Debug,
         PartialEq,
         Eq,
-        Hash
+        Hash,
     )]
     pub struct Weth9Return(pub ::ethers::core::types::Address);
     ///Container type for all return fields from the `factory` function with signature `factory()` and selector `0xc45a0155`
@@ -825,7 +737,7 @@ pub mod uniswap_quoter {
         Debug,
         PartialEq,
         Eq,
-        Hash
+        Hash,
     )]
     pub struct FactoryReturn(pub ::ethers::core::types::Address);
     ///Container type for all return fields from the `quoteExactInput` function with signature `quoteExactInput(bytes,uint256)` and selector `0xcdca1753`
@@ -837,7 +749,7 @@ pub mod uniswap_quoter {
         Debug,
         PartialEq,
         Eq,
-        Hash
+        Hash,
     )]
     pub struct QuoteExactInputReturn {
         pub amount_out: ::ethers::core::types::U256,
@@ -854,7 +766,7 @@ pub mod uniswap_quoter {
         Debug,
         PartialEq,
         Eq,
-        Hash
+        Hash,
     )]
     pub struct QuoteExactInputSingleReturn {
         pub amount_out: ::ethers::core::types::U256,
@@ -871,7 +783,7 @@ pub mod uniswap_quoter {
         Debug,
         PartialEq,
         Eq,
-        Hash
+        Hash,
     )]
     pub struct QuoteExactOutputReturn {
         pub amount_in: ::ethers::core::types::U256,
@@ -888,7 +800,7 @@ pub mod uniswap_quoter {
         Debug,
         PartialEq,
         Eq,
-        Hash
+        Hash,
     )]
     pub struct QuoteExactOutputSingleReturn {
         pub amount_in: ::ethers::core::types::U256,
@@ -905,7 +817,7 @@ pub mod uniswap_quoter {
         Debug,
         PartialEq,
         Eq,
-        Hash
+        Hash,
     )]
     pub struct QuoteExactInputSingleParams {
         pub token_in: ::ethers::core::types::Address,
@@ -923,7 +835,7 @@ pub mod uniswap_quoter {
         Debug,
         PartialEq,
         Eq,
-        Hash
+        Hash,
     )]
     pub struct QuoteExactOutputSingleParams {
         pub token_in: ::ethers::core::types::Address,

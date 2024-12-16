@@ -1,13 +1,15 @@
 use super::token_data::{get_and_save_erc20_by_token_address, get_tokens, update_token};
-use crate::data::token_data::remove_token;
+use crate::data::token_data::{remove_token, set_token_to_validated};
 use crate::events::PairCreatedEvent;
 use crate::swap::anvil_simlator::AnvilSimulator;
+use crate::swap::anvil_validation::{validate_token_with_simulated_buy_sell, TokenStatus};
 use crate::swap::token_price::get_token_weth_total_supply;
 use ethers::{
     abi::Address,
     core::types::U256,
     providers::{Provider, Ws},
 };
+use futures::lock::Mutex;
 use log::info;
 use std::sync::Arc;
 
@@ -19,6 +21,8 @@ pub struct Erc20Token {
     pub address: Address,
     pub pair_address: Address,
     pub is_tradable: bool,
+    pub is_validated: bool,
+    pub is_validating: bool,
     pub is_token_0: bool,
     pub done_buying: bool,
     pub amount_bought: U256,
@@ -28,15 +32,13 @@ pub struct Erc20Token {
 pub async fn add_validate_buy_new_token(
     pair_created_event: &PairCreatedEvent,
     client: &Arc<Provider<Ws>>,
-    anvil: &Arc<AnvilSimulator>,
+    anvil: &Arc<Mutex<AnvilSimulator>>,
     current_time: u32,
 ) -> anyhow::Result<()> {
     // TODO - VALIDATE TOKEN HERE - IF SCAM exit out
 
     // SAVE TOKEN TO GLOBAL STATE
-    if let Some(token) =
-        get_and_save_erc20_by_token_address(&pair_created_event, client, anvil).await?
-    {
+    if let Some(token) = get_and_save_erc20_by_token_address(&pair_created_event, client).await? {
         // check liqudity
         let total_supply = get_token_weth_total_supply(&token, client).await?;
 
@@ -45,7 +47,13 @@ pub async fn add_validate_buy_new_token(
                 "{} has immediate liquidity of {} and ready for trading",
                 token.name, total_supply
             );
-            purchase_token_on_anvil(&token, anvil, current_time).await?;
+
+            let token_status = validate_token_with_simulated_buy_sell(&token).await?;
+
+            if token_status == TokenStatus::Legit {
+                set_token_to_validated(&token).await;
+                purchase_token_on_anvil(&token, anvil, current_time).await?;
+            }
         } else {
             info!("{} has no liquidity, cannot purchase yet!", token.name);
         }
@@ -55,14 +63,14 @@ pub async fn add_validate_buy_new_token(
 }
 
 pub async fn buy_eligible_tokens_on_anvil(
-    anvil: &Arc<AnvilSimulator>,
+    anvil: &Arc<Mutex<AnvilSimulator>>,
     timestamp: u32,
 ) -> anyhow::Result<()> {
     let tokens = get_tokens().await;
 
     println!("finding tokens to buy");
     for token in tokens.values() {
-        if !token.done_buying && token.is_tradable {
+        if !token.done_buying && token.is_tradable && token.is_validated {
             purchase_token_on_anvil(token, anvil, timestamp).await?;
         }
     }
@@ -71,7 +79,7 @@ pub async fn buy_eligible_tokens_on_anvil(
 }
 
 pub async fn sell_eligible_tokens_on_anvil(
-    anvil: &Arc<AnvilSimulator>,
+    anvil: &Arc<Mutex<AnvilSimulator>>,
     current_time: u32,
 ) -> anyhow::Result<()> {
     let tokens = get_tokens().await;
@@ -94,10 +102,11 @@ pub async fn sell_eligible_tokens_on_anvil(
 
 pub async fn purchase_token_on_anvil(
     token: &Erc20Token,
-    anvil: &Arc<AnvilSimulator>,
+    anvil: &Arc<Mutex<AnvilSimulator>>,
     current_time: u32,
 ) -> anyhow::Result<()> {
-    let token_balance = anvil.simulate_buying_token_for_weth(&token).await?;
+    let anvil_lock = anvil.lock().await;
+    let token_balance = anvil_lock.simulate_buying_token_for_weth(&token).await?;
 
     if token_balance > U256::from(0) {
         let updated_token = Erc20Token {
@@ -117,9 +126,11 @@ pub async fn purchase_token_on_anvil(
 
 pub async fn sell_token_on_anvil(
     token: &Erc20Token,
-    anvil: &Arc<AnvilSimulator>,
+    anvil: &Arc<Mutex<AnvilSimulator>>,
 ) -> anyhow::Result<()> {
-    let token_balance = anvil.simulate_selling_token_for_weth(&token).await?;
+    let anvil_lock = anvil.lock().await;
+
+    let token_balance = anvil_lock.simulate_selling_token_for_weth(&token).await?;
 
     if token_balance == U256::from(0) {
         let token = remove_token(token.address).await.unwrap();

@@ -1,14 +1,13 @@
 use crate::abi::erc20::ERC20;
 use crate::events::PairCreatedEvent;
-use crate::swap::anvil_simlator::AnvilSimulator;
-use crate::swap::anvil_validation::{self, TokenStatus};
+use crate::swap::anvil_validation::{validate_token_with_simulated_buy_sell, TokenStatus};
 use crate::swap::token_price::get_token_weth_total_supply;
 use crate::utils::type_conversion::address_to_string;
 use anyhow::Result;
 use ethers::providers::{Provider, Ws};
 use ethers::types::{Address, U256};
 use futures::lock::Mutex;
-use log::warn;
+use log::{error, info, warn};
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -22,7 +21,6 @@ static TOKEN_HASH: Lazy<Arc<Mutex<HashMap<String, Erc20Token>>>> =
 pub async fn get_and_save_erc20_by_token_address(
     pair_created_event: &PairCreatedEvent,
     client: &Arc<Provider<Ws>>,
-    anvil: &Arc<AnvilSimulator>,
 ) -> Result<Option<Erc20Token>> {
     let token_data_hash = Arc::clone(&TOKEN_HASH);
     let mut tokens = token_data_hash.lock().await;
@@ -49,6 +47,7 @@ pub async fn get_and_save_erc20_by_token_address(
     let token_contract = ERC20::new(token_address, client.clone());
 
     // get basic toke data
+    info!("getting basic token info...");
     let symbol = token_contract.symbol().call().await?;
     let decimals = token_contract.decimals().call().await?;
     let name = token_contract.name().call().await?;
@@ -63,25 +62,9 @@ pub async fn get_and_save_erc20_by_token_address(
         ..Default::default()
     };
 
-    // TODO - ADD VALIDATION
-    let token_status = anvil.validate_token_with_simulated_buy_sell(&token).await?;
+    tokens.insert(token_address_string, token.clone());
 
-    match token_status {
-        TokenStatus::Legit => {
-            tokens.insert(token_address_string, token.clone());
-            Ok(Some(token))
-        }
-        TokenStatus::CannotBuy => {
-            warn!("cannot buy {} token! maybe no liquidity?", token.name);
-            // tokens.insert(token_address_string, token.clone());
-            // Ok(Some(token))
-            Ok(None)
-        }
-        TokenStatus::CannotSell => {
-            warn!("SCAM ALERT: cannot buy {} token!", token.name);
-            Ok(None)
-        }
-    }
+    Ok(Some(token))
 }
 
 pub async fn get_tokens() -> HashMap<String, Erc20Token> {
@@ -103,9 +86,7 @@ pub async fn get_token(token_address: Address) -> Option<Erc20Token> {
     }
 }
 
-pub async fn check_all_tokens_and_update_if_are_tradable(
-    client: &Arc<Provider<Ws>>,
-) -> anyhow::Result<()> {
+pub async fn check_all_tokens_are_tradable(client: &Arc<Provider<Ws>>) -> anyhow::Result<()> {
     let token_data_hash = Arc::clone(&TOKEN_HASH);
     let mut tokens = token_data_hash.lock().await;
 
@@ -116,8 +97,48 @@ pub async fn check_all_tokens_and_update_if_are_tradable(
 
             if total_supply > U256::from(0) {
                 token.is_tradable = true;
+                info!("{} is tradable", token.name);
+            } else {
+                info!("{} is not tradable", token.name);
             }
         }
+    }
+
+    Ok(())
+}
+
+pub async fn validate_tradable_tokens() -> anyhow::Result<()> {
+    let tokens = get_tokens().await;
+
+    let mut handles = vec![];
+    for token_ref in tokens.values() {
+        let token = token_ref.clone();
+        // SEPARATE THREAD FOR EACH TOKEN VALIDATION CHECK
+        let handle = tokio::spawn(async move {
+            let result: anyhow::Result<()> = async move {
+                if token.is_tradable && !token.is_validated && !token.is_validating {
+                    set_token_to_validating(&token).await;
+
+                    let token_status = validate_token_with_simulated_buy_sell(&token).await?;
+                    if token_status == TokenStatus::Legit {
+                        info!("{} is validated!", token.name);
+                        set_token_to_validated(&token).await;
+                    } else {
+                        let scam_token = remove_token(token.address).await;
+                        let scam_token = scam_token.unwrap();
+                        warn!("removed {}", scam_token.symbol);
+                    }
+                }
+                Ok(())
+            }
+            .await;
+
+            if let Err(e) = result {
+                error!("Error running validation thread: {:#}", e);
+            }
+        });
+
+        handles.push(handle);
     }
 
     Ok(())
@@ -128,7 +149,13 @@ pub async fn remove_token(token_address: Address) -> Option<Erc20Token> {
     let mut tokens = token_data_hash.lock().await;
     let token_address_string = address_to_string(token_address).to_lowercase();
 
-    tokens.remove(&token_address_string)
+    match tokens.get(&token_address_string) {
+        Some(_) => tokens.remove(&token_address_string),
+        None => {
+            warn!("token does not exist");
+            None
+        }
+    }
 }
 
 pub async fn is_token_tradable(token_address: Address) -> bool {
@@ -136,9 +163,16 @@ pub async fn is_token_tradable(token_address: Address) -> bool {
     let tokens = token_data_hash.lock().await;
     let token_address_string = address_to_string(token_address).to_lowercase();
 
-    let token = tokens.get(&token_address_string).unwrap();
-
-    token.is_tradable
+    match tokens.get(&token_address_string) {
+        Some(token) => token.is_tradable,
+        None => {
+            error!(
+                "{} is not in token hash, cannot update.",
+                token_address_string
+            );
+            false
+        }
+    }
 }
 
 pub async fn update_token(updated_token: &Erc20Token) {
@@ -149,57 +183,46 @@ pub async fn update_token(updated_token: &Erc20Token) {
     tokens.insert(token_address, updated_token.clone());
 }
 
+pub async fn set_token_to_validated(token: &Erc20Token) {
+    let token_data_hash = Arc::clone(&TOKEN_HASH);
+    let mut tokens = token_data_hash.lock().await;
+    let token_address_string = address_to_string(token.address).to_lowercase();
+
+    match tokens.get_mut(&token_address_string) {
+        Some(token) => {
+            token.is_validating = false;
+            token.is_validated = true;
+        }
+        None => {
+            error!(
+                "{} is not in token hash, cannot update.",
+                token_address_string
+            );
+        }
+    }
+}
+
+pub async fn set_token_to_validating(token: &Erc20Token) {
+    let token_data_hash = Arc::clone(&TOKEN_HASH);
+    let mut tokens = token_data_hash.lock().await;
+    let token_address_string = address_to_string(token.address).to_lowercase();
+
+    match tokens.get_mut(&token_address_string) {
+        Some(token) => {
+            token.is_validating = true;
+        }
+        None => {
+            error!(
+                "{} is not in token hash, cannot update.",
+                token_address_string
+            );
+        }
+    }
+}
+
 pub async fn get_number_of_tokens() -> usize {
     let token_data_hash = Arc::clone(&TOKEN_HASH);
     let tokens = token_data_hash.lock().await;
 
     tokens.len()
-}
-
-pub async fn get_and_save_erc20_by_token_address_no_validation(
-    pair_created_event: &PairCreatedEvent,
-    client: &Arc<Provider<Ws>>,
-) -> Result<Option<Erc20Token>> {
-    let token_data_hash = Arc::clone(&TOKEN_HASH);
-    let mut tokens = token_data_hash.lock().await;
-    let weth_address: Address = CONTRACT.get_address().weth.parse()?;
-
-    // find address of new token
-    let (token_address, is_token_0) = if weth_address == pair_created_event.token0 {
-        (pair_created_event.token1, false)
-    } else if weth_address == pair_created_event.token1 {
-        (pair_created_event.token0, true)
-    } else {
-        warn!("not weth pair, skipping");
-        return Ok(None);
-    };
-
-    let token_address_string = address_to_string(token_address).to_lowercase();
-
-    // make sure token is not already in hashmap
-    if tokens.contains_key(&token_address_string) {
-        let token = tokens.get(&token_address_string).unwrap();
-        return Ok(Some(token.clone()));
-    }
-
-    let token_contract = ERC20::new(token_address, client.clone());
-
-    // get basic toke data
-    let symbol = token_contract.symbol().call().await?;
-    let decimals = token_contract.decimals().call().await?;
-    let name = token_contract.name().call().await?;
-
-    let token = Erc20Token {
-        name,
-        symbol,
-        decimals,
-        address: token_address,
-        pair_address: pair_created_event.pair,
-        is_token_0,
-        ..Default::default()
-    };
-
-    tokens.insert(token_address_string, token.clone());
-
-    Ok(Some(token))
 }

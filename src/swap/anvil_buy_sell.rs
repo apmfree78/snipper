@@ -47,16 +47,15 @@ impl AnvilSimulator {
         // Call Uniswap V2 swapExactTokensForTokens
         // Note: Ensure token_in has been approved for the router if it's not WETH
         // Already done in prepare_account or before this call as needed
-        let tx = router.swap_exact_tokens_for_tokens(
-            amount_in,
-            amount_out_min,
-            vec![weth_address, token.address],
-            self.from_address,
-            U256::from(deadline),
-        );
-
-        info!("set gas limit for transaction");
-        let tx = tx.gas(U256::from(300_000));
+        let tx = router
+            .swap_exact_eth_for_tokens(
+                amount_out_min,
+                vec![weth_address, token.address],
+                self.from_address,
+                U256::from(deadline),
+            )
+            .value(amount_in)
+            .gas(U256::from(300_000));
 
         // sent transaction
         info!("sending liquidate transcation");
@@ -152,7 +151,7 @@ impl AnvilSimulator {
         // Call Uniswap V2 swapExactTokensForTokens
         // Note: Ensure token_in has been approved for the router if it's not WETH
         // Already done in prepare_account or before this call as needed
-        let tx = router.swap_exact_tokens_for_tokens(
+        let tx = router.swap_exact_tokens_for_eth(
             amount_to_sell,
             amount_out_min,
             vec![token.address, weth_address],

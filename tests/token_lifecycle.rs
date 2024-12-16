@@ -1,12 +1,26 @@
+// [16:30:48][snipper][INFO] pair created event PairCreatedEvent {
+//     token0: 0xaa9c71781ca7ff63fd22f416e99b7b903089c9d0,
+//     token1: 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2,
+//     pair: 0x153745f5e92d02add539ebdf75187b44a7859b28,
+//     noname: 393214,
+// }
+// /[16:27:13][snipper][INFO] pair created event PairCreatedEvent {
+//     token0: 0x38bca6b4c302a86d28281e56061699f735a32d45,
+//     token1: 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2,
+//     pair: 0x6999ce929a6ce0b50df02de77ba80fd16391ed48,
+//     noname: 393213,
+// }/
+//
 use dotenv::dotenv;
 use ethers::providers::{Middleware, Provider, Ws};
 use ethers::types::{Address, BlockNumber, U256};
+use futures::lock::Mutex;
 use snipper::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
 use snipper::abi::uniswap_pair::UNISWAP_PAIR;
 use snipper::data::contracts::CONTRACT;
 use snipper::data::token_data::{
-    check_all_tokens_and_update_if_are_tradable, get_and_save_erc20_by_token_address,
-    get_number_of_tokens, is_token_tradable,
+    check_all_tokens_are_tradable, get_and_save_erc20_by_token_address, get_number_of_tokens,
+    is_token_tradable,
 };
 use snipper::data::tokens::{buy_eligible_tokens_on_anvil, sell_eligible_tokens_on_anvil};
 use snipper::events::PairCreatedEvent;
@@ -15,10 +29,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 struct TestSetup {
-    // client: Arc<Provider<Ws>>,
-    anvil_simulator: Arc<AnvilSimulator>,
+    anvil_simulator: Arc<Mutex<AnvilSimulator>>,
     token_address: Address,
-    // weth_address: Address,
     last_block_timestamp: u32,
     sell_after: u32,
 }
@@ -53,15 +65,16 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
         token0: token_0,
         token1: token_1,
         pair: pair_address,
+        noname: U256::from(0),
     };
 
     // Create an instance of AnvilSimulator
     let anvil_simulator = AnvilSimulator::new(&ws_url).await?;
-    let anvil_simulator = Arc::new(anvil_simulator);
+    let anvil_simulator = Arc::new(Mutex::new(anvil_simulator));
 
-    get_and_save_erc20_by_token_address(&pair_created_event, &client, &anvil_simulator).await?;
+    get_and_save_erc20_by_token_address(&pair_created_event, &client).await?;
     // check token liquidity
-    if let Err(error) = check_all_tokens_and_update_if_are_tradable(&client).await {
+    if let Err(error) = check_all_tokens_are_tradable(&client).await {
         println!("could not check token tradability => {}", error);
     }
 
@@ -74,10 +87,13 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
 }
 
 #[tokio::test]
-#[ignore]
+// #[ignore]
 async fn test_anvil_meme_token_buy_sell_test() -> anyhow::Result<()> {
     // let token_address: Address = "0x616d4b42197cff456a80a8b93f6ebef2307dfb8c".parse()?;
-    let token_address: Address = "0xc5a07C9594C4d5138AA00feBbDEC048B6f0ad7D6".parse()?;
+    // let token_address: Address = "0xc5a07C9594C4d5138AA00feBbDEC048B6f0ad7D6".parse()?;
+    // let token_address: Address = "0xaa9c71781ca7ff63fd22f416e99b7b903089c9d0".parse()?;
+    let token_address: Address = "0x41dcd2bd1a261ff98d8e057154e0e7ce082a592f".parse()?;
+
     let mut setup = setup(token_address).await?;
 
     let mut number_of_tokens = get_number_of_tokens().await;
@@ -92,8 +108,8 @@ async fn test_anvil_meme_token_buy_sell_test() -> anyhow::Result<()> {
         println!("error running buy_eligible_tokens_on_anvil => {}", error);
     }
 
-    let mut token_balance = setup
-        .anvil_simulator
+    let anvil_lock = setup.anvil_simulator.lock().await;
+    let mut token_balance = anvil_lock
         .get_token_balance_by_address(setup.token_address)
         .await?;
     assert!(token_balance > U256::from(0));
@@ -108,8 +124,8 @@ async fn test_anvil_meme_token_buy_sell_test() -> anyhow::Result<()> {
 
     number_of_tokens = get_number_of_tokens().await;
 
-    token_balance = setup
-        .anvil_simulator
+    let anvil_lock = setup.anvil_simulator.lock().await;
+    token_balance = anvil_lock
         .get_token_balance_by_address(setup.token_address)
         .await?;
     assert_eq!(token_balance, U256::from(0));
@@ -119,7 +135,7 @@ async fn test_anvil_meme_token_buy_sell_test() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-#[ignore]
+// #[ignore]
 async fn test_anvil_token_buy_sell_test() -> anyhow::Result<()> {
     let token_address: Address = CONTRACT.get_address().link.parse()?;
     let mut setup = setup(token_address).await?;
@@ -136,8 +152,8 @@ async fn test_anvil_token_buy_sell_test() -> anyhow::Result<()> {
         println!("error running buy_eligible_tokens_on_anvil => {}", error);
     }
 
-    let mut token_balance = setup
-        .anvil_simulator
+    let anvil_lock = setup.anvil_simulator.lock().await;
+    let mut token_balance = anvil_lock
         .get_token_balance_by_address(setup.token_address)
         .await?;
     assert!(token_balance > U256::from(0));
@@ -152,8 +168,8 @@ async fn test_anvil_token_buy_sell_test() -> anyhow::Result<()> {
 
     number_of_tokens = get_number_of_tokens().await;
 
-    token_balance = setup
-        .anvil_simulator
+    let anvil_lock = setup.anvil_simulator.lock().await;
+    token_balance = anvil_lock
         .get_token_balance_by_address(setup.token_address)
         .await?;
     assert_eq!(token_balance, U256::from(0));
@@ -163,7 +179,7 @@ async fn test_anvil_token_buy_sell_test() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-#[ignore]
+// #[ignore]
 async fn test_anvil_token_buy_no_sell_test() -> anyhow::Result<()> {
     let token_address: Address = CONTRACT.get_address().link.parse()?;
     let mut setup = setup(token_address).await?;
@@ -180,8 +196,8 @@ async fn test_anvil_token_buy_no_sell_test() -> anyhow::Result<()> {
         println!("error running buy_eligible_tokens_on_anvil => {}", error);
     }
 
-    let token_balance = setup
-        .anvil_simulator
+    let anvil_lock = setup.anvil_simulator.lock().await;
+    let token_balance = anvil_lock
         .get_token_balance_by_address(setup.token_address)
         .await?;
     assert!(token_balance > U256::from(0));
@@ -196,11 +212,10 @@ async fn test_anvil_token_buy_no_sell_test() -> anyhow::Result<()> {
     }
 
     number_of_tokens = get_number_of_tokens().await;
-    let new_token_balance = setup
-        .anvil_simulator
+    let anvil_lock = setup.anvil_simulator.lock().await;
+    let new_token_balance = anvil_lock
         .get_token_balance_by_address(setup.token_address)
         .await?;
-
     assert_eq!(new_token_balance, token_balance);
     assert_eq!(number_of_tokens, 1);
 

@@ -11,7 +11,7 @@ use ethers::types::{
 };
 use ethers::utils::format_units;
 use ethers::{providers::Middleware, types::Address};
-use log::debug;
+use log::{debug, info};
 
 // ***************** ***************** **************** **********************************
 // ***************** SUPPORTING METHODS FOR DEBUGGING AND DIAGNOSIS *****************
@@ -142,6 +142,7 @@ impl AnvilSimulator {
         token_address: Address,
     ) -> anyhow::Result<U256> {
         // get account balance to see how much of new token recieved
+        info!("getting token balance");
         let token_contract = ERC20::new(token_address, self.client.clone());
 
         let new_token_balance_u256 = token_contract.balance_of(self.from_address).call().await?;

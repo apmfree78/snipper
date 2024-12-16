@@ -1,11 +1,9 @@
-use ethers::abi::Address;
 use ethers::providers::{Provider, Ws};
 use ethers::types::U256;
+use log::info;
 use std::sync::Arc;
 
-use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_pair::UNISWAP_PAIR;
-use crate::data::contracts::CONTRACT;
 use crate::data::tokens::Erc20Token;
 
 // pub async fn get_token_price(
@@ -60,6 +58,7 @@ pub async fn get_token_weth_total_supply(
 ) -> anyhow::Result<U256> {
     let pool = UNISWAP_PAIR::new(token.pair_address, client.clone());
 
+    info!("getting total liquidity");
     let supply = pool.total_supply().call().await?;
 
     Ok(supply)

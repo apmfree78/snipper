@@ -6,8 +6,10 @@ use ethers::{
 };
 
 use crate::data::contracts::CONTRACT;
-pub const POOL_CREATED_SIGNATURE: &str = "PoolCreated(address,address,uint24,int24,address)";
-pub const PAIR_CREATED_SIGNATURE: &str = "PairCreated(address,address,address)";
+
+// PairCreated (index_topic_1 address token0, index_topic_2 address token1, address pair, uint256 noname)
+pub const PAIR_CREATED_SIGNATURE: &str = "PairCreated(address,address,address,uint256)";
+// pub const POOL_CREATED_SIGNATURE: &str = "PoolCreated(address,address,uint24,int24,address)";
 
 #[derive(Debug, Clone)]
 pub struct PoolCreatedEvent {
@@ -23,6 +25,7 @@ pub struct PairCreatedEvent {
     pub token0: Address,
     pub token1: Address,
     pub pair: Address,
+    pub noname: U256,
 }
 
 pub fn set_signature_filter() -> anyhow::Result<Filter> {
@@ -42,17 +45,18 @@ pub fn decode_pair_created_event(log: &Log) -> anyhow::Result<PairCreatedEvent> 
     // Proceed with decoding data which is just raw binary (not RLP encoded)
     let raw_log: RawLog = RawLog::from(log.clone());
     let data_slice = raw_log.data;
-    if data_slice.len() < 32 {
+    if data_slice.len() < 64 {
         return Err(anyhow!("Data field too short to decode all fields"));
     }
 
-    // tickSpacing (int24) is in the first 32 bytes of data
-    let pair = Address::from_slice(&data_slice[20..32]);
+    let pair = Address::from_slice(&data_slice[12..32]);
+    let noname = U256::from_big_endian(&data_slice[32..64]);
 
     let pair_created_event = PairCreatedEvent {
         token0,
         token1,
         pair,
+        noname,
     };
 
     Ok(pair_created_event)

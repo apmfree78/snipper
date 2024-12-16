@@ -1,17 +1,8 @@
 use crate::abi::erc20::ERC20;
-use crate::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
-use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
 use crate::data::contracts::{CHAIN, CONTRACT};
-use crate::data::tokens::Erc20Token;
-use crate::utils::type_conversion::{
-    address_to_string, get_function_selector, u256_to_f64_with_decimals,
-};
+use crate::utils::type_conversion::get_function_selector;
 use anyhow::Result;
-use ethers::types::{
-    CallFrame, GethDebugTracerType, GethDebugTracingOptions, GethTrace, GethTraceFrame,
-    TransactionRequest, H256, U256,
-};
-use ethers::utils::format_units;
+use ethers::types::{TransactionRequest, U256};
 use ethers::{
     core::k256::ecdsa::SigningKey,
     middleware::SignerMiddleware,
@@ -20,16 +11,10 @@ use ethers::{
     types::Address,
     utils::{Anvil, AnvilInstance},
 };
-use log::{debug, error, info};
+use log::debug;
 use std::sync::Arc;
 
 pub const STARTING_BALANCE: f64 = 1000.0;
-
-#[derive(Debug, Clone, Copy)]
-pub enum UniswapVersion {
-    V2,
-    V3,
-}
 
 pub struct AnvilSimulator {
     pub client: Arc<SignerMiddleware<Provider<Ws>, Wallet<SigningKey>>>,
@@ -41,6 +26,7 @@ impl AnvilSimulator {
     pub async fn new(rpc_url: &str) -> Result<Self> {
         // Main network provider   // Configure Anvil with forking
         let anvil = Anvil::new()
+            // .args(["--no-storage-caching", "--code-size-limit", "2048"])
             .fork(rpc_url) // URL of your Geth node
             .spawn();
 
@@ -81,6 +67,7 @@ impl AnvilSimulator {
         Ok(simulator)
     }
 
+    // TODO - remove prepare , but do we still need todo approval?
     /// Prepares the test account by converting some ETH to WETH and approving the router.
     pub async fn prepare_account(&self) -> anyhow::Result<()> {
         let router_address: Address = CONTRACT.get_address().uniswap_v2_router.parse()?;
