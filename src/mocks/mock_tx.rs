@@ -25,7 +25,7 @@ pub async fn mock_buying_token_for_weth(
         get_amount_out_uniswap_v2(weth_address, token.address, amount_in, client).await?;
 
     let amount_out_readable = format_units(amount_out, u32::from(token.decimals))?;
-    println!("calculated amount out min {}", amount_out_readable);
+    println!("bought {} of {}", amount_out_readable, token.name);
     println!("........................................................");
     Ok(amount_out)
 }
@@ -45,7 +45,7 @@ pub async fn mock_sell_token_for_weth(
         get_amount_out_uniswap_v2(token.address, weth_address, amount_to_sell, client).await?;
 
     let amount_out_min_readable = format_units(amount_out, 18u32)?;
-    println!("calculated amount out min {}", amount_out_min_readable);
+    println!("sold {} for {} eth", token.name, amount_out_min_readable);
     println!("........................................................");
 
     Ok(amount_out)
@@ -67,8 +67,9 @@ pub async fn get_amount_out_uniswap_v2(
 
     let amount_out = amounts[amounts.len() - 1];
 
+    // NO 2% volatility reduction for mock purchases
     // reduce by 2% to account for token volatility
-    let amount_out = amount_out * U256::from(98) / U256::from(100);
+    // let amount_out = amount_out * U256::from(98) / U256::from(100);
 
     Ok(amount_out)
 }

@@ -16,6 +16,7 @@ pub mod utils {
 
 pub mod data {
     pub mod contracts;
+    pub mod gas;
     pub mod portfolio;
     pub mod token_data;
     pub mod tokens;

@@ -1,3 +1,4 @@
+use crate::data::portfolio::add_sold_token_to_mock_portfolio;
 use crate::data::token_data::{get_and_save_erc20_by_token_address, get_tokens, update_token};
 use crate::data::token_data::{remove_token, set_token_to_validated};
 use crate::data::tokens::Erc20Token;
@@ -82,7 +83,8 @@ pub async fn mock_sell_token(
         };
         update_token(&updated_token).await;
 
-        // TODO - update portfolio
+        // update portfolio
+        add_sold_token_to_mock_portfolio(&token, timestamp).await?;
     }
 
     let token = remove_token(token.address).await.unwrap();
@@ -91,6 +93,55 @@ pub async fn mock_sell_token(
     Ok(())
 }
 
+pub async fn mock_buy_eligible_tokens(
+    client: &Arc<Provider<Ws>>,
+    timestamp: u32,
+) -> anyhow::Result<()> {
+    let tokens = get_tokens().await;
+
+    println!("finding tokens to buy");
+    for token in tokens.values() {
+        if !token.done_buying && token.is_tradable && token.is_validated {
+            mock_purchase_token(&token, client, timestamp).await?;
+        }
+    }
+    println!("done with purchasing...");
+    Ok(())
+}
+
+pub async fn mock_sell_eligible_tokens(
+    client: &Arc<Provider<Ws>>,
+    current_time: u32,
+) -> anyhow::Result<()> {
+    let tokens = get_tokens().await;
+    let time_to_sell =
+        std::env::var("SELL_TOKEN_AFTER").expect("SELL_TOKEN_AFTER not found in .env");
+    let time_to_sell: u32 = time_to_sell.parse()?;
+
+    println!("finding tokens to sell");
+    for token in tokens.values() {
+        let sell_time = time_to_sell + token.time_of_purchase;
+
+        if token.done_buying && current_time >= sell_time {
+            mock_sell_token(&token, client, current_time).await?;
+        }
+    }
+
+    println!("done with selling...");
+    Ok(())
+}
+
+// ---------------------------------------------------------------
+// ---------------------------------------------------------------
+// ---------------------------------------------------------------
+// ---------------------------------------------------------------
+// ---------------------------------------------------------------
+// DECPRECIATED ANVIL METHODS -------------
+// ---------------------------------------------------------------
+// ---------------------------------------------------------------
+// ---------------------------------------------------------------
+// ---------------------------------------------------------------
+// ---------------------------------------------------------------
 pub async fn buy_eligible_tokens_on_anvil(
     anvil: &Arc<Mutex<AnvilSimulator>>,
     timestamp: u32,

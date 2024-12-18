@@ -10,16 +10,13 @@ use log::{error, info, warn};
 use snipper::{
     data::contracts::CONTRACT,
     events,
-    token_tx::{
-        add_validate_buy_new_token, buy_eligible_tokens_on_anvil, sell_eligible_tokens_on_anvil,
-    },
+    token_tx::{add_validate_buy_new_token, mock_buy_eligible_tokens, mock_sell_eligible_tokens},
 };
 use snipper::{
     data::{
         contracts::CHAIN,
         token_data::{check_all_tokens_are_tradable, validate_tradable_tokens},
     },
-    swap::anvil_simlator::AnvilSimulator,
     utils::logging::setup_logger,
 };
 use std::sync::Arc;
@@ -41,12 +38,6 @@ async fn main() -> Result<()> {
     let provider = Provider::<Ws>::connect(ws_url.clone()).await?;
     let client = Arc::new(provider);
     info!("Connected to {:#?}", CHAIN);
-
-    // creating anvil mainnet fork for testing
-    info!("Connecting to Anvil...");
-    let anvil = AnvilSimulator::new(&ws_url).await?;
-    let anvil = Arc::new(Mutex::new(anvil));
-    info!("Anvil connected!");
 
     // TRACT TIME
     let initial_block = client.get_block(BlockNumber::Latest).await?.unwrap();
@@ -86,7 +77,6 @@ async fn main() -> Result<()> {
     combined_stream
         .for_each(|event| async {
             let client = Arc::clone(&client);
-            let anvil = Arc::clone(&anvil);
             let last_timestamp = Arc::clone(&last_block_timestamp);
 
             match event {
@@ -125,13 +115,13 @@ async fn main() -> Result<()> {
                     }
 
                     if let Err(error) =
-                        buy_eligible_tokens_on_anvil(&anvil, current_block_timestamp).await
+                        mock_buy_eligible_tokens(&client, current_block_timestamp).await
                     {
                         error!("error running buy_eligible_tokens_on_anvil => {}", error);
                     }
 
                     if let Err(error) =
-                        sell_eligible_tokens_on_anvil(&anvil, current_block_timestamp).await
+                        mock_sell_eligible_tokens(&client, current_block_timestamp).await
                     {
                         error!("error running sell_eligible_tokens_on_anvil => {}", error);
                     }

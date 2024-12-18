@@ -1,8 +1,8 @@
 use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
 use crate::data::contracts::CONTRACT;
+use crate::data::gas::update_tx_gas_cost_data;
 use crate::data::tokens::Erc20Token;
-
 use ethers::types::U256;
 use ethers::utils::format_units;
 use ethers::{providers::Middleware, types::Address};
@@ -71,7 +71,9 @@ impl AnvilSimulator {
                 // wait for transaction receipt
                 info!("awaiting transaction receipt");
                 let receipt = pending_tx.await?.unwrap();
-                // info!("transaction receipt obtained ==> {:#?}", receipt);
+
+                // gas update
+                update_tx_gas_cost_data(&receipt, &token).await?;
 
                 let tx_hash = receipt.transaction_hash;
 
@@ -80,7 +82,6 @@ impl AnvilSimulator {
                 println!("........................................................");
                 println!("balance after buying {}...", token.name);
                 new_token_balance = self.get_token_balance(&token).await?;
-                self.get_weth_balance().await?;
                 self.get_eth_balance().await?;
                 println!("........................................................");
             }
@@ -126,7 +127,6 @@ impl AnvilSimulator {
             .await?;
 
         println!("........................................................");
-        self.get_weth_balance().await?;
         self.get_eth_balance().await?;
         let amount_to_sell = self.get_token_balance(&token).await?;
 
@@ -176,7 +176,9 @@ impl AnvilSimulator {
                 // wait for transaction receipt
                 info!("awaiting transaction receipt");
                 let receipt = pending_tx.await?.unwrap();
-                // info!("transaction receipt obtained ==> {:#?}", receipt);
+
+                // gas update
+                update_tx_gas_cost_data(&receipt, &token).await?;
 
                 let tx_hash = receipt.transaction_hash;
 

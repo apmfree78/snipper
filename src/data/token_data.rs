@@ -182,6 +182,24 @@ pub async fn update_token(updated_token: &Erc20Token) {
     tokens.insert(token_address, updated_token.clone());
 }
 
+pub async fn update_token_gas_cost(token_address: Address, gas_cost: U256) {
+    let token_data_hash = Arc::clone(&TOKEN_HASH);
+    let mut tokens = token_data_hash.lock().await;
+    let token_address_string = address_to_string(token_address).to_lowercase();
+
+    match tokens.get_mut(&token_address_string) {
+        Some(token) => {
+            token.tx_gas_cost += gas_cost;
+        }
+        None => {
+            error!(
+                "{} is not in token hash, cannot update.",
+                token_address_string
+            );
+        }
+    }
+}
+
 pub async fn set_token_to_validated(token: &Erc20Token) {
     let token_data_hash = Arc::clone(&TOKEN_HASH);
     let mut tokens = token_data_hash.lock().await;
