@@ -8,16 +8,16 @@ use ethers::{
 use futures::{lock::Mutex, stream, StreamExt};
 use log::{error, info, warn};
 use snipper::{
-    data::contracts::CONTRACT,
-    events,
-    token_tx::{add_validate_buy_new_token, mock_buy_eligible_tokens, mock_sell_eligible_tokens},
-};
-use snipper::{
     data::{
         contracts::CHAIN,
         token_data::{check_all_tokens_are_tradable, validate_tradable_tokens},
     },
     utils::logging::setup_logger,
+};
+use snipper::{
+    data::{contracts::CONTRACT, portfolio::display_token_portfolio},
+    events,
+    token_tx::{add_validate_buy_new_token, mock_buy_eligible_tokens, mock_sell_eligible_tokens},
 };
 use std::sync::Arc;
 
@@ -124,6 +124,13 @@ async fn main() -> Result<()> {
                         mock_sell_eligible_tokens(&client, current_block_timestamp).await
                     {
                         error!("error running sell_eligible_tokens_on_anvil => {}", error);
+                    }
+
+                    // display stats every 5 mins
+                    if current_block_timestamp % 300 == 0 {
+                        if let Err(error) = display_token_portfolio().await {
+                            error!("error displaying stats => {}", error);
+                        }
                     }
                 }
                 Err(e) => error!("Error: {:?}", e),

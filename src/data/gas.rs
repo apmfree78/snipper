@@ -26,10 +26,10 @@ pub fn get_tx_gas_cost(receipt: &TransactionReceipt) -> anyhow::Result<Option<U2
         let gas_cost_in_wei = gas_used * gas_price;
         let gas_cost_ether = format_units(gas_cost_in_wei, "ethers")?;
 
-        println!("Gas cost for the transaction: {} ETH", gas_cost_ether);
+        info!("Gas cost for the transaction: {} ETH", gas_cost_ether);
         Ok(Some(gas_cost_in_wei))
     } else {
-        println!("No gas usage or gas price info in receipt");
+        info!("No gas usage or gas price info in receipt");
         Ok(None)
     }
 }

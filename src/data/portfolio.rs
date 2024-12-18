@@ -39,3 +39,30 @@ pub async fn add_sold_token_to_mock_portfolio(
 
     Ok(())
 }
+
+pub async fn display_token_portfolio() -> anyhow::Result<()> {
+    let portfolio = Arc::clone(&PORTFOLIO);
+    let portfolio_lock = portfolio.lock().await;
+
+    info!("----------------------------------------------");
+    info!("----------------TOKEN STATS------------------");
+    info!("----------------------------------------------");
+    for token_stats in portfolio_lock.values() {
+        let token_address = token_stats.token.lowercase_address();
+        let profit = token_stats.token.profit()?;
+        let roi = token_stats.token.roi()?;
+        info!(
+            "{} ({}) as profit of {}, and roi of {}",
+            token_stats.token.name, token_address, profit, roi
+        );
+        info!("----------------------------------------------");
+    }
+
+    let total_profit: f32 = portfolio_lock
+        .values()
+        .map(|token_stats| token_stats.profit)
+        .sum();
+    info!("Total profit is ===> {}", total_profit);
+
+    Ok(())
+}
