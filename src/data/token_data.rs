@@ -178,15 +178,14 @@ pub async fn is_token_tradable(token_address: Address) -> bool {
 pub async fn update_token(updated_token: &Erc20Token) {
     let token_data_hash = Arc::clone(&TOKEN_HASH);
     let mut tokens = token_data_hash.lock().await;
-    let token_address = address_to_string(updated_token.address).to_lowercase();
-
+    let token_address = updated_token.lowercase_address();
     tokens.insert(token_address, updated_token.clone());
 }
 
 pub async fn set_token_to_validated(token: &Erc20Token) {
     let token_data_hash = Arc::clone(&TOKEN_HASH);
     let mut tokens = token_data_hash.lock().await;
-    let token_address_string = address_to_string(token.address).to_lowercase();
+    let token_address_string = token.lowercase_address();
 
     match tokens.get_mut(&token_address_string) {
         Some(token) => {
@@ -205,7 +204,7 @@ pub async fn set_token_to_validated(token: &Erc20Token) {
 pub async fn set_token_to_validating(token: &Erc20Token) {
     let token_data_hash = Arc::clone(&TOKEN_HASH);
     let mut tokens = token_data_hash.lock().await;
-    let token_address_string = address_to_string(token.address).to_lowercase();
+    let token_address_string = token.lowercase_address();
 
     match tokens.get_mut(&token_address_string) {
         Some(token) => {

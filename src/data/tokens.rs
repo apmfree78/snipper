@@ -1,17 +1,5 @@
-use super::token_data::{get_and_save_erc20_by_token_address, get_tokens, update_token};
-use crate::data::token_data::{remove_token, set_token_to_validated};
-use crate::events::PairCreatedEvent;
-use crate::swap::anvil_simlator::AnvilSimulator;
-use crate::swap::anvil_validation::{validate_token_with_simulated_buy_sell, TokenStatus};
-use crate::swap::token_price::get_token_weth_total_supply;
-use ethers::{
-    abi::Address,
-    core::types::U256,
-    providers::{Provider, Ws},
-};
-use futures::lock::Mutex;
-use log::info;
-use std::sync::Arc;
+use crate::utils::type_conversion::address_to_string;
+use ethers::{abi::Address, core::types::U256};
 
 #[derive(Clone, Default, Debug)]
 pub struct Erc20Token {
@@ -26,116 +14,54 @@ pub struct Erc20Token {
     pub is_token_0: bool,
     pub done_buying: bool,
     pub amount_bought: U256,
+    pub eth_recieved_at_sale: U256,
     pub time_of_purchase: u32,
+    pub tx_gas_cost: U256,
 }
 
-pub async fn add_validate_buy_new_token(
-    pair_created_event: &PairCreatedEvent,
-    client: &Arc<Provider<Ws>>,
-    anvil: &Arc<Mutex<AnvilSimulator>>,
-    current_time: u32,
-) -> anyhow::Result<()> {
-    // TODO - VALIDATE TOKEN HERE - IF SCAM exit out
+impl Erc20Token {
+    pub fn profit(&self) -> anyhow::Result<f32> {
+        if self.eth_recieved_at_sale == U256::zero() {
+            return Ok(0_f32);
+        }
 
-    // SAVE TOKEN TO GLOBAL STATE
-    if let Some(token) = get_and_save_erc20_by_token_address(&pair_created_event, client).await? {
-        // check liqudity
-        let total_supply = get_token_weth_total_supply(&token, client).await?;
+        let eth_basis =
+            std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
+        let eth_basis = ethers::utils::parse_ether(eth_basis)?;
 
-        if total_supply > U256::from(0) {
-            info!(
-                "{} has immediate liquidity of {} and ready for trading",
-                token.name, total_supply
-            );
-
-            let token_status = validate_token_with_simulated_buy_sell(&token).await?;
-
-            if token_status == TokenStatus::Legit {
-                set_token_to_validated(&token).await;
-                purchase_token_on_anvil(&token, anvil, current_time).await?;
-            }
+        let total_cost = eth_basis + self.tx_gas_cost;
+        let profit = if self.eth_recieved_at_sale >= total_cost {
+            let abs_profit = self.eth_recieved_at_sale - total_cost;
+            abs_profit.as_u128() as i128
         } else {
-            info!("{} has no liquidity, cannot purchase yet!", token.name);
-        }
-    }
-
-    Ok(())
-}
-
-pub async fn buy_eligible_tokens_on_anvil(
-    anvil: &Arc<Mutex<AnvilSimulator>>,
-    timestamp: u32,
-) -> anyhow::Result<()> {
-    let tokens = get_tokens().await;
-
-    println!("finding tokens to buy");
-    for token in tokens.values() {
-        if !token.done_buying && token.is_tradable && token.is_validated {
-            purchase_token_on_anvil(token, anvil, timestamp).await?;
-        }
-    }
-    println!("done with purchasing...");
-    Ok(())
-}
-
-pub async fn sell_eligible_tokens_on_anvil(
-    anvil: &Arc<Mutex<AnvilSimulator>>,
-    current_time: u32,
-) -> anyhow::Result<()> {
-    let tokens = get_tokens().await;
-    let time_to_sell =
-        std::env::var("SELL_TOKEN_AFTER").expect("SELL_TOKEN_AFTER not found in .env");
-    let time_to_sell: u32 = time_to_sell.parse()?;
-
-    println!("finding tokens to sell");
-    for token in tokens.values() {
-        let sell_time = time_to_sell + token.time_of_purchase;
-
-        if token.done_buying && current_time >= sell_time {
-            sell_token_on_anvil(token, anvil).await?;
-        }
-    }
-
-    println!("done with selling...");
-    Ok(())
-}
-
-pub async fn purchase_token_on_anvil(
-    token: &Erc20Token,
-    anvil: &Arc<Mutex<AnvilSimulator>>,
-    current_time: u32,
-) -> anyhow::Result<()> {
-    let anvil_lock = anvil.lock().await;
-    let token_balance = anvil_lock.simulate_buying_token_for_weth(&token).await?;
-
-    if token_balance > U256::from(0) {
-        let updated_token = Erc20Token {
-            is_tradable: true,
-            amount_bought: token_balance,
-            time_of_purchase: current_time,
-            done_buying: true,
-            ..token.clone()
+            let abs_profit = total_cost - self.eth_recieved_at_sale;
+            -(abs_profit.as_u128() as i128)
         };
 
-        update_token(&updated_token).await;
-        info!("token updated and saved");
+        let profit = profit as f64 / 1e18_f64;
+
+        Ok(profit as f32)
     }
 
-    Ok(())
-}
+    pub fn roi(&self) -> anyhow::Result<f32> {
+        if self.eth_recieved_at_sale == U256::zero() {
+            return Ok(0_f32);
+        }
+        let eth_basis =
+            std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
+        let eth_basis = ethers::utils::parse_ether(eth_basis)?;
 
-pub async fn sell_token_on_anvil(
-    token: &Erc20Token,
-    anvil: &Arc<Mutex<AnvilSimulator>>,
-) -> anyhow::Result<()> {
-    let anvil_lock = anvil.lock().await;
+        let eth_basis = eth_basis.as_u128() as f64 / 1e18_f64;
 
-    let token_balance = anvil_lock.simulate_selling_token_for_weth(&token).await?;
+        let profit = self.profit()?;
+        let roi = profit / eth_basis as f32;
 
-    if token_balance == U256::from(0) {
-        let token = remove_token(token.address).await.unwrap();
-        info!("token {} sold and removed!", token.name);
+        Ok(roi as f32)
     }
 
-    Ok(())
+    pub fn lowercase_address(&self) -> String {
+        let address_string = address_to_string(self.address);
+
+        return address_string.to_lowercase();
+    }
 }

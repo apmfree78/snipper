@@ -22,9 +22,9 @@ use snipper::data::token_data::{
     check_all_tokens_are_tradable, get_and_save_erc20_by_token_address, get_number_of_tokens,
     is_token_tradable,
 };
-use snipper::data::tokens::{buy_eligible_tokens_on_anvil, sell_eligible_tokens_on_anvil};
 use snipper::events::PairCreatedEvent;
 use snipper::swap::anvil_simlator::AnvilSimulator;
+use snipper::token_tx::{buy_eligible_tokens_on_anvil, sell_eligible_tokens_on_anvil};
 use std::str::FromStr;
 use std::sync::Arc;
 

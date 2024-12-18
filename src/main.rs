@@ -8,17 +8,19 @@ use ethers::{
 use futures::{lock::Mutex, stream, StreamExt};
 use log::{error, info, warn};
 use snipper::{
+    data::contracts::CONTRACT,
+    events,
+    token_tx::{
+        add_validate_buy_new_token, buy_eligible_tokens_on_anvil, sell_eligible_tokens_on_anvil,
+    },
+};
+use snipper::{
     data::{
         contracts::CHAIN,
         token_data::{check_all_tokens_are_tradable, validate_tradable_tokens},
-        tokens::{add_validate_buy_new_token, sell_eligible_tokens_on_anvil},
     },
     swap::anvil_simlator::AnvilSimulator,
     utils::logging::setup_logger,
-};
-use snipper::{
-    data::{contracts::CONTRACT, tokens::buy_eligible_tokens_on_anvil},
-    events,
 };
 use std::sync::Arc;
 
@@ -96,7 +98,6 @@ async fn main() -> Result<()> {
                         if let Err(error) = add_validate_buy_new_token(
                             &pair_created_event,
                             &client,
-                            &anvil,
                             last_time.clone(),
                         )
                         .await

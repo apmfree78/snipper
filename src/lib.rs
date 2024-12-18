@@ -16,11 +16,17 @@ pub mod utils {
 
 pub mod data {
     pub mod contracts;
+    pub mod portfolio;
     pub mod token_data;
     pub mod tokens;
 }
 
 pub mod events;
+pub mod token_tx;
+
+pub mod mocks {
+    pub mod mock_tx;
+}
 
 pub mod swap {
     pub mod anvil_buy_sell;
