@@ -25,10 +25,6 @@ pub mod data {
 pub mod events;
 pub mod token_tx;
 
-pub mod mocks {
-    pub mod mock_tx;
-}
-
 pub mod swap {
     pub mod anvil_buy_sell;
     pub mod anvil_simlator;

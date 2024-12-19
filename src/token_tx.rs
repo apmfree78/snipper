@@ -3,7 +3,6 @@ use crate::data::token_data::{get_and_save_erc20_by_token_address, get_tokens, u
 use crate::data::token_data::{remove_token, set_token_to_validated};
 use crate::data::tokens::Erc20Token;
 use crate::events::PairCreatedEvent;
-use crate::mocks::mock_tx::{mock_buying_token_for_weth, mock_sell_token_for_weth};
 use crate::swap::anvil_simlator::AnvilSimulator;
 use crate::swap::anvil_validation::{validate_token_with_simulated_buy_sell, TokenStatus};
 use crate::swap::token_price::get_token_weth_total_supply;
@@ -51,7 +50,7 @@ pub async fn mock_purchase_token(
     client: &Arc<Provider<Ws>>,
     current_time: u32,
 ) -> anyhow::Result<()> {
-    let token_balance = mock_buying_token_for_weth(&token, client).await?;
+    let token_balance = token.mock_buy_with_weth(client).await?;
 
     if token_balance > U256::from(0) {
         let updated_token = Erc20Token {
@@ -74,7 +73,7 @@ pub async fn mock_sell_token(
     client: &Arc<Provider<Ws>>,
     timestamp: u32,
 ) -> anyhow::Result<()> {
-    let eth_revenue_from_sale = mock_sell_token_for_weth(&token, client).await?;
+    let eth_revenue_from_sale = token.mock_sell_for_weth(client).await?;
 
     if eth_revenue_from_sale > U256::zero() {
         let updated_token = Erc20Token {
