@@ -1,4 +1,3 @@
-use crate::data::portfolio::add_sold_token_to_mock_portfolio;
 use crate::data::token_data::{get_and_save_erc20_by_token_address, get_tokens, update_token};
 use crate::data::token_data::{remove_token, set_token_to_validated};
 use crate::data::tokens::Erc20Token;
@@ -68,11 +67,28 @@ pub async fn mock_purchase_token(
     Ok(())
 }
 
-pub async fn mock_sell_token(
+pub async fn mock_purchase_tokens_for_volume_interval(
     token: &Erc20Token,
     client: &Arc<Provider<Ws>>,
-    timestamp: u32,
+    current_time: u32,
 ) -> anyhow::Result<()> {
+    let token_balances = token.mock_multiple_buys_with_weth(client).await?;
+
+    let updated_token = Erc20Token {
+        is_tradable: true,
+        amounts_bought: token_balances,
+        time_of_purchase: current_time,
+        done_buying: true,
+        ..token.clone()
+    };
+
+    update_token(&updated_token).await;
+    println!("token updated and saved");
+
+    Ok(())
+}
+
+pub async fn mock_sell_token(token: &Erc20Token, client: &Arc<Provider<Ws>>) -> anyhow::Result<()> {
     let eth_revenue_from_sale = token.mock_sell_for_weth(client).await?;
 
     if eth_revenue_from_sale > U256::zero() {
@@ -81,13 +97,28 @@ pub async fn mock_sell_token(
             ..token.clone()
         };
         update_token(&updated_token).await;
-
-        // update portfolio
-        add_sold_token_to_mock_portfolio(&token, timestamp).await?;
     }
 
     let token = remove_token(token.address).await.unwrap();
     info!("token {} sold and removed!", token.name);
+
+    Ok(())
+}
+
+pub async fn mock_sell_tokens_volume_interval(
+    token: &Erc20Token,
+    client: &Arc<Provider<Ws>>,
+) -> anyhow::Result<()> {
+    let amounts_sold = token.mock_multiple_sells_for_weth(client).await?;
+
+    let updated_token = Erc20Token {
+        amounts_sold,
+        ..token.clone()
+    };
+    update_token(&updated_token).await;
+
+    // let token = remove_token(token.address).await.unwrap();
+    // println!("token {} sold and removed!", token.name);
 
     Ok(())
 }
@@ -101,7 +132,7 @@ pub async fn mock_buy_eligible_tokens(
     println!("finding tokens to buy");
     for token in tokens.values() {
         if !token.done_buying && token.is_tradable && token.is_validated {
-            mock_purchase_token(&token, client, timestamp).await?;
+            mock_purchase_tokens_for_volume_interval(&token, client, timestamp).await?;
         }
     }
     println!("done with purchasing...");
@@ -122,7 +153,7 @@ pub async fn mock_sell_eligible_tokens(
         let sell_time = time_to_sell + token.time_of_purchase;
 
         if token.done_buying && current_time >= sell_time {
-            mock_sell_token(&token, client, current_time).await?;
+            mock_sell_tokens_volume_interval(&token, client).await?;
         }
     }
 

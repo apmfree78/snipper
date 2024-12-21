@@ -3,12 +3,23 @@ use ethers::abi::{Address, Bytes};
 use ethers::core::types::U256;
 use ethers::types::{H256, I256};
 use ethers::utils::{format_units, keccak256};
+use rust_decimal::Decimal;
 use std::convert::TryInto;
 use std::str::FromStr;
 
 pub fn get_function_selector(function_signature: &str) -> Bytes {
     let hash = H256::from(keccak256(function_signature.as_bytes()));
     Bytes::from(&hash[0..4])
+}
+
+pub fn format_to_5_decimals_decimal(amount: U256, decimals: u32) -> String {
+    let amount_str = format_units(amount, decimals).unwrap_or_default();
+    // Convert that string to a Decimal
+    let decimal_val = Decimal::from_str(&amount_str).unwrap_or_default();
+    // Round to 5 decimal places
+    let truncated_val = decimal_val.round_dp(5);
+    // Convert back to a string
+    truncated_val.to_string()
 }
 
 pub fn u256_to_f64_with_decimals(value: U256, decimals: u32) -> anyhow::Result<f64> {

@@ -3,7 +3,7 @@ use crate::data::tokens::Erc20Token;
 
 use ethers::types::{TransactionReceipt, U256};
 use ethers::utils::format_units;
-use log::{error, info};
+use log::{error, warn};
 
 pub async fn update_tx_gas_cost_data(
     receipt: &TransactionReceipt,
@@ -24,12 +24,12 @@ pub fn get_tx_gas_cost(receipt: &TransactionReceipt) -> anyhow::Result<Option<U2
     if let (Some(gas_used), Some(gas_price)) = (receipt.gas_used, receipt.effective_gas_price) {
         // Convert gas cost from wei to ether: 1 Ether = 1e18 wei
         let gas_cost_in_wei = gas_used * gas_price;
-        let gas_cost_ether = format_units(gas_cost_in_wei, "ethers")?;
+        let gas_cost_ether = format_units(gas_cost_in_wei, "ether")?;
 
-        info!("Gas cost for the transaction: {} ETH", gas_cost_ether);
+        println!("Gas cost for the transaction: {} ETH", gas_cost_ether);
         Ok(Some(gas_cost_in_wei))
     } else {
-        info!("No gas usage or gas price info in receipt");
+        warn!("No gas usage or gas price info in receipt");
         Ok(None)
     }
 }

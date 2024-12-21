@@ -58,21 +58,22 @@ impl AnvilSimulator {
             .gas(U256::from(300_000));
 
         // sent transaction
-        info!("sending liquidate transcation");
+        info!("sending tx");
         let pending_tx_result = tx.send().await;
 
         match pending_tx_result {
             Ok(pending_tx) => {
                 // Transaction sent successfully
-                // info!("Transaction sent, awaiting receipt");
+                // println!("Transaction sent, awaiting receipt");
                 // let tx_hash = pending_tx.tx_hash();
                 // debug!("tx_hash => {:?}", tx_hash);
 
                 // wait for transaction receipt
-                info!("awaiting transaction receipt");
+                info!("awaiting tx receipt");
                 let receipt = pending_tx.await?.unwrap();
 
                 // gas update
+                // println!("updating gas cost");
                 update_tx_gas_cost_data(&receipt, &token).await?;
 
                 let tx_hash = receipt.transaction_hash;

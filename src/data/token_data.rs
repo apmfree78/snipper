@@ -67,6 +67,19 @@ pub async fn get_and_save_erc20_by_token_address(
     Ok(Some(token))
 }
 
+pub async fn display_token_stats() -> anyhow::Result<()> {
+    let tokens = get_tokens().await;
+
+    println!("----------------------------------------------");
+    println!("----------------TOKEN STATS------------------");
+    println!("----------------------------------------------");
+    for token in tokens.values() {
+        token.display_token_portfolio_volume_interval()?;
+    }
+
+    Ok(())
+}
+
 pub async fn get_tokens() -> HashMap<String, Erc20Token> {
     let token_data_hash = Arc::clone(&TOKEN_HASH);
     let tokens = token_data_hash.lock().await;

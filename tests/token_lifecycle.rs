@@ -19,17 +19,21 @@ use snipper::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
 use snipper::abi::uniswap_pair::UNISWAP_PAIR;
 use snipper::data::contracts::CONTRACT;
 use snipper::data::token_data::{
-    check_all_tokens_are_tradable, get_and_save_erc20_by_token_address, get_number_of_tokens,
-    is_token_tradable,
+    check_all_tokens_are_tradable, display_token_stats, get_and_save_erc20_by_token_address,
+    get_number_of_tokens, is_token_tradable, set_token_to_validated, validate_tradable_tokens,
 };
 use snipper::events::PairCreatedEvent;
 use snipper::swap::anvil_simlator::AnvilSimulator;
-use snipper::token_tx::{buy_eligible_tokens_on_anvil, sell_eligible_tokens_on_anvil};
+use snipper::token_tx::{
+    buy_eligible_tokens_on_anvil, mock_buy_eligible_tokens, mock_sell_eligible_tokens,
+    mock_sell_tokens_volume_interval, sell_eligible_tokens_on_anvil,
+};
 use std::str::FromStr;
 use std::sync::Arc;
 
 struct TestSetup {
     anvil_simulator: Arc<Mutex<AnvilSimulator>>,
+    client: Arc<Provider<Ws>>,
     token_address: Address,
     last_block_timestamp: u32,
     sell_after: u32,
@@ -72,13 +76,18 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
     let anvil_simulator = AnvilSimulator::new(&ws_url).await?;
     let anvil_simulator = Arc::new(Mutex::new(anvil_simulator));
 
-    get_and_save_erc20_by_token_address(&pair_created_event, &client).await?;
+    let token = get_and_save_erc20_by_token_address(&pair_created_event, &client).await?;
+    let token = token.unwrap();
     // check token liquidity
     if let Err(error) = check_all_tokens_are_tradable(&client).await {
         println!("could not check token tradability => {}", error);
     }
 
+    // for testing purposes assure it svalided
+    set_token_to_validated(&token).await;
+
     Ok(TestSetup {
+        client,
         anvil_simulator,
         token_address,
         last_block_timestamp,
@@ -87,7 +96,7 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
 }
 
 #[tokio::test]
-// #[ignore]
+#[ignore]
 async fn test_anvil_meme_token_buy_sell_test() -> anyhow::Result<()> {
     // let token_address: Address = "0x616d4b42197cff456a80a8b93f6ebef2307dfb8c".parse()?;
     // let token_address: Address = "0xc5a07C9594C4d5138AA00feBbDEC048B6f0ad7D6".parse()?;
@@ -135,7 +144,7 @@ async fn test_anvil_meme_token_buy_sell_test() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-// #[ignore]
+#[ignore]
 async fn test_anvil_token_buy_sell_test() -> anyhow::Result<()> {
     let token_address: Address = CONTRACT.get_address().link.parse()?;
     let mut setup = setup(token_address).await?;
@@ -179,7 +188,7 @@ async fn test_anvil_token_buy_sell_test() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-// #[ignore]
+#[ignore]
 async fn test_anvil_token_buy_no_sell_test() -> anyhow::Result<()> {
     let token_address: Address = CONTRACT.get_address().link.parse()?;
     let mut setup = setup(token_address).await?;
@@ -217,6 +226,39 @@ async fn test_anvil_token_buy_no_sell_test() -> anyhow::Result<()> {
         .get_token_balance_by_address(setup.token_address)
         .await?;
     assert_eq!(new_token_balance, token_balance);
+    assert_eq!(number_of_tokens, 1);
+
+    Ok(())
+}
+
+#[tokio::test]
+// #[ignore]
+async fn test_mock_token_buy_sell_test() -> anyhow::Result<()> {
+    let token_address: Address = CONTRACT.get_address().link.parse()?;
+    let mut setup = setup(token_address).await?;
+
+    let mut number_of_tokens = get_number_of_tokens().await;
+    assert_eq!(number_of_tokens, 1);
+
+    let token_tradable = is_token_tradable(setup.token_address).await;
+    assert!(token_tradable);
+
+    if let Err(error) = mock_buy_eligible_tokens(&setup.client, setup.last_block_timestamp).await {
+        println!("error running buy_eligible_tokens_on_anvil => {}", error);
+    }
+
+    setup.last_block_timestamp += setup.sell_after;
+
+    if let Err(error) = mock_sell_eligible_tokens(&setup.client, setup.last_block_timestamp).await {
+        println!("error running sell_eligible_tokens_on_anvil => {}", error);
+    }
+
+    if let Err(error) = display_token_stats().await {
+        println!("error displaying stats => {}", error);
+    }
+
+    number_of_tokens = get_number_of_tokens().await;
+
     assert_eq!(number_of_tokens, 1);
 
     Ok(())
