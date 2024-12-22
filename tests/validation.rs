@@ -12,6 +12,7 @@ use snipper::events::PairCreatedEvent;
 use snipper::swap::anvil_simlator::AnvilSimulator;
 use snipper::swap::anvil_validation::{validate_token_with_simulated_buy_sell, TokenStatus};
 use std::sync::Arc;
+use std::time::Instant;
 
 struct TestSetupValidation {
     anvil_simulator: Arc<AnvilSimulator>,
@@ -75,7 +76,10 @@ async fn test_successful_token_validation() -> anyhow::Result<()> {
     let token_tradable = is_token_tradable(setup.token.address).await;
     assert!(token_tradable);
 
+    let start = Instant::now();
     let token_status = validate_token_with_simulated_buy_sell(&setup.token).await?;
+    let duration = start.elapsed();
+    println!("Time elapsed: {} seconds", duration.as_secs());
 
     assert_eq!(token_status, TokenStatus::Legit);
 

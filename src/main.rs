@@ -8,17 +8,6 @@ use ethers::{
 use futures::{lock::Mutex, stream, StreamExt};
 use log::{error, info, warn};
 use snipper::{
-    data::contracts::CONTRACT,
-    events,
-    token_tx::{
-        validate::add_validate_buy_new_token,
-        volume_intervals::{
-            mock_buy_eligible_tokens_at_volume_interval,
-            mock_sell_eligible_tokens_at_volume_interval,
-        },
-    },
-};
-use snipper::{
     data::{
         contracts::CHAIN,
         token_data::{
@@ -26,6 +15,19 @@ use snipper::{
         },
     },
     utils::logging::setup_logger,
+};
+use snipper::{
+    data::{contracts::CONTRACT, token_data::display_token_time_stats},
+    events,
+    token_tx::{
+        mock_tx::mock_buy_eligible_tokens,
+        time_intervals::mock_sell_eligible_tokens_at_time_intervals,
+        validate::add_validate_buy_new_token,
+        volume_intervals::{
+            mock_buy_eligible_tokens_at_volume_interval,
+            mock_sell_eligible_tokens_at_volume_interval,
+        },
+    },
 };
 use std::sync::Arc;
 
@@ -122,16 +124,13 @@ async fn main() -> Result<()> {
                         error!("could not validate tradable tokens => {}", error);
                     }
 
-                    if let Err(error) = mock_buy_eligible_tokens_at_volume_interval(
-                        &client,
-                        current_block_timestamp,
-                    )
-                    .await
+                    if let Err(error) =
+                        mock_buy_eligible_tokens(&client, current_block_timestamp).await
                     {
                         error!("error running buy_eligible_tokens_on_anvil => {}", error);
                     }
 
-                    if let Err(error) = mock_sell_eligible_tokens_at_volume_interval(
+                    if let Err(error) = mock_sell_eligible_tokens_at_time_intervals(
                         &client,
                         current_block_timestamp,
                     )
@@ -142,7 +141,7 @@ async fn main() -> Result<()> {
 
                     // display stats every 5 mins
                     if current_block_timestamp % 300 == 0 {
-                        if let Err(error) = display_token_volume_stats().await {
+                        if let Err(error) = display_token_time_stats().await {
                             error!("error displaying stats => {}", error);
                         }
                     }

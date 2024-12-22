@@ -50,14 +50,15 @@ impl Erc20Token {
             let profit = self.profit_at_time_interval_(i + 1)?;
             let roi = self.roi_at_time_interval(i + 1)?;
 
-            // let ether_used_to_buy = format_units(amount_bought_ether * U256::from(i + 1), 18u32)?;
-            println!(
-                "{} secs => profit of {}, and roi of {}",
-                time_bought * i as u32,
-                profit,
-                roi
-            );
-            println!("----------------------------------------------");
+            if profit != 0.0 && roi != 0.0 {
+                println!(
+                    "{} secs => profit of {}, and roi of {}",
+                    time_bought * i as u32,
+                    profit,
+                    roi
+                );
+                println!("----------------------------------------------");
+            }
         }
 
         // let total_profit: f32 = portfolio_lock
