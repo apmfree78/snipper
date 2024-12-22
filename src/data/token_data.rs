@@ -67,7 +67,7 @@ pub async fn get_and_save_erc20_by_token_address(
     Ok(Some(token))
 }
 
-pub async fn display_token_stats() -> anyhow::Result<()> {
+pub async fn display_token_volume_stats() -> anyhow::Result<()> {
     let tokens = get_tokens().await;
 
     println!("----------------------------------------------");
@@ -75,6 +75,19 @@ pub async fn display_token_stats() -> anyhow::Result<()> {
     println!("----------------------------------------------");
     for token in tokens.values() {
         token.display_token_portfolio_volume_interval()?;
+    }
+
+    Ok(())
+}
+
+pub async fn display_token_time_stats() -> anyhow::Result<()> {
+    let tokens = get_tokens().await;
+
+    println!("----------------------------------------------");
+    println!("----------------TOKEN STATS------------------");
+    println!("----------------------------------------------");
+    for token in tokens.values() {
+        token.display_token_portfolio_time_interval()?;
     }
 
     Ok(())
@@ -222,6 +235,24 @@ pub async fn set_token_to_validated(token: &Erc20Token) {
         Some(token) => {
             token.is_validating = false;
             token.is_validated = true;
+        }
+        None => {
+            error!(
+                "{} is not in token hash, cannot update.",
+                token_address_string
+            );
+        }
+    }
+}
+
+pub async fn set_token_to_sold(token: &Erc20Token) {
+    let token_data_hash = Arc::clone(&TOKEN_HASH);
+    let mut tokens = token_data_hash.lock().await;
+    let token_address_string = token.lowercase_address();
+
+    match tokens.get_mut(&token_address_string) {
+        Some(token) => {
+            token.is_sold = true;
         }
         None => {
             error!(

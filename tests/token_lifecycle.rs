@@ -19,14 +19,17 @@ use snipper::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
 use snipper::abi::uniswap_pair::UNISWAP_PAIR;
 use snipper::data::contracts::CONTRACT;
 use snipper::data::token_data::{
-    check_all_tokens_are_tradable, display_token_stats, get_and_save_erc20_by_token_address,
-    get_number_of_tokens, is_token_tradable, set_token_to_validated, validate_tradable_tokens,
+    check_all_tokens_are_tradable, display_token_time_stats, display_token_volume_stats,
+    get_and_save_erc20_by_token_address, get_number_of_tokens, is_token_tradable,
+    set_token_to_validated, validate_tradable_tokens,
 };
 use snipper::events::PairCreatedEvent;
 use snipper::swap::anvil_simlator::AnvilSimulator;
-use snipper::token_tx::{
-    buy_eligible_tokens_on_anvil, mock_buy_eligible_tokens, mock_sell_eligible_tokens,
-    mock_sell_tokens_volume_interval, sell_eligible_tokens_on_anvil,
+use snipper::token_tx::anvil::{buy_eligible_tokens_on_anvil, sell_eligible_tokens_on_anvil};
+use snipper::token_tx::mock_tx::mock_buy_eligible_tokens;
+use snipper::token_tx::time_intervals::mock_sell_eligible_tokens_at_time_intervals;
+use snipper::token_tx::volume_intervals::{
+    mock_buy_eligible_tokens_at_volume_interval, mock_sell_eligible_tokens_at_volume_interval,
 };
 use std::str::FromStr;
 use std::sync::Arc;
@@ -232,10 +235,51 @@ async fn test_anvil_token_buy_no_sell_test() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-// #[ignore]
+#[ignore]
 async fn test_mock_token_buy_sell_test() -> anyhow::Result<()> {
     let token_address: Address = CONTRACT.get_address().link.parse()?;
     let mut setup = setup(token_address).await?;
+
+    let mut number_of_tokens = get_number_of_tokens().await;
+    assert_eq!(number_of_tokens, 1);
+
+    let token_tradable = is_token_tradable(setup.token_address).await;
+    assert!(token_tradable);
+
+    if let Err(error) =
+        mock_buy_eligible_tokens_at_volume_interval(&setup.client, setup.last_block_timestamp).await
+    {
+        println!("error running buy_eligible_tokens_on_anvil => {}", error);
+    }
+
+    setup.last_block_timestamp += setup.sell_after;
+
+    if let Err(error) =
+        mock_sell_eligible_tokens_at_volume_interval(&setup.client, setup.last_block_timestamp)
+            .await
+    {
+        println!("error running sell_eligible_tokens_on_anvil => {}", error);
+    }
+
+    if let Err(error) = display_token_volume_stats().await {
+        println!("error displaying stats => {}", error);
+    }
+
+    number_of_tokens = get_number_of_tokens().await;
+
+    assert_eq!(number_of_tokens, 1);
+
+    Ok(())
+}
+
+#[tokio::test]
+// #[ignore]
+async fn test_mock_token_buy_sell_time_intervals_test() -> anyhow::Result<()> {
+    let token_address: Address = CONTRACT.get_address().link.parse()?;
+    let setup = setup(token_address).await?;
+    let token_sell_interval =
+        std::env::var("TOKEN_SELL_INTERVAL").expect("could not find TOKEN_SELL_INTERVAL in .env");
+    let token_sell_interval: usize = token_sell_interval.parse()?;
 
     let mut number_of_tokens = get_number_of_tokens().await;
     assert_eq!(number_of_tokens, 1);
@@ -247,13 +291,16 @@ async fn test_mock_token_buy_sell_test() -> anyhow::Result<()> {
         println!("error running buy_eligible_tokens_on_anvil => {}", error);
     }
 
-    setup.last_block_timestamp += setup.sell_after;
-
-    if let Err(error) = mock_sell_eligible_tokens(&setup.client, setup.last_block_timestamp).await {
-        println!("error running sell_eligible_tokens_on_anvil => {}", error);
+    for x in (token_sell_interval..=6000).step_by(token_sell_interval) {
+        let sell_time = setup.last_block_timestamp + x as u32;
+        if let Err(error) =
+            mock_sell_eligible_tokens_at_time_intervals(&setup.client, sell_time).await
+        {
+            println!("error running sell_eligible_tokens_on_anvil => {}", error);
+        }
     }
 
-    if let Err(error) = display_token_stats().await {
+    if let Err(error) = display_token_time_stats().await {
         println!("error displaying stats => {}", error);
     }
 

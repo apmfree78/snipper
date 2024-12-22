@@ -7,6 +7,8 @@ use rust_decimal::Decimal;
 use std::convert::TryInto;
 use std::str::FromStr;
 
+use crate::token_tx::time_intervals::TIME_ROUNDS;
+
 pub fn get_function_selector(function_signature: &str) -> Bytes {
     let hash = H256::from(keccak256(function_signature.as_bytes()));
     Bytes::from(&hash[0..4])
@@ -20,6 +22,26 @@ pub fn format_to_5_decimals_decimal(amount: U256, decimals: u32) -> String {
     let truncated_val = decimal_val.round_dp(5);
     // Convert back to a string
     truncated_val.to_string()
+}
+
+pub fn get_time_interval(
+    current_time: u32,
+    time_of_purchase: u32,
+) -> anyhow::Result<Option<usize>> {
+    let time_interval =
+        std::env::var("TOKEN_SELL_INTERVAL").expect("TOKEN_SELL_INTERVAL not found in .env");
+    let time_interval: u32 = time_interval.parse()?;
+    let diff = current_time as usize - time_of_purchase as usize;
+
+    // find time index to make purchase on
+    let time_index = diff / time_interval as usize;
+
+    // check that time index is in range for what time slots we want to test within
+    if time_index < TIME_ROUNDS {
+        Ok(Some(time_index))
+    } else {
+        Ok(None)
+    }
 }
 
 pub fn u256_to_f64_with_decimals(value: U256, decimals: u32) -> anyhow::Result<f64> {
