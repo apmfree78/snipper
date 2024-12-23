@@ -285,6 +285,24 @@ pub async fn set_token_to_validating(token: &Erc20Token) {
     }
 }
 
+pub async fn set_token_to_tradable(token: &Erc20Token) {
+    let token_data_hash = Arc::clone(&TOKEN_HASH);
+    let mut tokens = token_data_hash.lock().await;
+    let token_address_string = token.lowercase_address();
+
+    match tokens.get_mut(&token_address_string) {
+        Some(token) => {
+            token.is_tradable = true;
+        }
+        None => {
+            error!(
+                "{} is not in token hash, cannot update.",
+                token_address_string
+            );
+        }
+    }
+}
+
 pub async fn get_number_of_tokens() -> usize {
     let token_data_hash = Arc::clone(&TOKEN_HASH);
     let tokens = token_data_hash.lock().await;

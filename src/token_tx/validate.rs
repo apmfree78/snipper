@@ -1,5 +1,6 @@
 use crate::data::token_data::get_and_save_erc20_by_token_address;
 use crate::data::token_data::remove_token;
+use crate::data::token_data::set_token_to_tradable;
 use crate::data::token_data::set_token_to_validated;
 use crate::data::tokens::Erc20Token;
 use crate::events::PairCreatedEvent;
@@ -61,7 +62,15 @@ pub async fn validate_token_from_mempool_and_buy(
     if token_status == TokenStatus::Legit {
         info!("{} token validated from mempool!", token.name);
         set_token_to_validated(token).await;
-        token.mock_purchase(client, current_time).await?;
+
+        // check if token is tradable
+        let total_supply = get_token_weth_total_supply(&token, client).await?;
+        if total_supply > U256::from(0) {
+            set_token_to_tradable(&token).await;
+
+            // go ahead and purchase
+            token.mock_purchase(client, current_time).await?;
+        }
     } else {
         let scam_token = remove_token(token.address).await;
         let scam_token = scam_token.unwrap();
