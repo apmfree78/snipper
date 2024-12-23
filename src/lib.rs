@@ -9,6 +9,11 @@ pub mod abi {
     pub mod uniswap_v3_router;
 }
 
+pub mod mempool {
+    pub mod decode_add_liquidity;
+    pub mod detect_add_liquidity;
+}
+
 pub mod utils {
     pub mod logging;
     pub mod type_conversion;
