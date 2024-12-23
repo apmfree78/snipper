@@ -4,8 +4,8 @@ use crate::data::token_data::set_token_to_tradable;
 use crate::data::token_data::set_token_to_validated;
 use crate::data::tokens::Erc20Token;
 use crate::events::PairCreatedEvent;
-use crate::swap::anvil_validation::TokenLiquidity;
-use crate::swap::anvil_validation::{validate_token_with_simulated_buy_sell, TokenStatus};
+use crate::swap::anvil::validation::TokenLiquidity;
+use crate::swap::anvil::validation::{validate_token_with_simulated_buy_sell, TokenStatus};
 use crate::swap::token_price::get_token_weth_total_supply;
 use ethers::types::Transaction;
 use ethers::{

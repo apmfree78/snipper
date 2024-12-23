@@ -9,7 +9,7 @@ use ethers::utils::format_units;
 use ethers::{providers::Middleware, types::Address};
 use log::{error, info};
 
-use crate::swap::anvil_simlator::AnvilSimulator;
+use super::simlator::AnvilSimulator;
 
 impl AnvilSimulator {
     // function to simulate mempool tx
@@ -54,7 +54,7 @@ impl AnvilSimulator {
 
         println!("........................................................");
         self.get_weth_balance().await?;
-        self.get_eth_balance().await?;
+        self.get_weth_balance().await?;
         let amount_to_buy =
             std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
         println!("buying {} WETH of {}", amount_to_buy, token.name);

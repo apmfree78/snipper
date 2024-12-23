@@ -1,9 +1,9 @@
+use super::simlator::{AnvilSimulator, STARTING_BALANCE};
 use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
 use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
 use crate::data::contracts::CONTRACT;
 use crate::data::tokens::Erc20Token;
-use crate::swap::anvil_simlator::{AnvilSimulator, STARTING_BALANCE};
 use crate::utils::type_conversion::{address_to_string, u256_to_f64_with_decimals};
 use anyhow::Result;
 use ethers::types::{

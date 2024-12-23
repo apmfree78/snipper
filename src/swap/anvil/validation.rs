@@ -1,4 +1,4 @@
-use super::anvil_simlator::AnvilSimulator;
+use super::simlator::AnvilSimulator;
 use crate::data::{contracts::CONTRACT, tokens::Erc20Token};
 use ethers::types::{Transaction, U256};
 use log::info;

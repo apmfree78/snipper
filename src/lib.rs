@@ -38,10 +38,12 @@ pub mod token_tx {
 pub mod events;
 
 pub mod swap {
-    pub mod anvil_buy_sell;
-    pub mod anvil_simlator;
-    pub mod anvil_snapshots;
-    pub mod anvil_supporting_methods;
-    pub mod anvil_validation;
+    pub mod anvil {
+        pub mod buy_sell;
+        pub mod simlator;
+        pub mod snapshots;
+        pub mod supporting_methods;
+        pub mod validation;
+    }
     pub mod token_price;
 }
