@@ -1,6 +1,8 @@
 use crate::abi::erc20::ERC20;
 use crate::events::PairCreatedEvent;
-use crate::swap::anvil_validation::{validate_token_with_simulated_buy_sell, TokenStatus};
+use crate::swap::anvil_validation::{
+    validate_token_with_simulated_buy_sell, TokenLiquidity, TokenStatus,
+};
 use crate::swap::token_price::get_token_weth_total_supply;
 use crate::utils::type_conversion::address_to_string;
 use anyhow::Result;
@@ -145,7 +147,9 @@ pub async fn validate_tradable_tokens() -> anyhow::Result<()> {
                 if token.is_tradable && !token.is_validated && !token.is_validating {
                     set_token_to_validating(&token).await;
 
-                    let token_status = validate_token_with_simulated_buy_sell(&token).await?;
+                    let token_status =
+                        validate_token_with_simulated_buy_sell(&token, TokenLiquidity::HasEnough)
+                            .await?;
                     if token_status == TokenStatus::Legit {
                         info!("{} is validated!", token.name);
                         set_token_to_validated(&token).await;

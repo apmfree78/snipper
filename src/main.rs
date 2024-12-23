@@ -14,6 +14,7 @@ use snipper::{
             check_all_tokens_are_tradable, display_token_volume_stats, validate_tradable_tokens,
         },
     },
+    mempool::detect_add_liquidity::detect_token_add_liquidity_and_validate,
     utils::logging::setup_logger,
 };
 use snipper::{
@@ -34,7 +35,7 @@ use std::sync::Arc;
 enum Event {
     Block(ethers::types::Block<TxHash>),
     Log(Log),
-    // PendingTransactions(TxHash),
+    PendingTransactions(TxHash),
 }
 
 #[tokio::main]
@@ -65,11 +66,11 @@ async fn main() -> Result<()> {
 
     info!("Subscribed to aave v3 logs");
 
-    // let tx_stream: stream::BoxStream<'_, Result<Event>> = client
-    //     .subscribe_pending_txs()
-    //     .await?
-    //     .map(|tx| Ok(Event::PendingTransactions(tx)))
-    //     .boxed();
+    let tx_stream: stream::BoxStream<'_, Result<Event>> = client
+        .subscribe_pending_txs()
+        .await?
+        .map(|tx| Ok(Event::PendingTransactions(tx)))
+        .boxed();
 
     let block_stream: stream::BoxStream<'_, Result<Event>> = client
         .subscribe_blocks()
@@ -80,7 +81,7 @@ async fn main() -> Result<()> {
     info!("Subscribed to pending transactions");
 
     // Merge the streams into a single stream.
-    let combined_stream = stream::select_all(vec![log_stream, block_stream]);
+    let combined_stream = stream::select_all(vec![log_stream, block_stream, tx_stream]);
 
     info!("Combined streams");
 
@@ -93,20 +94,34 @@ async fn main() -> Result<()> {
                 Ok(Event::Log(log)) => match events::decode_pair_created_event(&log) {
                     Ok(pair_created_event) => {
                         info!("pair created event {:#?}", pair_created_event);
-                        let last_time = last_timestamp.lock().await;
+                        let current_time = {
+                            let last_time = last_timestamp.lock().await;
+                            last_time.clone()
+                        };
 
-                        if let Err(error) = add_validate_buy_new_token(
-                            &pair_created_event,
-                            &client,
-                            last_time.clone(),
-                        )
-                        .await
+                        if let Err(error) =
+                            add_validate_buy_new_token(&pair_created_event, &client, current_time)
+                                .await
                         {
                             warn!("Could not run add_validate_buy_new_token => {}", error);
                         }
                     }
                     Err(error) => error!("error extracting pool created event => {}", error),
                 },
+                Ok(Event::PendingTransactions(tx)) => {
+                    let current_time = {
+                        let last_time = last_timestamp.lock().await;
+                        last_time.clone()
+                    };
+                    if let Err(error) =
+                        detect_token_add_liquidity_and_validate(tx, &client, current_time).await
+                    {
+                        error!(
+                            "problem with detect_token_add_liquidity_and_validate => {}",
+                            error
+                        );
+                    }
+                }
                 Ok(Event::Block(block)) => {
                     info!("NEW BLOCK ===> {}", block.timestamp);
                     let mut last_time = last_timestamp.lock().await;

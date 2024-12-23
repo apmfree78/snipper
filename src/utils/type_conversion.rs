@@ -1,8 +1,10 @@
 use anyhow::{anyhow, Result};
 use ethers::abi::{Address, Bytes};
-use ethers::core::types::U256;
-use ethers::types::{H256, I256};
 use ethers::utils::{format_units, keccak256};
+use ethers::{
+    core::types::{transaction::eip2718::TypedTransaction, H256, I256, U256},
+    types::{Eip1559TransactionRequest, NameOrAddress, Transaction, TransactionRequest},
+};
 use rust_decimal::Decimal;
 use std::convert::TryInto;
 use std::str::FromStr;
@@ -22,6 +24,39 @@ pub fn format_to_5_decimals_decimal(amount: U256, decimals: u32) -> String {
     let truncated_val = decimal_val.round_dp(5);
     // Convert back to a string
     truncated_val.to_string()
+}
+
+pub fn convert_transaction_to_typed_transaction(tx: &Transaction) -> TypedTransaction {
+    let to = tx.to.clone().unwrap();
+    let to = NameOrAddress::Address(to);
+
+    if tx.transaction_type == Some(2.into()) {
+        // EIP-1559 transaction
+        TypedTransaction::Eip1559(Eip1559TransactionRequest {
+            from: Some(tx.from),
+            to: Some(to),
+            value: Some(tx.value),
+            data: Some(tx.input.clone()),
+            nonce: Some(tx.nonce),
+            gas: Some(tx.gas),
+            max_fee_per_gas: tx.max_fee_per_gas,
+            max_priority_fee_per_gas: tx.max_priority_fee_per_gas,
+            access_list: tx.access_list.clone().unwrap_or_default(),
+            chain_id: tx.chain_id.map(|id| ethers::types::U64::from(id.as_u64())),
+        })
+    } else {
+        // Legacy transaction
+        TypedTransaction::Legacy(TransactionRequest {
+            from: Some(tx.from),
+            to: Some(to),
+            value: Some(tx.value),
+            data: Some(tx.input.clone()),
+            nonce: Some(tx.nonce),
+            gas: Some(tx.gas),
+            gas_price: tx.gas_price,
+            chain_id: tx.chain_id.map(|id| ethers::types::U64::from(id.as_u64())),
+        })
+    }
 }
 
 pub fn get_time_interval(

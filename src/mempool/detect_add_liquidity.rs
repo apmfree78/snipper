@@ -4,14 +4,17 @@ use ethers::{
     providers::{Provider, Ws},
 };
 use ethers::{prelude::*, utils::keccak256};
-use log::info;
+use log::{error, info, warn};
 use std::sync::Arc;
+
+use crate::{data::token_data::get_token, token_tx::validate::validate_token_from_mempool_and_buy};
 
 use super::decode_add_liquidity::decode_add_liquidity_eth_fn;
 
-pub async fn detect_price_update_and_find_users_to_liquidate(
+pub async fn detect_token_add_liquidity_and_validate(
     pending_tx: TxHash,
     client: &Arc<Provider<Ws>>,
+    current_time: u32,
 ) -> Result<()> {
     let add_liquidity_signature = "addLiquidityETH(address,uint,uint,uint,address,uint)";
 
@@ -27,15 +30,45 @@ pub async fn detect_price_update_and_find_users_to_liquidate(
                 let data = tx.input.0.clone();
 
                 if data.starts_with(&add_liquidity_hash) {
+                    info!("found add liquidity tx => {:?}", tx);
                     // extract address from data ==> forward(address,bytes)
-                    let token = decode_add_liquidity_eth_fn(&data.into())?;
+                    let token_address = decode_add_liquidity_eth_fn(&data.into())?;
 
                     info!(
                         "detected Add Liquidity tx in mempool for token => {}",
-                        token
+                        token_address
                     );
 
-                    // TODO - check that token is one we are looking for!
+                    // check that token is one we are looking for!
+                    let result = get_token(token_address).await;
+
+                    match result {
+                        Some(token) => {
+                            // validate token
+                            if !token.is_validated && !token.is_validating {
+                                let spawn_token = token.clone();
+                                let spawn_tx = tx.clone();
+                                let spawn_client = Arc::clone(client);
+                                tokio::spawn(async move {
+                                    info!("validating {} token from mempool!", spawn_token.name);
+                                    if let Err(error) = validate_token_from_mempool_and_buy(
+                                        &spawn_token,
+                                        &spawn_tx,
+                                        &spawn_client,
+                                        current_time,
+                                    )
+                                    .await
+                                    {
+                                        error!(
+                                            "could not validate_token_from_mempool_and_buy => {}",
+                                            error
+                                        );
+                                    }
+                                });
+                            };
+                        }
+                        None => warn!("this is not the token you're looking for"),
+                    }
                 }
             }
         }

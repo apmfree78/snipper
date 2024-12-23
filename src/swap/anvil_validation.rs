@@ -1,6 +1,6 @@
 use super::anvil_simlator::AnvilSimulator;
 use crate::data::{contracts::CONTRACT, tokens::Erc20Token};
-use ethers::types::U256;
+use ethers::types::{Transaction, U256};
 use log::info;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -10,13 +10,28 @@ pub enum TokenStatus {
     CannotBuy,
 }
 
+pub enum TokenLiquidity {
+    NeedToAdd(Transaction),
+    HasEnough,
+}
+
 /// Takes a snapshot of the current blockchain state using anvil
 pub async fn validate_token_with_simulated_buy_sell(
     token: &Erc20Token,
+    liquidity_status: TokenLiquidity,
 ) -> anyhow::Result<TokenStatus> {
     // launch new anvil node for validation
     let ws_url = CONTRACT.get_address().ws_url.clone();
     let anvil = AnvilSimulator::new(&ws_url).await?;
+
+    match liquidity_status {
+        TokenLiquidity::NeedToAdd(add_liquidity_tx) => {
+            // simulate adding liquidity
+            info!("simulate adding liquidity before buying");
+            anvil.add_liquidity_eth(&add_liquidity_tx).await?;
+        }
+        TokenLiquidity::HasEnough => {}
+    }
 
     // Try to buy the token
     // let balance_before = anvil.get_token_balance(token).await?;

@@ -3,7 +3,8 @@ use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
 use crate::data::contracts::CONTRACT;
 use crate::data::gas::update_tx_gas_cost_data;
 use crate::data::tokens::Erc20Token;
-use ethers::types::U256;
+use crate::utils::type_conversion::convert_transaction_to_typed_transaction;
+use ethers::types::{Transaction, U256};
 use ethers::utils::format_units;
 use ethers::{providers::Middleware, types::Address};
 use log::{error, info};
@@ -11,6 +12,34 @@ use log::{error, info};
 use crate::swap::anvil_simlator::AnvilSimulator;
 
 impl AnvilSimulator {
+    // function to simulate mempool tx
+    pub async fn add_liquidity_eth(&self, mempool_tx: &Transaction) -> anyhow::Result<()> {
+        let sender_address = mempool_tx.from;
+        self.client
+            .provider()
+            .request::<_, ()>("anvil_impersonateAccount", [sender_address])
+            .await?;
+
+        // Convert and send the first transaction
+        let mempool_tx_typed = convert_transaction_to_typed_transaction(&mempool_tx);
+
+        println!("calculating oracle update on anvil");
+        // Send the transaction and get the PendingTransaction
+        let pending_tx = self.client.send_transaction(mempool_tx_typed, None).await?;
+
+        // Await the transaction receipt immediately to avoid capturing `pending_tx` in the async state
+        let _receipt = pending_tx.await?;
+        println!("add liquidity eth complete!");
+
+        // Stop impersonating the account
+        self.client
+            .provider()
+            .request::<_, ()>("anvil_stopImpersonatingAccount", [sender_address])
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn simulate_buying_token_for_weth(&self, token: &Erc20Token) -> anyhow::Result<U256> {
         let router_address: Address = CONTRACT.get_address().uniswap_v2_router.parse()?;
         let weth_address: Address = CONTRACT.get_address().weth.parse()?;
