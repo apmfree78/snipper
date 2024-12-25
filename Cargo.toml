@@ -21,3 +21,6 @@ serde = { version = "1.0", features = ["derive"] }
 toml = "0.8.19"
 hex-literal = "0.4.1"
 rust_decimal = "1.36.0"
+url = "2.5.2"
+ethers-flashbots = "0.15.0"
+rand = "0.8.5"

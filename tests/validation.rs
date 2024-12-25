@@ -9,15 +9,15 @@ use snipper::data::token_data::{
 };
 use snipper::data::tokens::Erc20Token;
 use snipper::events::PairCreatedEvent;
-use snipper::swap::anvil_simlator::AnvilSimulator;
-use snipper::swap::anvil_validation::{
+// use snipper::swap::anvil::simlator::AnvilSimulator;
+use snipper::swap::anvil::validation::{
     validate_token_with_simulated_buy_sell, TokenLiquidity, TokenStatus,
 };
 use std::sync::Arc;
 use std::time::Instant;
 
 struct TestSetupValidation {
-    anvil_simulator: Arc<AnvilSimulator>,
+    // anvil_simulator: Arc<AnvilSimulator>,
     token: Erc20Token,
 }
 
@@ -51,8 +51,8 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetupValidation> {
     };
 
     // Create an instance of AnvilSimulator
-    let anvil_simulator = AnvilSimulator::new(&ws_url).await?;
-    let anvil_simulator = Arc::new(anvil_simulator);
+    // let anvil_simulator = AnvilSimulator::new(&ws_url).await?;
+    // let anvil_simulator = Arc::new(anvil_simulator);
 
     let token = get_and_save_erc20_by_token_address(&pair_created_event, &client).await?;
     let token = token.unwrap();
@@ -63,7 +63,7 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetupValidation> {
     }
 
     Ok(TestSetupValidation {
-        anvil_simulator,
+        // anvil_simulator,
         token,
     })
 }

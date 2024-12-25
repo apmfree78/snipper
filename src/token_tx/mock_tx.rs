@@ -2,6 +2,7 @@ use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
 use crate::data::contracts::CONTRACT;
 use crate::data::token_data::{get_tokens, set_token_to_sold, update_token};
 use crate::data::tokens::Erc20Token;
+use crate::utils::tx::{get_amount_out_uniswap_v2, TxSlippage};
 use ethers::types::Address;
 use ethers::utils::format_units;
 use ethers::{
@@ -69,8 +70,14 @@ impl Erc20Token {
 
         // calculate amount amount out and gas used
         println!("........................................................");
-        let amount_out =
-            get_amount_out_uniswap_v2(weth_address, self.address, amount_in, client).await?;
+        let amount_out = get_amount_out_uniswap_v2(
+            weth_address,
+            self.address,
+            amount_in,
+            TxSlippage::None,
+            client,
+        )
+        .await?;
 
         let amount_out_readable = format_units(amount_out, u32::from(self.decimals))?;
         println!("bought {} of {}", amount_out_readable, self.name);
@@ -86,8 +93,14 @@ impl Erc20Token {
 
         //approve swap router to trade toke
         println!("........................................................");
-        let amount_out =
-            get_amount_out_uniswap_v2(self.address, weth_address, amount_to_sell, client).await?;
+        let amount_out = get_amount_out_uniswap_v2(
+            self.address,
+            weth_address,
+            amount_to_sell,
+            TxSlippage::None,
+            client,
+        )
+        .await?;
 
         let amount_out_min_readable = format_units(amount_out, 18u32)?;
         println!("sold {} for {} eth", self.name, amount_out_min_readable);
@@ -140,27 +153,4 @@ pub async fn mock_sell_eligible_tokens(
 
     println!("done with selling...");
     Ok(())
-}
-
-pub async fn get_amount_out_uniswap_v2(
-    token_in: Address,
-    token_out: Address,
-    amount_in: U256,
-    client: &Arc<Provider<Ws>>,
-) -> anyhow::Result<U256> {
-    let uniswap_v2_router_address: Address = CONTRACT.get_address().uniswap_v2_router.parse()?;
-    let router = UNISWAP_V2_ROUTER::new(uniswap_v2_router_address, client.clone());
-
-    let amounts = router
-        .get_amounts_out(amount_in, vec![token_in, token_out])
-        .call()
-        .await?;
-
-    let amount_out = amounts[amounts.len() - 1];
-
-    // NO 2% volatility reduction for mock purchases
-    // reduce by 2% to account for token volatility
-    // let amount_out = amount_out * U256::from(98) / U256::from(100);
-
-    Ok(amount_out)
 }

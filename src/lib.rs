@@ -16,6 +16,7 @@ pub mod mempool {
 
 pub mod utils {
     pub mod logging;
+    pub mod tx;
     pub mod type_conversion;
 }
 
@@ -44,6 +45,9 @@ pub mod swap {
         pub mod snapshots;
         pub mod supporting_methods;
         pub mod validation;
+    }
+    pub mod flashbots {
+        pub mod buy_token;
     }
     pub mod token_price;
 }

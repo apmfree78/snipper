@@ -1,7 +1,7 @@
 use crate::data::contracts::CONTRACT;
 use crate::data::token_data::{get_tokens, update_token};
 use crate::data::tokens::Erc20Token;
-use crate::token_tx::mock_tx::get_amount_out_uniswap_v2;
+use crate::utils::tx::{get_amount_out_uniswap_v2, TxSlippage};
 use ethers::providers::{Provider, Ws};
 use ethers::types::{Address, U256};
 use ethers::utils::format_units;
@@ -108,9 +108,14 @@ impl Erc20Token {
         for i in 0..VOLUME_ROUNDS {
             //approve swap router to trade toke
             println!("........................................................");
-            let amount_out =
-                get_amount_out_uniswap_v2(self.address, weth_address, amounts_to_sell[i], client)
-                    .await?;
+            let amount_out = get_amount_out_uniswap_v2(
+                self.address,
+                weth_address,
+                amounts_to_sell[i],
+                TxSlippage::None,
+                client,
+            )
+            .await?;
 
             amounts_out[i] = amount_out;
 
@@ -141,8 +146,14 @@ impl Erc20Token {
         for i in 0..VOLUME_ROUNDS {
             println!("........................................................");
             let amount_in = U256::from(i + 1) * base_amount_in;
-            let amount_out =
-                get_amount_out_uniswap_v2(weth_address, self.address, amount_in, client).await?;
+            let amount_out = get_amount_out_uniswap_v2(
+                weth_address,
+                self.address,
+                amount_in,
+                TxSlippage::None,
+                client,
+            )
+            .await?;
 
             amounts_out[i] = amount_out;
 
