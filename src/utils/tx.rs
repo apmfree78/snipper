@@ -1,7 +1,6 @@
 use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
 use crate::data::contracts::CONTRACT;
 use crate::data::tokens::Erc20Token;
-use crate::utils::type_conversion::u256_to_f64;
 use anyhow::{anyhow, Result};
 use ethers::types::{Address, Block, Bytes, H256, U256};
 use ethers::utils::format_units;
@@ -47,20 +46,16 @@ pub async fn get_amount_out_uniswap_v2(
 
 pub fn get_transaction_cost_in_eth(
     tx: &Eip1559TransactionRequest,
-    gas_cost: u64,
+    gas_cost: U256,
     next_base_fee: U256,
-) -> Result<f64> {
+) -> Result<U256> {
     let gas_price = min(tx.max_fee_per_gas.unwrap_or_default(), next_base_fee);
-    let gas_cost_u256 = U256::from(gas_cost);
 
-    let transaction_cost = gas_cost_u256.checked_mul(gas_price).ok_or_else(|| {
+    let transaction_cost = gas_cost.checked_mul(gas_price).ok_or_else(|| {
         anyhow!("overflow when computing transaction cost (gas_cost * gas_price)")
     })?;
 
-    let wei_to_eth = 10_u64.pow(18) as f64;
-    let transaction_cost = u256_to_f64(transaction_cost).unwrap_or_default();
-    let transaction_cost_eth = transaction_cost / wei_to_eth;
-    Ok(transaction_cost_eth)
+    Ok(transaction_cost)
 }
 
 /// Calculate the next block base fee with minor randomness

@@ -3,6 +3,7 @@ use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
 use crate::data::contracts::CONTRACT;
 use crate::data::gas::update_tx_gas_cost_data;
 use crate::data::tokens::Erc20Token;
+use crate::utils::tx::amount_of_token_to_purchase;
 use crate::utils::type_conversion::convert_transaction_to_typed_transaction;
 use ethers::types::{Transaction, U256};
 use ethers::utils::format_units;
@@ -53,12 +54,9 @@ impl AnvilSimulator {
             .await?;
 
         println!("........................................................");
-        self.get_weth_balance().await?;
-        self.get_weth_balance().await?;
-        let amount_to_buy =
-            std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
-        println!("buying {} WETH of {}", amount_to_buy, token.name);
-        let amount_in = ethers::utils::parse_ether(amount_to_buy)?;
+        self.get_eth_balance().await?;
+        let amount_in = amount_of_token_to_purchase()?;
+        println!("buying {}", token.name);
 
         // calculate amount amount out and gas used
         println!("........................................................");
@@ -217,7 +215,6 @@ impl AnvilSimulator {
                 println!("........................................................");
                 println!("balance AFTER to selling {}", token.name);
                 new_token_balance = self.get_token_balance(&token).await?;
-                self.get_weth_balance().await?;
                 self.get_eth_balance().await?;
                 println!("........................................................");
                 println!("........................................................");
