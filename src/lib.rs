@@ -47,7 +47,9 @@ pub mod swap {
         pub mod validation;
     }
     pub mod flashbots {
-        pub mod buy_token;
+        pub mod flashbot_main;
+        pub mod prepare_tx;
+        pub mod submit_tx;
     }
     pub mod token_price;
 }

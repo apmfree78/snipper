@@ -1,15 +1,20 @@
+use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
 use crate::data::contracts::CONTRACT;
 use crate::data::tokens::Erc20Token;
 use anyhow::{anyhow, Result};
-use ethers::types::{Address, Block, Bytes, H256, U256};
+use ethers::core::k256::ecdsa::SigningKey;
+use ethers::types::{Address, Block, BlockNumber, Bytes, Chain, H256, U256, U64};
 use ethers::utils::format_units;
 use ethers::{
-    providers::{Provider, Ws},
+    providers::{Middleware, Provider, Ws},
+    signers::{LocalWallet, Signer, Wallet},
     types::Eip1559TransactionRequest,
 };
 use rand::Rng;
 use std::cmp::min;
+use std::env;
+use std::str::FromStr;
 use std::sync::Arc;
 
 #[derive(PartialEq, Eq)]
@@ -17,6 +22,42 @@ pub enum TxSlippage {
     OnePercent,
     TwoPercent,
     None,
+}
+
+pub fn get_wallet() -> anyhow::Result<Wallet<SigningKey>> {
+    let private_key = env::var("PRIVATE_KEY").expect("PRIVATE_KEY not found in .env file");
+    let wallet = LocalWallet::from_str(&private_key)?.with_chain_id(Chain::Mainnet);
+    Ok(wallet)
+}
+
+pub async fn get_wallet_token_balance(
+    token_address: Address,
+    wallet: &Wallet<SigningKey>,
+    client: &Arc<Provider<Ws>>,
+) -> anyhow::Result<U256> {
+    let token_contract = ERC20::new(token_address, client.clone());
+    let wallet_address = wallet.address();
+
+    let token_balance = token_contract.balance_of(wallet_address).await?;
+
+    Ok(token_balance)
+}
+
+pub async fn get_current_block(client: &Arc<Provider<Ws>>) -> anyhow::Result<(Block<H256>, U64)> {
+    // get the latest block
+    let block = client
+        .get_block(BlockNumber::Latest)
+        .await?
+        .ok_or_else(|| {
+            anyhow!("Could not retrieve the latest block for next_base_fee calculation")
+        })?;
+
+    // block number
+    let block_number = block
+        .number
+        .ok_or_else(|| anyhow!("missing block number"))?;
+
+    Ok((block, block_number))
 }
 
 pub async fn get_amount_out_uniswap_v2(
@@ -45,13 +86,16 @@ pub async fn get_amount_out_uniswap_v2(
 }
 
 pub fn get_transaction_cost_in_eth(
-    tx: &Eip1559TransactionRequest,
+    txs: &[Eip1559TransactionRequest],
     gas_cost: U256,
     next_base_fee: U256,
 ) -> Result<U256> {
-    let gas_price = min(tx.max_fee_per_gas.unwrap_or_default(), next_base_fee);
+    let total_gas_price = txs
+        .iter()
+        .map(|tx| min(tx.max_fee_per_gas.unwrap_or_default(), next_base_fee))
+        .fold(U256::zero(), |acc, x| acc.saturating_add(x));
 
-    let transaction_cost = gas_cost.checked_mul(gas_price).ok_or_else(|| {
+    let transaction_cost = gas_cost.checked_mul(total_gas_price).ok_or_else(|| {
         anyhow!("overflow when computing transaction cost (gas_cost * gas_price)")
     })?;
 
@@ -123,7 +167,68 @@ pub async fn get_swap_exact_eth_for_tokens_calldata(
             deadline,
         )
         .calldata()
-        .expect("Failed to encode");
+        .expect("Failed to encode swap calldata");
+    Ok(calldata)
+}
+
+/// Build the calldata for liquidate_account(..)
+pub async fn get_swap_exact_tokens_for_eth_calldata(
+    token: &Erc20Token,
+    current_time: u32,
+    tokens_to_sell: U256,
+    client: &Arc<Provider<Ws>>,
+) -> anyhow::Result<Bytes> {
+    let uniswap_v2_router_address: Address = CONTRACT.get_address().uniswap_v2_router.parse()?;
+    let weth_address: Address = CONTRACT.get_address().weth.parse()?;
+    let router = UNISWAP_V2_ROUTER::new(uniswap_v2_router_address, client.clone());
+
+    println!("selling {} WETH of {}", tokens_to_sell, token.name);
+
+    let deadline = U256::from(current_time + 300); // add 50 secs
+
+    let wallet_address =
+        std::env::var("WALLET_ADDRESS").expect("WALLET_ADDRESS is not set in .env");
+    let wallet_address: Address = wallet_address.parse()?;
+
+    // calculate amount amount out and gas used
+    println!("........................................................");
+    let amount_out_min = get_amount_out_uniswap_v2(
+        token.address,
+        weth_address,
+        tokens_to_sell,
+        TxSlippage::TwoPercent,
+        client,
+    )
+    .await?;
+
+    let amount_out_min_readable = format_units(amount_out_min, 18u32)?;
+    println!("calculated amount out min {}", amount_out_min_readable);
+    println!("........................................................");
+    let calldata = router
+        .swap_exact_tokens_for_eth(
+            tokens_to_sell,
+            amount_out_min,
+            vec![token.address, weth_address],
+            wallet_address,
+            deadline,
+        )
+        .calldata()
+        .expect("Failed to encode swap calldata");
+    Ok(calldata)
+}
+
+pub fn get_approval_calldata(
+    token: &Erc20Token,
+    amount_to_approve: U256,
+    client: &Arc<Provider<Ws>>,
+) -> anyhow::Result<Bytes> {
+    let uniswap_v2_router_address: Address = CONTRACT.get_address().uniswap_v2_router.parse()?;
+    let token_contract = ERC20::new(token.address, client.clone());
+
+    let calldata = token_contract
+        .approve(uniswap_v2_router_address, amount_to_approve)
+        .calldata()
+        .expect("Failed to encode approval calldata");
     Ok(calldata)
 }
 
