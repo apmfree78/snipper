@@ -29,6 +29,7 @@ pub struct ContractAddresses {
     pub uniswap_quoter: String,
     pub ws_url: String,
     pub http_url: String,
+    pub alchemy_url: String,
 }
 
 pub struct ContractAddressMap {
@@ -50,6 +51,7 @@ impl ContractAddressMap {
                 link: chains.base.link,
                 ws_url: chains.base.ws_url,
                 http_url: chains.base.http_url,
+                alchemy_url: chains.base.alchemy_url,
             },
         );
         addresses.insert(
@@ -64,6 +66,7 @@ impl ContractAddressMap {
                 link: chains.mainnet.link,
                 ws_url: chains.mainnet.ws_url,
                 http_url: chains.mainnet.http_url,
+                alchemy_url: chains.mainnet.alchemy_url,
             },
         );
         Self { addresses }
@@ -91,6 +94,7 @@ struct ChainContracts {
     link: String,
     ws_url: String,
     http_url: String,
+    alchemy_url: String,
 }
 
 impl Chains {

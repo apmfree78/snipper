@@ -24,20 +24,20 @@ pub fn generate_flashbot_signed_client_with_builders(
 ) -> anyhow::Result<SignerMiddleware<FlashbotsBroadcaster, Wallet<SigningKey>>> {
     // for multiple builder urls
     static BUILDER_URLS: &[&str] = &[
-        "https://builder0x69.io",
-        "https://rpc.beaverbuild.org",
         "https://relay.flashbots.net",
-        "https://rsync-builder.xyz",
-        "https://rpc.titanbuilder.xyz",
-        "https://api.blocknative.com/v1/auction",
-        "https://mev.api.blxrbdn.com",
-        "https://eth-builder.com",
-        "https://builder.gmbit.co/rpc",
-        "https://buildai.net",
-        "https://rpc.payload.de",
-        "https://rpc.lightspeedbuilder.info",
-        "https://rpc.nfactorial.xyz",
-        "https://rpc.lokibuilder.xyz",
+        // "https://builder0x69.io",
+        // "https://rpc.beaverbuild.org",
+        // "https://rsync-builder.xyz",
+        // "https://rpc.titanbuilder.xyz",
+        // "https://api.blocknative.com/v1/auction",
+        // "https://mev.api.blxrbdn.com",
+        // "https://eth-builder.com",
+        // "https://builder.gmbit.co/rpc",
+        // "https://buildai.net",
+        // "https://rpc.payload.de",
+        // "https://rpc.lightspeedbuilder.info",
+        // "https://rpc.nfactorial.xyz",
+        // "https://rpc.lokibuilder.xyz",
     ];
     // this is your ephemeral searcher identity
     let bundle_signer = LocalWallet::new(&mut thread_rng());
@@ -111,23 +111,20 @@ pub async fn simulate_flashbot_tx_and_get_gas_used(
     bundle: &BundleRequest,
     signed_client: &SignerMiddleware<FlashbotsBroadcaster, Wallet<SigningKey>>,
 ) -> anyhow::Result<Option<U256>> {
-    info!("Beginning bundle simulation.....");
+    println!("Beginning bundle simulation.....");
     let simulated_bundle: SimulatedBundle = signed_client.inner().simulate_bundle(&bundle).await?;
-    info!("Simulated bundle: {:?}", simulated_bundle);
+    println!("Simulated bundle: {:?}", simulated_bundle);
 
     // check if simulation is success
     if !is_flashbot_simulation_success(&simulated_bundle) {
-        error!("error simulating single-tx uniswap swap");
+        println!("error simulating single-tx uniswap swap");
         return Ok(None);
     }
-    info!("Single Flashbot transaction simulation succeeded.");
+    println!("Single Flashbot transaction simulation succeeded.");
 
     // get gas used
-    let gas_used = simulated_bundle
-        .transactions
-        .get(0)
-        .ok_or_else(|| anyhow!("No transaction found in simulation result"))?
-        .gas_used;
+    let gas_used = simulated_bundle.gas_used;
+    println!("gas used => {}", gas_used);
 
     Ok(Some(gas_used))
 }
@@ -146,6 +143,8 @@ pub async fn submit_production_flashbot_tx(
             ..tx.clone()
         })
         .collect();
+
+    println!("production txs => {:?}", txs_final);
 
     let mut signatures = Vec::with_capacity(txs_final.len());
 
@@ -168,24 +167,26 @@ pub async fn submit_production_flashbot_tx(
             production_bundle.push_transaction(TypedTransaction::Eip1559(tx).rlp_signed(&sig));
     }
 
+    println!("submitting flashbot tx...");
     let results = signed_client
         .inner()
         .send_bundle(&production_bundle)
         .await?;
 
+    println!("awaiting tx results...");
     // optionally wait for inclusion
     for result in results {
         match result {
             Ok(pending_bundle) => match pending_bundle.await {
                 Ok(bundle_hash) => {
-                    info!("Single-tx backrun with hash {:?} included!", bundle_hash)
+                    println!("tx with hash {:?} included!", bundle_hash)
                 }
                 Err(PendingBundleError::BundleNotIncluded) => {
-                    info!("Single-tx backrun was not included in target block.")
+                    println!("tx was not included in target block.")
                 }
-                Err(e) => info!("An error occurred: {}", e),
+                Err(e) => println!("An error occurred: {}", e),
             },
-            Err(e) => info!("An error occurred: {}", e),
+            Err(e) => println!("An error occurred: {}", e),
         }
     }
     Ok(())

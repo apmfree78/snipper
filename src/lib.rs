@@ -46,6 +46,10 @@ pub mod swap {
         pub mod supporting_methods;
         pub mod validation;
     }
+    pub mod mainnet {
+        pub mod buy_sell;
+        pub mod setup;
+    }
     pub mod flashbots {
         pub mod flashbot_main;
         pub mod prepare_tx;

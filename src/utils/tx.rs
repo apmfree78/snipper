@@ -4,7 +4,7 @@ use crate::data::contracts::CONTRACT;
 use crate::data::tokens::Erc20Token;
 use anyhow::{anyhow, Result};
 use ethers::core::k256::ecdsa::SigningKey;
-use ethers::types::{Address, Block, BlockNumber, Bytes, Chain, H256, U256, U64};
+use ethers::types::{Address, Block, BlockId, BlockNumber, Bytes, Chain, H256, U256, U64};
 use ethers::utils::format_units;
 use ethers::{
     providers::{Middleware, Provider, Ws},
@@ -29,7 +29,15 @@ pub fn get_wallet() -> anyhow::Result<Wallet<SigningKey>> {
     let wallet = LocalWallet::from_str(&private_key)?.with_chain_id(Chain::Mainnet);
     Ok(wallet)
 }
-
+pub async fn get_wallet_nonce(
+    wallet_address: Address,
+    client: &Arc<Provider<Ws>>,
+) -> anyhow::Result<U256> {
+    let nonce = client
+        .get_transaction_count(wallet_address, Some(BlockId::Number(BlockNumber::Latest)))
+        .await?;
+    Ok(nonce)
+}
 pub async fn get_wallet_token_balance(
     token_address: Address,
     wallet: &Wallet<SigningKey>,
@@ -127,6 +135,7 @@ pub fn calculate_next_block_base_fee(block: &Block<H256>) -> Result<U256> {
 /// Build the calldata for liquidate_account(..)
 pub async fn get_swap_exact_eth_for_tokens_calldata(
     token: &Erc20Token,
+    wallet_address: Address,
     current_time: u32,
     client: &Arc<Provider<Ws>>,
 ) -> anyhow::Result<Bytes> {
@@ -140,10 +149,6 @@ pub async fn get_swap_exact_eth_for_tokens_calldata(
     let amount_in = ethers::utils::parse_ether(amount_to_buy.clone())?;
 
     let deadline = U256::from(current_time + 50); // add 50 secs
-
-    let wallet_address =
-        std::env::var("WALLET_ADDRESS").expect("WALLET_ADDRESS is not set in .env");
-    let wallet_address: Address = wallet_address.parse()?;
 
     // calculate amount amount out and gas used
     println!("........................................................");
@@ -174,8 +179,9 @@ pub async fn get_swap_exact_eth_for_tokens_calldata(
 /// Build the calldata for liquidate_account(..)
 pub async fn get_swap_exact_tokens_for_eth_calldata(
     token: &Erc20Token,
-    current_time: u32,
+    wallet_address: Address,
     tokens_to_sell: U256,
+    current_time: u32,
     client: &Arc<Provider<Ws>>,
 ) -> anyhow::Result<Bytes> {
     let uniswap_v2_router_address: Address = CONTRACT.get_address().uniswap_v2_router.parse()?;
@@ -185,10 +191,6 @@ pub async fn get_swap_exact_tokens_for_eth_calldata(
     println!("selling {} WETH of {}", tokens_to_sell, token.name);
 
     let deadline = U256::from(current_time + 300); // add 50 secs
-
-    let wallet_address =
-        std::env::var("WALLET_ADDRESS").expect("WALLET_ADDRESS is not set in .env");
-    let wallet_address: Address = wallet_address.parse()?;
 
     // calculate amount amount out and gas used
     println!("........................................................");
