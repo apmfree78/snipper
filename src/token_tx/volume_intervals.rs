@@ -1,6 +1,6 @@
 use crate::data::contracts::CONTRACT;
 use crate::data::token_data::{get_tokens, update_token};
-use crate::data::tokens::Erc20Token;
+use crate::data::tokens::{Erc20Token, TokenState};
 use crate::utils::tx::{get_amount_out_uniswap_v2, TxSlippage};
 use ethers::providers::{Provider, Ws};
 use ethers::types::{Address, U256};
@@ -23,7 +23,7 @@ pub async fn mock_buy_eligible_tokens_at_volume_interval(
 
     println!("finding tokens to buy");
     for token in tokens.values() {
-        if !token.done_buying && token.is_tradable && token.is_validated {
+        if token.is_tradable && token.state == TokenState::Validated {
             token
                 .mock_purchase_at_volume_intervals(client, timestamp)
                 .await?;
@@ -46,7 +46,7 @@ pub async fn mock_sell_eligible_tokens_at_volume_interval(
     for token in tokens.values() {
         let sell_time = time_to_sell + token.time_of_purchase;
 
-        if token.done_buying && current_time >= sell_time {
+        if token.state == TokenState::Bought && current_time >= sell_time {
             token.mock_sell_at_volume_intervals(client).await?;
         }
     }
@@ -67,7 +67,7 @@ impl Erc20Token {
             is_tradable: true,
             amounts_bought: token_balances,
             time_of_purchase: current_time,
-            done_buying: true,
+            state: TokenState::Bought,
             ..self.clone()
         };
 

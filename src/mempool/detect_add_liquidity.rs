@@ -7,7 +7,10 @@ use ethers::{prelude::*, utils::keccak256};
 use log::{error, info, warn};
 use std::sync::Arc;
 
-use crate::{data::token_data::get_token, token_tx::validate::validate_token_from_mempool_and_buy};
+use crate::{
+    data::{token_data::get_token, tokens::TokenState},
+    token_tx::validate::validate_token_from_mempool_and_buy,
+};
 
 use super::decode_add_liquidity::decode_add_liquidity_eth_fn;
 
@@ -45,7 +48,7 @@ pub async fn detect_token_add_liquidity_and_validate(
                     match result {
                         Some(token) => {
                             // validate token
-                            if !token.is_validated && !token.is_validating {
+                            if token.state == TokenState::NotValidated {
                                 let spawn_token = token.clone();
                                 let spawn_tx = tx.clone();
                                 let spawn_client = Arc::clone(client);

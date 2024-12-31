@@ -20,9 +20,9 @@ use snipper::abi::uniswap_pair::UNISWAP_PAIR;
 use snipper::data::contracts::CONTRACT;
 use snipper::data::token_data::{
     check_all_tokens_are_tradable, display_token_time_stats, display_token_volume_stats,
-    get_and_save_erc20_by_token_address, get_number_of_tokens, is_token_tradable,
-    set_token_to_validated,
+    get_and_save_erc20_by_token_address, get_number_of_tokens, is_token_tradable, set_token_to_,
 };
+use snipper::data::tokens::TokenState;
 use snipper::events::PairCreatedEvent;
 use snipper::swap::anvil::simlator::AnvilSimulator;
 use snipper::token_tx::anvil::{buy_eligible_tokens_on_anvil, sell_eligible_tokens_on_anvil};
@@ -87,7 +87,7 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
     }
 
     // for testing purposes assure it svalided
-    set_token_to_validated(&token).await;
+    set_token_to_(TokenState::Validated, &token).await;
 
     Ok(TestSetup {
         client,

@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use super::contracts::CONTRACT;
-use super::tokens::Erc20Token;
+use super::tokens::{Erc20Token, TokenState};
 
 static TOKEN_HASH: Lazy<Arc<Mutex<HashMap<String, Erc20Token>>>> =
     Lazy::new(|| Arc::new(Mutex::new(HashMap::<String, Erc20Token>::new())));
@@ -144,15 +144,15 @@ pub async fn validate_tradable_tokens() -> anyhow::Result<()> {
         // SEPARATE THREAD FOR EACH TOKEN VALIDATION CHECK
         let handle = tokio::spawn(async move {
             let result: anyhow::Result<()> = async move {
-                if token.is_tradable && !token.is_validated && !token.is_validating {
-                    set_token_to_validating(&token).await;
+                if token.is_tradable && token.state == TokenState::NotValidated {
+                    set_token_to_(TokenState::Validating, &token).await;
 
                     let token_status =
                         validate_token_with_simulated_buy_sell(&token, TokenLiquidity::HasEnough)
                             .await?;
                     if token_status == TokenStatus::Legit {
                         info!("{} is validated!", token.name);
-                        set_token_to_validated(&token).await;
+                        set_token_to_(TokenState::Validating, &token).await;
                     } else {
                         let scam_token = remove_token(token.address).await;
                         let scam_token = scam_token.unwrap();
@@ -230,52 +230,13 @@ pub async fn update_token_gas_cost(token_address: Address, gas_cost: U256) {
     }
 }
 
-pub async fn set_token_to_validated(token: &Erc20Token) {
+pub async fn set_token_to_(state: TokenState, token: &Erc20Token) {
     let token_data_hash = Arc::clone(&TOKEN_HASH);
     let mut tokens = token_data_hash.lock().await;
     let token_address_string = token.lowercase_address();
 
     match tokens.get_mut(&token_address_string) {
-        Some(token) => {
-            token.is_validating = false;
-            token.is_validated = true;
-        }
-        None => {
-            error!(
-                "{} is not in token hash, cannot update.",
-                token_address_string
-            );
-        }
-    }
-}
-
-pub async fn set_token_to_sold(token: &Erc20Token) {
-    let token_data_hash = Arc::clone(&TOKEN_HASH);
-    let mut tokens = token_data_hash.lock().await;
-    let token_address_string = token.lowercase_address();
-
-    match tokens.get_mut(&token_address_string) {
-        Some(token) => {
-            token.is_sold = true;
-        }
-        None => {
-            error!(
-                "{} is not in token hash, cannot update.",
-                token_address_string
-            );
-        }
-    }
-}
-
-pub async fn set_token_to_validating(token: &Erc20Token) {
-    let token_data_hash = Arc::clone(&TOKEN_HASH);
-    let mut tokens = token_data_hash.lock().await;
-    let token_address_string = token.lowercase_address();
-
-    match tokens.get_mut(&token_address_string) {
-        Some(token) => {
-            token.is_validating = true;
-        }
+        Some(token) => token.state = state,
         None => {
             error!(
                 "{} is not in token hash, cannot update.",

@@ -1,7 +1,6 @@
-use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
 use crate::data::contracts::CONTRACT;
-use crate::data::token_data::{get_tokens, set_token_to_sold, update_token};
-use crate::data::tokens::Erc20Token;
+use crate::data::token_data::{get_tokens, set_token_to_, update_token};
+use crate::data::tokens::{Erc20Token, TokenState};
 use crate::utils::tx::{get_amount_out_uniswap_v2, TxSlippage};
 use ethers::types::Address;
 use ethers::utils::format_units;
@@ -31,7 +30,7 @@ impl Erc20Token {
                 is_tradable: true,
                 amount_bought: token_balance,
                 time_of_purchase: current_time,
-                done_buying: true,
+                state: TokenState::Bought,
                 ..self.clone()
             };
 
@@ -53,7 +52,7 @@ impl Erc20Token {
             update_token(&updated_token).await;
         }
 
-        set_token_to_sold(self).await;
+        set_token_to_(TokenState::Sold, self).await;
         info!("token {} sold!", self.name);
 
         Ok(())
@@ -125,7 +124,7 @@ pub async fn mock_buy_eligible_tokens(
 
     println!("finding tokens to buy");
     for token in tokens.values() {
-        if !token.done_buying && token.is_tradable && token.is_validated {
+        if token.is_tradable && token.state == TokenState::Validated {
             token.mock_purchase(client, timestamp).await?;
         }
     }
@@ -146,7 +145,7 @@ pub async fn mock_sell_eligible_tokens(
     for token in tokens.values() {
         let sell_time = time_to_sell + token.time_of_purchase;
 
-        if token.done_buying && current_time >= sell_time {
+        if token.state == TokenState::Bought && current_time >= sell_time {
             token.mock_sell(client).await?;
         }
     }
@@ -154,3 +153,4 @@ pub async fn mock_sell_eligible_tokens(
     println!("done with selling...");
     Ok(())
 }
+

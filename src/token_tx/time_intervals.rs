@@ -1,5 +1,5 @@
-use crate::data::token_data::{get_tokens, set_token_to_sold, update_token};
-use crate::data::tokens::Erc20Token;
+use crate::data::token_data::{get_tokens, set_token_to_, update_token};
+use crate::data::tokens::{Erc20Token, TokenState};
 use crate::utils::type_conversion::get_time_interval;
 use ethers::{
     core::types::U256,
@@ -22,7 +22,7 @@ pub async fn mock_sell_eligible_tokens_at_time_intervals(
 
     println!("finding tokens to sell");
     for token in tokens.values() {
-        if token.done_buying && !token.is_sold {
+        if token.state == TokenState::Bought {
             print!("mock selling now...");
             token
                 .mock_sell_at_time_intervals(client, current_time)
@@ -64,7 +64,7 @@ impl Erc20Token {
             }
             None => {
                 println!("interval returned None");
-                set_token_to_sold(self).await;
+                set_token_to_(TokenState::Sold, self).await;
             }
         }
 

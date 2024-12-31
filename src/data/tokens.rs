@@ -4,6 +4,18 @@ use crate::token_tx::time_intervals::TIME_ROUNDS;
 use crate::token_tx::volume_intervals::VOLUME_ROUNDS;
 use crate::utils::type_conversion::address_to_string;
 
+#[derive(Clone, Default, Debug, PartialEq, Eq)]
+pub enum TokenState {
+    #[default]
+    NotValidated,
+    Validating,
+    Validated,
+    Buying,
+    Bought,
+    Selling,
+    Sold,
+}
+
 #[derive(Clone, Default, Debug)]
 pub struct Erc20Token {
     // basic token data
@@ -17,10 +29,7 @@ pub struct Erc20Token {
 
     // token state
     pub is_tradable: bool,
-    pub is_validated: bool,
-    pub is_validating: bool,
-    pub is_sold: bool,
-    pub done_buying: bool,
+    pub state: TokenState,
     pub amount_bought: U256,
     pub eth_recieved_at_sale: U256,
     pub time_of_purchase: u32,

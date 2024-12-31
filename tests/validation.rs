@@ -70,8 +70,10 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetupValidation> {
 
 #[tokio::test]
 async fn test_successful_token_validation() -> anyhow::Result<()> {
-    let token_address: Address = "0xc5a07C9594C4d5138AA00feBbDEC048B6f0ad7D6".parse()?;
+    let _token_address: Address = "0xc5a07C9594C4d5138AA00feBbDEC048B6f0ad7D6".parse()?;
     // let token_address: Address = "0x9d265f238634e6436360c96bd8940e3d77fe3630".parse()?;
+    const AIXBT: &str = "0x4f9fd6be4a90f2620860d680c0d4d5fb53d1a825";
+    let token_address: Address = AIXBT.parse()?;
 
     let setup = setup(token_address).await?;
 

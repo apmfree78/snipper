@@ -1,8 +1,9 @@
 use crate::data::token_data::get_and_save_erc20_by_token_address;
 use crate::data::token_data::remove_token;
+use crate::data::token_data::set_token_to_;
 use crate::data::token_data::set_token_to_tradable;
-use crate::data::token_data::set_token_to_validated;
 use crate::data::tokens::Erc20Token;
+use crate::data::tokens::TokenState;
 use crate::events::PairCreatedEvent;
 use crate::swap::anvil::validation::TokenLiquidity;
 use crate::swap::anvil::validation::{validate_token_with_simulated_buy_sell, TokenStatus};
@@ -36,7 +37,7 @@ pub async fn add_validate_buy_new_token(
                 validate_token_with_simulated_buy_sell(&token, TokenLiquidity::HasEnough).await?;
 
             if token_status == TokenStatus::Legit {
-                set_token_to_validated(&token).await;
+                set_token_to_(TokenState::Validated, &token).await;
                 token.mock_purchase(client, current_time).await?;
             }
         } else {
@@ -61,7 +62,7 @@ pub async fn validate_token_from_mempool_and_buy(
 
     if token_status == TokenStatus::Legit {
         info!("{} token validated from mempool!", token.name);
-        set_token_to_validated(token).await;
+        set_token_to_(TokenState::Validated, token).await;
 
         // check if token is tradable
         let total_supply = get_token_weth_total_supply(&token, client).await?;

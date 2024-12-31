@@ -1,6 +1,6 @@
 use crate::data::token_data::remove_token;
 use crate::data::token_data::{get_tokens, update_token};
-use crate::data::tokens::Erc20Token;
+use crate::data::tokens::{Erc20Token, TokenState};
 use crate::swap::anvil::simlator::AnvilSimulator;
 use ethers::core::types::U256;
 use futures::lock::Mutex;
@@ -25,7 +25,7 @@ pub async fn buy_eligible_tokens_on_anvil(
 
     println!("finding tokens to buy");
     for token in tokens.values() {
-        if !token.done_buying && token.is_tradable && token.is_validated {
+        if token.is_tradable && token.state == TokenState::Validated {
             purchase_token_on_anvil(token, anvil, timestamp).await?;
         }
     }
@@ -46,7 +46,7 @@ pub async fn sell_eligible_tokens_on_anvil(
     for token in tokens.values() {
         let sell_time = time_to_sell + token.time_of_purchase;
 
-        if token.done_buying && current_time >= sell_time {
+        if token.state == TokenState::Bought && current_time >= sell_time {
             sell_token_on_anvil(token, anvil).await?;
         }
     }
@@ -68,7 +68,7 @@ pub async fn purchase_token_on_anvil(
             is_tradable: true,
             amount_bought: token_balance,
             time_of_purchase: current_time,
-            done_buying: true,
+            state: TokenState::Bought,
             ..token.clone()
         };
 
