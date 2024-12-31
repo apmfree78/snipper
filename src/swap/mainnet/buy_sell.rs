@@ -1,150 +1,143 @@
-use crate::abi::erc20::ERC20;
-use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
-use crate::data::contracts::CONTRACT;
 use crate::data::gas::update_tx_gas_cost_data;
 use crate::data::tokens::Erc20Token;
-use crate::utils::tx::{amount_of_token_to_purchase, get_amount_out_uniswap_v2, TxSlippage};
-use crate::utils::type_conversion::convert_transaction_to_typed_transaction;
-use ethers::types::{Transaction, U256};
-use ethers::utils::format_units;
-use ethers::{providers::Middleware, types::Address};
-use log::{error, info};
+use crate::swap::prepare_tx::{prepare_token_approval_tx, prepare_uniswap_swap_tx};
+use crate::utils::tx::{
+    amount_of_token_to_purchase, get_current_block, get_swap_exact_eth_for_tokens_calldata,
+    get_swap_exact_tokens_for_eth_calldata, get_wallet_nonce,
+};
+use ethers::providers::Middleware;
+use ethers::signers::Signer;
+use ethers::types::transaction::eip2718::TypedTransaction;
+use ethers::types::U256;
+use log::{error, info, warn};
 
-use super::setup::MainnetWallet;
+use super::setup::TxWallet;
 
-impl MainnetWallet {
-    pub async fn simulate_buying_token_for_weth(&self, token: &Erc20Token) -> anyhow::Result<U256> {
-        let router_address: Address = CONTRACT.get_address().uniswap_v2_router.parse()?;
-        let weth_address: Address = CONTRACT.get_address().weth.parse()?;
-
+impl TxWallet {
+    pub async fn buy_token_for_eth(&self, token: &Erc20Token) -> anyhow::Result<U256> {
+        let (block, _) = get_current_block(&self.client).await?;
         let mut new_token_balance = U256::from(0);
-        let router = UNISWAP_V2_ROUTER::new(router_address, self.client.clone());
 
         println!("........................................................");
         self.get_wallet_eth_balance().await?;
-        let amount_in = amount_of_token_to_purchase()?;
         println!("buying {}", token.name);
 
-        // calculate amount amount out and gas used
-        println!("........................................................");
-        let amount_out_min = get_amount_out_uniswap_v2(
-            weth_address,
-            token.address,
-            amount_in,
-            TxSlippage::TwoPercent,
+        println!("getting calldata...");
+        // FOR swap exact eth ONLY
+        // encode the call data
+        let calldata = get_swap_exact_eth_for_tokens_calldata(
+            &token,
+            self.wallet.address(),
+            block.timestamp.as_u32(),
             &self.client,
         )
         .await?;
 
-        let amount_out_min_readable = format_units(amount_out_min, 18u32)?;
-        println!("calculated amount out min {}", amount_out_min_readable);
-        println!("........................................................");
+        println!("getting amount of token to purchase...");
+        // FOR swap exact eth ONLY
+        let eth_to_send_with_tx = amount_of_token_to_purchase()?;
 
-        let deadline = self.get_current_timestamp().await?;
-        let deadline = deadline + 300; //  add 5 mins
+        let nonce = get_wallet_nonce(self.wallet.address(), &self.client).await?;
+        println!("nonce for purchase tx => {}", nonce);
 
-        // Call Uniswap V2 swapExactTokensForTokens
-        // Note: Ensure token_in has been approved for the router if it's not WETH
-        // Already done in prepare_account or before this call as needed
-        let tx = router
-            .swap_exact_eth_for_tokens(
-                amount_out_min,
-                vec![weth_address, token.address],
-                self.sender,
-                U256::from(deadline),
-            )
-            .value(amount_in)
-            .gas(U256::from(400_000));
+        println!("prepaparing tranasaction...");
+        let (uniswap_swap_tx, _) =
+            prepare_uniswap_swap_tx(calldata, eth_to_send_with_tx, &block, nonce)?;
 
         // sent transaction
-        info!("sending tx");
-        let pending_tx_result = tx.send().await;
+        println!("sending swap transcation");
+        let pending_tx_result = self
+            .signed_client
+            .send_transaction(TypedTransaction::Eip1559(uniswap_swap_tx), None)
+            .await;
 
         match pending_tx_result {
             Ok(pending_tx) => {
                 // wait for transaction receipt
-                info!("awaiting tx receipt");
-                let receipt = pending_tx.await?.unwrap();
+                println!("awaiting tx receipt");
+                match pending_tx.await? {
+                    Some(receipt) => {
+                        // gas update
+                        println!("updating gas cost");
+                        update_tx_gas_cost_data(&receipt, &token).await?;
 
-                // gas update
-                println!("updating gas cost");
-                update_tx_gas_cost_data(&receipt, &token).await?;
+                        let _ = receipt.transaction_hash;
 
-                let tx_hash = receipt.transaction_hash;
-
-                // self.trace_transaction(tx_hash).await?;
+                        // self.trace_transaction(tx_hash).await?;
+                    }
+                    None => warn!("no reciept for transaction"),
+                };
 
                 println!("........................................................");
-                println!("balance after buying {}...", token.name);
                 new_token_balance = self.get_wallet_token_balance(token.address).await?;
+                println!(
+                    "{} balance after buying {}...",
+                    new_token_balance, token.name
+                );
                 self.get_wallet_eth_balance().await?;
                 println!("........................................................");
             }
             Err(tx_err) => {
                 // Sending the transaction failed
                 error!("Failed to send transaction: {:?}", tx_err);
+                println!("Failed to send transaction: {:?}", tx_err);
             }
         }
 
         Ok(new_token_balance)
     }
 
-    pub async fn simulate_selling_token_for_weth(
-        &self,
-        token: &Erc20Token,
-    ) -> anyhow::Result<U256> {
-        let router_address: Address = CONTRACT.get_address().uniswap_v2_router.parse()?;
-        let weth_address: Address = CONTRACT.get_address().weth.parse()?;
-        let token_contract = ERC20::new(token.address, self.client.clone());
-
+    pub async fn sell_token_for_eth(&self, token: &Erc20Token) -> anyhow::Result<U256> {
         let mut new_token_balance = U256::from(0);
-        let router = UNISWAP_V2_ROUTER::new(router_address, self.client.clone());
+        let (block, _) = get_current_block(&self.client).await?;
 
         println!("........................................................");
         self.get_wallet_eth_balance().await?;
         let amount_to_sell = self.get_wallet_token_balance(token.address).await?;
 
-        //approve swap router to trade token
-        token_contract
-            .approve(router_address, amount_to_sell)
-            .gas(U256::from(150_000))
-            .send()
+        //  Get nonce
+        let mut nonce = get_wallet_nonce(self.wallet.address(), &self.client).await?;
+        println!("nonce for approval tx => {}", nonce);
+
+        println!("preparing approval tx...");
+        let approval_tx =
+            prepare_token_approval_tx(&token, amount_to_sell, &block, nonce, &self.client)?;
+
+        info!("sending approval transcation");
+        let pending_approval = self
+            .signed_client
+            .send_transaction(approval_tx, None)
             .await?;
 
-        println!("........................................................");
-        let amount_out_min = get_amount_out_uniswap_v2(
-            token.address,
-            weth_address,
+        let receipt = pending_approval.await?;
+        match receipt {
+            Some(_) => println!("approval successful!"),
+            None => panic!("could not approve token"),
+        }
+
+        println!("iterate nonce for swap tx...");
+        nonce += U256::from(1);
+        println!("nonce for swap tx => {}", nonce);
+
+        let token_swap_calldata = get_swap_exact_tokens_for_eth_calldata(
+            &token,
+            self.wallet.address(),
             amount_to_sell,
-            TxSlippage::TwoPercent,
+            block.timestamp.as_u32(),
             &self.client,
         )
         .await?;
 
-        let amount_out_min_readable = format_units(amount_out_min, "ether")?;
-        println!("calculated amount out min {}", amount_out_min_readable);
-        println!("........................................................");
-
-        let deadline = self.get_current_timestamp().await?;
-        let deadline = deadline + 300; //  add 5 mins
-
-        // Call Uniswap V2 swapExactTokensForTokens
-        // Note: Ensure token_in has been approved for the router if it's not WETH
-        // Already done in prepare_account or before this call as needed
-        let tx = router.swap_exact_tokens_for_eth(
-            amount_to_sell,
-            amount_out_min,
-            vec![token.address, weth_address],
-            self.sender,
-            U256::from(deadline),
-        );
-
-        info!("set gas limit for transaction");
-        let tx = tx.gas(U256::from(400_000));
+        let (uniswap_swap_tx, _) =
+            prepare_uniswap_swap_tx(token_swap_calldata, U256::zero(), &block, nonce)?;
 
         // sent transaction
         info!("sending swap transcation");
-        let pending_tx_result = tx.send().await;
+        let pending_tx_result = self
+            .signed_client
+            .send_transaction(TypedTransaction::Eip1559(uniswap_swap_tx), None)
+            .await;
+        // let pending_tx_result = tx.send().await;
 
         match pending_tx_result {
             Ok(pending_tx) => {
@@ -155,17 +148,20 @@ impl MainnetWallet {
                 // gas update
                 update_tx_gas_cost_data(&receipt, &token).await?;
 
-                let tx_hash = receipt.transaction_hash;
+                let _ = receipt.transaction_hash;
 
                 // self.trace_transaction(tx_hash).await?;
 
                 println!("........................................................");
-                println!("balance AFTER to selling {}", token.name);
                 new_token_balance = self.get_wallet_token_balance(token.address).await?;
+                println!(
+                    "{} balance AFTER to selling {}",
+                    token.name, new_token_balance
+                );
                 self.get_wallet_eth_balance().await?;
                 println!("........................................................");
                 println!("........................................................");
-                self.get_current_profit_loss().await?;
+                // self.get_current_profit_loss().await?;
                 println!("........................................................");
                 println!("........................................................");
             }

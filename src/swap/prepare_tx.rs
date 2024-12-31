@@ -1,17 +1,12 @@
-use crate::data::contracts::CONTRACT;
+use crate::data::contracts::{CHAIN, CONTRACT};
 use crate::data::tokens::Erc20Token;
 use crate::utils::tx::{calculate_next_block_base_fee, get_approval_calldata};
-use ethers::core::k256::ecdsa::SigningKey;
-use ethers::signers::Wallet;
-use ethers::types::{Address, Block, BlockId, BlockNumber, H256, U256};
-use ethers::utils::format_units;
+use ethers::types::{Address, Block, H256, U256};
 use ethers::{
     core::types::Chain,
-    providers::{Middleware, Provider, Ws},
-    signers::Signer,
+    providers::{Provider, Ws},
     types::{Eip1559TransactionRequest, NameOrAddress},
 };
-use log::info;
 use std::sync::Arc;
 
 pub fn prepare_uniswap_swap_tx(
@@ -22,17 +17,13 @@ pub fn prepare_uniswap_swap_tx(
 ) -> anyhow::Result<(Eip1559TransactionRequest, U256)> {
     let uniswap_v2_router_address: Address = CONTRACT.get_address().uniswap_v2_router.parse()?;
 
-    // compute next_base_fee
-    let next_base_fee = calculate_next_block_base_fee(&block)?;
+    let (adjusted_max_fee, max_priority_fee) = get_gas_and_priority_fees(block)?;
 
-    // add small buffer
-    let buffer = next_base_fee / 20; // 5% buffer
-    let adjusted_max_fee = next_base_fee + buffer;
-
+    println!("preparing tx for {}", CHAIN);
     // build the initial EIP-1559 transaction (no priority fee yet)
     let uniswap_swap_tx = Eip1559TransactionRequest {
-        chain_id: Some(Chain::Mainnet.into()),
-        max_priority_fee_per_gas: Some(U256::zero()), // initially zero, we’ll refine after simulation
+        chain_id: Some(CHAIN.into()),
+        max_priority_fee_per_gas: Some(max_priority_fee), // initially zero, we’ll refine after simulation
         max_fee_per_gas: Some(adjusted_max_fee),
         gas: Some(U256::from(500_000u64)),
         to: Some(NameOrAddress::Address(uniswap_v2_router_address)),
@@ -57,17 +48,12 @@ pub fn prepare_token_approval_tx(
     // 1) Encode approval data
     let calldata = get_approval_calldata(token, amount_to_approve, client)?;
 
-    // 2) Grab next_base_fee (reuse your existing function)
-    let next_base_fee = calculate_next_block_base_fee(block)?;
-
-    // 3) Add small buffer to max fee
-    let buffer = next_base_fee / 20;
-    let adjusted_max_fee = next_base_fee + buffer;
+    let (adjusted_max_fee, max_priority_fee) = get_gas_and_priority_fees(block)?;
 
     // 5) Build the EIP-1559 transaction
     let approval_tx = Eip1559TransactionRequest {
-        chain_id: Some(Chain::Mainnet.into()),
-        max_priority_fee_per_gas: Some(U256::zero()),
+        chain_id: Some(CHAIN.into()),
+        max_priority_fee_per_gas: Some(max_priority_fee),
         max_fee_per_gas: Some(adjusted_max_fee),
         gas: Some(U256::from(150_000u64)), // likely less for simple approve
         to: Some(NameOrAddress::Address(token.address)),
@@ -78,4 +64,22 @@ pub fn prepare_token_approval_tx(
     };
 
     Ok(approval_tx)
+}
+
+fn get_gas_and_priority_fees(block: &Block<H256>) -> anyhow::Result<(U256, U256)> {
+    if CHAIN == Chain::Base {
+        let point_one_gwei_in_wei = U256::from(100_000_000u64);
+        let priority_fee = point_one_gwei_in_wei;
+        let max_fee = point_one_gwei_in_wei * U256::from(15) / U256::from(10);
+        Ok((max_fee, priority_fee))
+    } else {
+        // 2) Grab next_base_fee (reuse your existing function)
+        let next_base_fee = calculate_next_block_base_fee(block)?;
+
+        // 3) Add small buffer to max fee
+        let buffer = next_base_fee / 20;
+        let max_fee = next_base_fee + buffer;
+        let priority_fee = max_fee / 10;
+        Ok((max_fee, priority_fee))
+    }
 }

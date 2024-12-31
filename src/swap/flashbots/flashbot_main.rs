@@ -1,9 +1,9 @@
 use crate::data::tokens::Erc20Token;
-use crate::swap::flashbots::prepare_tx::prepare_uniswap_swap_tx;
 use crate::swap::flashbots::submit_tx::{
     create_flashbot_bundle_with_tx, generate_flashbot_signed_client_with_builders,
     simulate_flashbot_tx_and_get_gas_used, submit_production_flashbot_tx,
 };
+use crate::swap::prepare_tx::prepare_uniswap_swap_tx;
 use crate::utils::tx::{
     amount_of_token_to_purchase, get_current_block, get_swap_exact_eth_for_tokens_calldata,
     get_swap_exact_tokens_for_eth_calldata, get_transaction_cost_in_eth, get_wallet,
@@ -17,7 +17,7 @@ use ethers::types::{Eip1559TransactionRequest, U256};
 use ethers::utils::format_units;
 use std::sync::Arc;
 
-use super::prepare_tx::prepare_token_approval_tx;
+use crate::swap::prepare_tx::prepare_token_approval_tx;
 
 #[derive(PartialEq, Eq)]
 pub enum FlashbotsMode {

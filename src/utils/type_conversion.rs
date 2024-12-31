@@ -141,7 +141,7 @@ pub fn f64_to_u256(value: f64) -> Result<U256> {
     Ok(U256::from(integer_value))
 }
 
-pub fn u256_to_f64(value: U256) -> Option<f64> {
+pub fn u257_to_f64(value: U256) -> Option<f64> {
     // Convert U256 to u128 safely, if possible (U256 might be larger than u128 can handle)
     if let Ok(val) = value.try_into() {
         let val_u128: u128 = val;

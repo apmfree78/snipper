@@ -52,8 +52,8 @@ pub mod swap {
     }
     pub mod flashbots {
         pub mod flashbot_main;
-        pub mod prepare_tx;
         pub mod submit_tx;
     }
+    pub mod prepare_tx;
     pub mod token_price;
 }

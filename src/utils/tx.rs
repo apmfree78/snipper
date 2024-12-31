@@ -1,11 +1,11 @@
 use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
-use crate::data::contracts::CONTRACT;
+use crate::data::contracts::{CHAIN, CONTRACT};
 use crate::data::tokens::Erc20Token;
 use anyhow::{anyhow, Result};
 use ethers::core::k256::ecdsa::SigningKey;
 use ethers::types::{Address, Block, BlockId, BlockNumber, Bytes, Chain, H256, U256, U64};
-use ethers::utils::format_units;
+use ethers::utils::{format_units, parse_units};
 use ethers::{
     providers::{Middleware, Provider, Ws},
     signers::{LocalWallet, Signer, Wallet},
@@ -26,7 +26,8 @@ pub enum TxSlippage {
 
 pub fn get_wallet() -> anyhow::Result<Wallet<SigningKey>> {
     let private_key = env::var("PRIVATE_KEY").expect("PRIVATE_KEY not found in .env file");
-    let wallet = LocalWallet::from_str(&private_key)?.with_chain_id(Chain::Mainnet);
+
+    let wallet = LocalWallet::from_str(&private_key)?.with_chain_id(CHAIN);
     Ok(wallet)
 }
 pub async fn get_wallet_nonce(
@@ -143,10 +144,7 @@ pub async fn get_swap_exact_eth_for_tokens_calldata(
     let weth_address: Address = CONTRACT.get_address().weth.parse()?;
     let router = UNISWAP_V2_ROUTER::new(uniswap_v2_router_address, client.clone());
 
-    let amount_to_buy =
-        std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
-    println!("buying {} WETH of {}", amount_to_buy, token.name);
-    let amount_in = ethers::utils::parse_ether(amount_to_buy.clone())?;
+    let amount_to_buy = amount_of_token_to_purchase()?;
 
     let deadline = U256::from(current_time + 50); // add 50 secs
 
@@ -155,7 +153,7 @@ pub async fn get_swap_exact_eth_for_tokens_calldata(
     let amount_out_min = get_amount_out_uniswap_v2(
         weth_address,
         token.address,
-        amount_in,
+        amount_to_buy,
         TxSlippage::TwoPercent,
         client,
     )
@@ -237,6 +235,8 @@ pub fn get_approval_calldata(
 pub fn amount_of_token_to_purchase() -> anyhow::Result<U256> {
     let amount_to_buy =
         std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
-    let amount_in = ethers::utils::parse_ether(amount_to_buy.clone())?;
+    let amount_in = ethers::utils::parse_ether(amount_to_buy)?;
+    let purchase_amount = format_units(amount_in, "ether")?;
+    println!("buying {} of token", purchase_amount);
     Ok(amount_in)
 }

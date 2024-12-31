@@ -1,7 +1,10 @@
 use crate::{
     abi::erc20::ERC20,
     data::contracts::{CHAIN, CONTRACT},
-    utils::{tx::get_wallet, type_conversion::u256_to_f64_with_decimals},
+    utils::{
+        tx::{calculate_next_block_base_fee, get_current_block, get_wallet},
+        type_conversion::u256_to_f64_with_decimals,
+    },
 };
 use anyhow::Result;
 use ethers::{
@@ -14,7 +17,7 @@ use ethers::{
 };
 use std::sync::Arc;
 
-pub struct MainnetWallet {
+pub struct TxWallet {
     pub signed_client: Arc<SignerMiddleware<Provider<Ws>, Wallet<SigningKey>>>,
     pub client: Arc<Provider<Ws>>,
     pub wallet: Wallet<SigningKey>,
@@ -22,10 +25,12 @@ pub struct MainnetWallet {
     pub starting_eth_balance: U256,
 }
 
-impl MainnetWallet {
+impl TxWallet {
     pub async fn new() -> Result<Self> {
         // setup websocket connect to eth node
-        let ws_url = CONTRACT.get_address().ws_url.clone();
+        // let ws_url = CONTRACT.get_address().ws_url.clone();
+        // TODO - switch to ws_url once eth node up
+        let ws_url = CONTRACT.get_address().alchemy_url.clone();
         let provider = Provider::<Ws>::connect(ws_url.clone()).await?;
         let client = Arc::new(provider.clone());
 
@@ -87,6 +92,7 @@ impl MainnetWallet {
         Ok(current_timestamp)
     }
 
+    // TODO - FIX -> ether balance should be saved in global state
     pub async fn get_current_profit_loss(&self) -> anyhow::Result<()> {
         let eth_balance = self.client.get_balance(self.sender, None).await?;
         let profit = eth_balance - self.starting_eth_balance;
@@ -95,5 +101,16 @@ impl MainnetWallet {
         println!("CURRENT PROFIT IS {}", profit);
 
         Ok(())
+    }
+
+    pub async fn get_gas_and_priority_fee(&self) -> anyhow::Result<(U256, U256)> {
+        let (block, _) = get_current_block(&self.client).await?;
+
+        let next_base_fee = calculate_next_block_base_fee(&block)?;
+
+        let buffer = next_base_fee / 20; // 5% buffer
+        let adjusted_max_fee = next_base_fee + buffer;
+        let prority_max_fee = adjusted_max_fee / 10; // 10% suggested priority fee
+        Ok((adjusted_max_fee, prority_max_fee))
     }
 }

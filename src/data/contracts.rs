@@ -9,7 +9,7 @@ use std::{collections::HashMap, fs};
 //*****************************************
 //*****************************************
 // CHANGE THIS VALUE TO SET CHAIN FOR BUILD
-pub const CHAIN: Chain = Chain::Mainnet;
+pub const CHAIN: Chain = Chain::Base;
 //*****************************************
 //*****************************************
 //*****************************************
