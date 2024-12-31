@@ -216,11 +216,6 @@ impl AnvilSimulator {
                 println!("balance AFTER to selling {}", token.name);
                 new_token_balance = self.get_token_balance(&token).await?;
                 self.get_eth_balance().await?;
-                println!("........................................................");
-                println!("........................................................");
-                self.get_current_profit_loss().await?;
-                println!("........................................................");
-                println!("........................................................");
             }
             Err(tx_err) => {
                 // Sending the transaction failed

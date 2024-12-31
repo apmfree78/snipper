@@ -150,22 +150,6 @@ impl AnvilSimulator {
         Ok(new_token_balance_u256)
     }
 
-    pub async fn get_current_profit_loss(&self) -> anyhow::Result<()> {
-        let weth_address: Address = CONTRACT.get_address().weth.parse()?;
-        let eth_balance = self.client.get_balance(self.from_address, None).await?;
-        let weth = ERC20::new(weth_address, self.client.clone());
-
-        let weth_balance = weth.balance_of(self.from_address).call().await?;
-
-        let total_balance = u256_to_f64_with_decimals(weth_balance + eth_balance, 18)?;
-
-        let profit = total_balance - STARTING_BALANCE;
-
-        println!("CURRENT PROFIT IS {}", profit);
-
-        Ok(())
-    }
-
     pub async fn get_eth_balance(&self) -> anyhow::Result<U256> {
         // get account balance to see how much of new token recieved
 
