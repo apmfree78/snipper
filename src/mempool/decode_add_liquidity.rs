@@ -4,14 +4,14 @@ use ethers::{
     types::Address,
 };
 
-pub fn decode_add_liquidity_eth_fn(data: &Vec<u8>) -> Result<Address> {
+pub fn decode_add_liquidity_eth_fn(data: &[u8]) -> Result<Address> {
     let decode_json = r#"
         [{
             "inputs": [
                 {"type": "address", "name": "token"},
-                {"type": "uint", "name": "amountTokenDesired"}
-                {"type": "uint", "name": "amountTokenMin"}
-                {"type": "uint", "name": "amountETHMin"}
+                {"type": "uint", "name": "amountTokenDesired"},
+                {"type": "uint", "name": "amountTokenMin"},
+                {"type": "uint", "name": "amountETHMin"},
                 {"type": "address", "name": "to"},
                 {"type": "uint", "name": "deadline"}
             ],
@@ -26,7 +26,7 @@ pub fn decode_add_liquidity_eth_fn(data: &Vec<u8>) -> Result<Address> {
     if let Ok(decode_fn) = abi.function("addLiquidityETH") {
         if let Ok(decoded) = decode_fn.decode_input(&data[4..]) {
             match decoded.as_slice() {
-                [Token::Address(token), Token::Uint(_), Token::Uint(_), Token::Uint(_), Token::Address(_)] => {
+                [Token::Address(token), Token::Uint(_), Token::Uint(_), Token::Uint(_), Token::Address(_), Token::Uint(_)] => {
                     Ok(*token)
                 }
                 _ => Err(anyhow!("Failed to match decoded data with expected types")),

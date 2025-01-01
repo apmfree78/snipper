@@ -46,6 +46,7 @@ impl Erc20Token {
         match interval {
             Some(time_index) => {
                 if time_index > 0 {
+                    set_token_to_(TokenState::Selling, self).await;
                     let amount_sold = self.mock_sell_for_weth(client).await?;
                     println!("sold at time index: {}", time_index);
 

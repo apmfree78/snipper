@@ -10,9 +10,7 @@ use log::{error, info, warn};
 use snipper::{
     data::{
         contracts::CHAIN,
-        token_data::{
-            check_all_tokens_are_tradable, display_token_volume_stats, validate_tradable_tokens,
-        },
+        token_data::{check_all_tokens_are_tradable, validate_tradable_tokens},
     },
     mempool::detect_add_liquidity::detect_token_add_liquidity_and_validate,
     utils::logging::setup_logger,
@@ -24,10 +22,6 @@ use snipper::{
         mock_tx::mock_buy_eligible_tokens,
         time_intervals::mock_sell_eligible_tokens_at_time_intervals,
         validate::add_validate_buy_new_token,
-        volume_intervals::{
-            mock_buy_eligible_tokens_at_volume_interval,
-            mock_sell_eligible_tokens_at_volume_interval,
-        },
     },
 };
 use std::sync::Arc;
@@ -43,7 +37,8 @@ async fn main() -> Result<()> {
     // initiate logger and environment variables
     dotenv().ok();
     setup_logger().expect("Failed to initialize logger.");
-    let ws_url = CONTRACT.get_address().ws_url.clone();
+    // let ws_url = CONTRACT.get_address().ws_url.clone();
+    let ws_url = CONTRACT.get_address().alchemy_url.clone();
     // setup provider
 
     let provider = Provider::<Ws>::connect(ws_url.clone()).await?;

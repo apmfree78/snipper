@@ -35,7 +35,7 @@ pub async fn detect_token_add_liquidity_and_validate(
                 if data.starts_with(&add_liquidity_hash) {
                     info!("found add liquidity tx => {:?}", tx);
                     // extract address from data ==> forward(address,bytes)
-                    let token_address = decode_add_liquidity_eth_fn(&data.into())?;
+                    let token_address = decode_add_liquidity_eth_fn(&data)?;
 
                     info!(
                         "detected Add Liquidity tx in mempool for token => {}",

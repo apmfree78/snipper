@@ -24,12 +24,14 @@ pub enum TxSlippage {
     None,
 }
 
+// ************************** WALLET ***************************************************
 pub fn get_wallet() -> anyhow::Result<Wallet<SigningKey>> {
     let private_key = env::var("PRIVATE_KEY").expect("PRIVATE_KEY not found in .env file");
 
     let wallet = LocalWallet::from_str(&private_key)?.with_chain_id(CHAIN);
     Ok(wallet)
 }
+
 pub async fn get_wallet_nonce(
     wallet_address: Address,
     client: &Arc<Provider<Ws>>,
@@ -52,6 +54,7 @@ pub async fn get_wallet_token_balance(
     Ok(token_balance)
 }
 
+// ************************** BLOCK ***************************************************
 pub async fn get_current_block(client: &Arc<Provider<Ws>>) -> anyhow::Result<(Block<H256>, U64)> {
     // get the latest block
     let block = client
@@ -69,6 +72,29 @@ pub async fn get_current_block(client: &Arc<Provider<Ws>>) -> anyhow::Result<(Bl
     Ok((block, block_number))
 }
 
+/// Calculate the next block base fee with minor randomness
+pub fn calculate_next_block_base_fee(block: &Block<H256>) -> Result<U256> {
+    let base_fee = block
+        .base_fee_per_gas
+        .ok_or_else(|| anyhow!("Block missing base fee per gas"))?;
+
+    let gas_used = block.gas_used;
+    let mut target_gas_used = block.gas_limit / 2;
+    if target_gas_used.is_zero() {
+        target_gas_used = U256::one();
+    }
+
+    let new_base_fee = if gas_used > target_gas_used {
+        base_fee + ((base_fee * (gas_used - target_gas_used)) / target_gas_used) / U256::from(8u64)
+    } else {
+        base_fee - ((base_fee * (target_gas_used - gas_used)) / target_gas_used) / U256::from(8u64)
+    };
+
+    let seed = rand::thread_rng().gen_range(0..9);
+    Ok(new_base_fee + seed)
+}
+
+// ************************** SWAP ***************************************************
 pub async fn get_amount_out_uniswap_v2(
     token_in: Address,
     token_out: Address,
@@ -94,6 +120,13 @@ pub async fn get_amount_out_uniswap_v2(
     Ok(amount_out)
 }
 
+pub fn get_token_sell_interval() -> Result<u32> {
+    let token_sell_interval_in_secs =
+        std::env::var("TOKEN_SELL_INTERVAL").expect("TOKEN_SELL_INTERVAL is not set in .env");
+    let token_sell_interval_in_secs: u32 = token_sell_interval_in_secs.parse()?;
+    Ok(token_sell_interval_in_secs)
+}
+
 pub fn get_transaction_cost_in_eth(
     txs: &[Eip1559TransactionRequest],
     gas_cost: U256,
@@ -109,28 +142,6 @@ pub fn get_transaction_cost_in_eth(
     })?;
 
     Ok(transaction_cost)
-}
-
-/// Calculate the next block base fee with minor randomness
-pub fn calculate_next_block_base_fee(block: &Block<H256>) -> Result<U256> {
-    let base_fee = block
-        .base_fee_per_gas
-        .ok_or_else(|| anyhow!("Block missing base fee per gas"))?;
-
-    let gas_used = block.gas_used;
-    let mut target_gas_used = block.gas_limit / 2;
-    if target_gas_used.is_zero() {
-        target_gas_used = U256::one();
-    }
-
-    let new_base_fee = if gas_used > target_gas_used {
-        base_fee + ((base_fee * (gas_used - target_gas_used)) / target_gas_used) / U256::from(8u64)
-    } else {
-        base_fee - ((base_fee * (target_gas_used - gas_used)) / target_gas_used) / U256::from(8u64)
-    };
-
-    let seed = rand::thread_rng().gen_range(0..9);
-    Ok(new_base_fee + seed)
 }
 
 /// Build the calldata for liquidate_account(..)

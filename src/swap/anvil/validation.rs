@@ -68,7 +68,6 @@ pub async fn validate_token_with_simulated_buy_sell(
         }
         Err(err) => {
             println!("Sell transaction failed: {:?}", err);
-            // Revert to the snapshot taken before buying
             Err(err)
         }
     }

@@ -1,7 +1,7 @@
 use super::tokens::Erc20Token;
 use crate::{
     token_tx::{time_intervals::TIME_ROUNDS, volume_intervals::VOLUME_ROUNDS},
-    utils::type_conversion::format_to_5_decimals_decimal,
+    utils::{tx::get_token_sell_interval, type_conversion::format_to_5_decimals_decimal},
 };
 use ethers::types::U256;
 use log::info;
@@ -38,10 +38,10 @@ impl Erc20Token {
         Ok(())
     }
 
-    pub fn display_token_portfolio_time_interval(&self) -> anyhow::Result<()> {
-        let time_bought =
-            std::env::var("TOKEN_SELL_INTERVAL").expect("TOKEN_SELL_INTERVAL is not set in .env");
-        let time_bought: u32 = time_bought.parse()?;
+    pub fn display_token_portfolio_time_interval(&self) -> anyhow::Result<(Vec<f32>, Vec<f32>)> {
+        let time_bought = get_token_sell_interval()?;
+        let mut profit_per_interval = Vec::<f32>::new();
+        let mut roi_per_interval = Vec::<f32>::new();
 
         let token_address = self.lowercase_address();
 
@@ -50,6 +50,8 @@ impl Erc20Token {
             let profit = self.profit_at_time_interval_(i + 1)?;
             let roi = self.roi_at_time_interval(i + 1)?;
 
+            profit_per_interval.push(profit);
+            roi_per_interval.push(roi);
             if profit != 0.0 && roi != 0.0 {
                 println!(
                     "{} secs => profit of {}, and roi of {}",
@@ -61,13 +63,7 @@ impl Erc20Token {
             }
         }
 
-        // let total_profit: f32 = portfolio_lock
-        //     .values()
-        //     .map(|token_stats| token_stats.profit)
-        //     .sum();
-        // info!("Total profit is ===> {}", total_profit);
-
-        Ok(())
+        Ok((profit_per_interval, roi_per_interval))
     }
 
     pub async fn display_token_portfolio(&self) -> anyhow::Result<()> {

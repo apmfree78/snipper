@@ -28,17 +28,23 @@ pub async fn add_validate_buy_new_token(
         let total_supply = get_token_weth_total_supply(&token, client).await?;
 
         if total_supply > U256::from(0) {
+            set_token_to_tradable(&token).await;
             info!(
                 "{} has immediate liquidity of {} and ready for trading",
                 token.name, total_supply
             );
 
+            set_token_to_(TokenState::Validating, &token).await;
             let token_status =
                 validate_token_with_simulated_buy_sell(&token, TokenLiquidity::HasEnough).await?;
 
             if token_status == TokenStatus::Legit {
                 set_token_to_(TokenState::Validated, &token).await;
                 token.mock_purchase(client, current_time).await?;
+            } else {
+                // cannot buy or sell token remove it
+                let removed_token = remove_token(token.address).await.unwrap();
+                warn!("scam token {} removed", removed_token.name);
             }
         } else {
             info!("{} has no liquidity, cannot purchase yet!", token.name);
@@ -54,6 +60,11 @@ pub async fn validate_token_from_mempool_and_buy(
     client: &Arc<Provider<Ws>>,
     current_time: u32,
 ) -> anyhow::Result<()> {
+    if token.state != TokenState::NotValidated {
+        return Ok(());
+    }
+
+    set_token_to_(TokenState::Validating, &token).await;
     let token_status = validate_token_with_simulated_buy_sell(
         token,
         TokenLiquidity::NeedToAdd(add_liquidity_tx.clone()),

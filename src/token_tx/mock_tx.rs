@@ -23,6 +23,7 @@ impl Erc20Token {
         client: &Arc<Provider<Ws>>,
         current_time: u32,
     ) -> anyhow::Result<()> {
+        set_token_to_(TokenState::Buying, self).await;
         let token_balance = self.mock_buy_with_weth(client).await?;
 
         if token_balance > U256::from(0) {

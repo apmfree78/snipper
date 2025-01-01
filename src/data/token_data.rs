@@ -4,6 +4,8 @@ use crate::swap::anvil::validation::{
     validate_token_with_simulated_buy_sell, TokenLiquidity, TokenStatus,
 };
 use crate::swap::token_price::get_token_weth_total_supply;
+use crate::token_tx::time_intervals::TIME_ROUNDS;
+use crate::utils::tx::get_token_sell_interval;
 use crate::utils::type_conversion::address_to_string;
 use anyhow::Result;
 use ethers::providers::{Provider, Ws};
@@ -84,12 +86,64 @@ pub async fn display_token_volume_stats() -> anyhow::Result<()> {
 
 pub async fn display_token_time_stats() -> anyhow::Result<()> {
     let tokens = get_tokens().await;
+    let time_bought = get_token_sell_interval()?;
 
+    let mut sum_profit_per_interval = Vec::<f32>::new();
+    let mut average_profit_per_interval = Vec::<f32>::new();
+    let mut sum_roi_per_interval = Vec::<f32>::new();
+    let mut average_roi_per_interval = Vec::<f32>::new();
+    let mut tokens_sold_at_this_interval = Vec::<u8>::new();
     println!("----------------------------------------------");
     println!("----------------TOKEN STATS------------------");
     println!("----------------------------------------------");
     for token in tokens.values() {
-        token.display_token_portfolio_time_interval()?;
+        let (profits, roi) = token.display_token_portfolio_time_interval()?;
+
+        // Initialize or accumulate for profits
+        if sum_profit_per_interval.is_empty() {
+            // First token => just clone its entire vector
+            sum_profit_per_interval = profits.clone();
+        } else {
+            // Add each element into the corresponding sum
+            for (i, &p) in profits.iter().enumerate() {
+                sum_profit_per_interval[i] += p;
+                // if profit is exactly zero then token was not sold at this interval yet,
+                // so do not count it when averaging out profit and roi
+                tokens_sold_at_this_interval[i] += if p == 0.0 { 1 } else { 0 };
+            }
+        }
+
+        // Similarly for roi
+        if sum_roi_per_interval.is_empty() {
+            sum_roi_per_interval = roi.clone();
+        } else {
+            for (i, &r) in roi.iter().enumerate() {
+                sum_roi_per_interval[i] += r;
+            }
+        }
+    }
+
+    for i in 0..TIME_ROUNDS {
+        average_profit_per_interval[i] =
+            sum_profit_per_interval[i] / tokens_sold_at_this_interval[i] as f32;
+    }
+
+    for i in 0..TIME_ROUNDS {
+        average_roi_per_interval[i] =
+            sum_roi_per_interval[i] / tokens_sold_at_this_interval[i] as f32;
+    }
+    println!("----------------------------------------------");
+    println!("------PROFIT PERFORMANCE BY TIME INTERVAL-----");
+    println!("----------------------------------------------");
+
+    for i in 0..TIME_ROUNDS {
+        println!(
+            "{} secs => profit of {}, and roi of {}",
+            time_bought * i as u32,
+            average_profit_per_interval[i],
+            average_roi_per_interval[i]
+        );
+        println!("----------------------------------------------");
     }
 
     Ok(())
