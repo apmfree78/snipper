@@ -4,6 +4,7 @@ use crate::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
 use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
 use crate::data::contracts::CONTRACT;
 use crate::data::tokens::Erc20Token;
+use crate::swap::tx_trait::Txs;
 use crate::utils::type_conversion::{address_to_string, u256_to_f64_with_decimals};
 use anyhow::Result;
 use ethers::types::{
@@ -18,41 +19,6 @@ use log::{debug, info};
 // ***************** ***************** **************** **********************************
 
 impl AnvilSimulator {
-    pub async fn get_amount_out_uniswap_v2(
-        &self,
-        token_in: Address,
-        token_out: Address,
-        amount_in: U256,
-    ) -> anyhow::Result<U256> {
-        let uniswap_v2_router_address: Address =
-            CONTRACT.get_address().uniswap_v2_router.parse()?;
-        let router = UNISWAP_V2_ROUTER::new(uniswap_v2_router_address, self.client.clone());
-
-        let amounts = router
-            .get_amounts_out(amount_in, vec![token_in, token_out])
-            .call()
-            .await?;
-
-        let amount_out = amounts[amounts.len() - 1];
-
-        // reduce by 2% to account for token volatility
-        let amount_out = amount_out * U256::from(98) / U256::from(100);
-
-        Ok(amount_out)
-    }
-
-    pub async fn get_current_timestamp(&self) -> anyhow::Result<u64> {
-        // Get current block timestamp for deadline
-        let current_block = self.client.get_block_number().await?;
-        let current_block_details = self.client.get_block(current_block).await?;
-        let current_timestamp = current_block_details
-            .ok_or_else(|| anyhow::anyhow!("No current block details"))?
-            .timestamp
-            .as_u64();
-
-        Ok(current_timestamp)
-    }
-
     pub async fn trace_transaction(&self, tx_hash: H256) -> Result<()> {
         let mut tracing_options = GethDebugTracingOptions::default();
         tracing_options.disable_storage = Some(false); // Enable storage tracing
@@ -62,7 +28,7 @@ impl AnvilSimulator {
         ));
 
         let trace = self
-            .client
+            .signed_client
             .provider()
             .debug_trace_transaction(tx_hash, tracing_options)
             .await?;
@@ -87,28 +53,11 @@ impl AnvilSimulator {
         Ok(())
     }
 
-    pub async fn show_weth_allowance_balance_sender_and_pair(
-        &self,
-        token: &Erc20Token,
-    ) -> anyhow::Result<()> {
+    pub async fn show_eth_uniswap_v2_pair(&self, token: &Erc20Token) -> anyhow::Result<()> {
         let factory_address: Address = CONTRACT.get_address().uniswap_v2_factory.parse()?;
-        let router_address: Address = CONTRACT.get_address().uniswap_v2_router.parse()?;
         let weth_address: Address = CONTRACT.get_address().weth.parse()?;
-        let weth_contract = ERC20::new(weth_address, self.client.clone());
 
-        let weth_balance = weth_contract.balance_of(self.from_address).call().await?;
-        let allowance = weth_contract
-            .allowance(self.from_address, router_address)
-            .call()
-            .await?;
-        debug!("WETH Balance of anvil mock account: {}", weth_balance);
-        debug!("Allowance of anvil mock account:  {}", allowance);
-        // debug!(
-        //     "Transaction sender (self.from_address): {:?}",
-        //     self.from_address
-        // );
-
-        let factory = UNISWAP_V2_FACTORY::new(factory_address, self.client.clone());
+        let factory = UNISWAP_V2_FACTORY::new(factory_address, self.signed_client());
 
         if token.is_token_0 {
             let pair_address = factory.get_pair(token.address, weth_address).call().await?;
@@ -126,51 +75,17 @@ impl AnvilSimulator {
 
         Ok(())
     }
-
-    pub async fn get_token_balance(&self, token: &Erc20Token) -> anyhow::Result<U256> {
-        let new_token_balance_u256 = self.get_token_balance_by_address(token.address).await?;
-        let token_balance = format_units(new_token_balance_u256, u32::from(token.decimals))?;
-        println!(
-            "YOU HAVE {} of {}, ({})",
-            token_balance, token.name, token.symbol
-        );
-        Ok(new_token_balance_u256)
-    }
-
-    pub async fn get_token_balance_by_address(
-        &self,
-        token_address: Address,
-    ) -> anyhow::Result<U256> {
-        // get account balance to see how much of new token recieved
-        info!("getting token balance");
-        let token_contract = ERC20::new(token_address, self.client.clone());
-
-        let new_token_balance_u256 = token_contract.balance_of(self.from_address).call().await?;
-
-        Ok(new_token_balance_u256)
-    }
-
-    pub async fn get_eth_balance(&self) -> anyhow::Result<U256> {
-        // get account balance to see how much of new token recieved
-
-        let new_eth_balance_u256 = self.client.get_balance(self.from_address, None).await?;
-        let eth_balance = format_units(new_eth_balance_u256, 18u32)?;
-
-        println!("YOU HAVE {} of ETH", eth_balance);
-        Ok(new_eth_balance_u256)
-    }
-
-    pub async fn get_weth_balance(&self) -> anyhow::Result<U256> {
-        let weth_address: Address = CONTRACT.get_address().weth.parse()?;
-        // get account balance to see how much of new token recieved
-        let token_contract = ERC20::new(weth_address, self.client.clone());
-
-        let new_token_balance_u256 = token_contract.balance_of(self.from_address).call().await?;
-        let token_balance = format_units(new_token_balance_u256, u32::from(18u32))?;
-
-        println!("YOU HAVE {} of WETH", token_balance);
-        Ok(new_token_balance_u256)
-    }
+    // pub async fn get_weth_balance(&self) -> anyhow::Result<U256> {
+    //     let weth_address: Address = CONTRACT.get_address().weth.parse()?;
+    //     // get account balance to see how much of new token recieved
+    //     let token_contract = ERC20::new(weth_address, self.signed_client.clone());
+    //
+    //     let new_token_balance_u256 = token_contract.balance_of(self.sender).call().await?;
+    //     let token_balance = format_units(new_token_balance_u256, u32::from(18u32))?;
+    //
+    //     println!("YOU HAVE {} of WETH", token_balance);
+    //     Ok(new_token_balance_u256)
+    // }
 }
 
 pub fn find_revert(trace: &CallFrame) -> Option<&CallFrame> {

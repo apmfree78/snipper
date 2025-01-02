@@ -1,5 +1,6 @@
 use super::simlator::AnvilSimulator;
 use crate::data::{contracts::CONTRACT, tokens::Erc20Token};
+use crate::swap::tx_trait::Txs;
 use ethers::types::{Transaction, U256};
 use log::info;
 
@@ -44,7 +45,7 @@ pub async fn validate_token_with_simulated_buy_sell(
         return Ok(TokenStatus::CannotBuy);
     }
 
-    let balance_after_buy = anvil.get_token_balance(token).await?;
+    let balance_after_buy = anvil.get_wallet_token_balance(token).await?;
     if balance_after_buy == U256::from(0) {
         println!("No tokens received after buy, reverting...");
         // revert if something suspicious
@@ -56,7 +57,7 @@ pub async fn validate_token_with_simulated_buy_sell(
     let sell_result = anvil.simulate_selling_token_for_weth(token).await;
     match sell_result {
         Ok(_) => {
-            let balance_after_sell = anvil.get_token_balance(token).await?;
+            let balance_after_sell = anvil.get_wallet_token_balance(token).await?;
             if balance_after_sell != U256::from(0) {
                 println!("cannot sell {}, scam alert", token.name);
                 // If you must revert because the sale is unsuccessful, do it here

@@ -13,9 +13,10 @@ use std::sync::Arc;
 pub const STARTING_BALANCE: f64 = 1000.0;
 
 pub struct AnvilSimulator {
-    pub client: Arc<SignerMiddleware<Provider<Ws>, Wallet<SigningKey>>>,
+    pub signed_client: Arc<SignerMiddleware<Provider<Ws>, Wallet<SigningKey>>>,
+    pub client: Arc<Provider<Ws>>,
     pub anvil: AnvilInstance,
-    pub from_address: Address,
+    pub sender: Address,
 }
 
 impl AnvilSimulator {
@@ -35,14 +36,15 @@ impl AnvilSimulator {
         // Connect to Anvil
         let anvil_ws_url = anvil.ws_endpoint();
         let provider = Provider::<Ws>::connect(anvil_ws_url).await?;
+        let client = Arc::new(provider.clone());
 
         // Create a wallet with the private key
         let wallet = Wallet::from(from_private_key).with_chain_id(CHAIN);
 
         // Create the SignerMiddleware
-        let client = Arc::new(SignerMiddleware::new(provider, wallet));
+        let signed_client = Arc::new(SignerMiddleware::new(provider, wallet));
 
-        client
+        signed_client
             .provider()
             .request::<_, ()>(
                 "anvil_setBalance",
@@ -54,9 +56,10 @@ impl AnvilSimulator {
             .await?;
 
         let simulator = Self {
+            signed_client,
             client,
             anvil,
-            from_address,
+            sender: from_address,
         };
 
         // simulator.prepare_account().await?;

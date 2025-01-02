@@ -1,6 +1,7 @@
 use crate::data::gas::update_tx_gas_cost_data;
 use crate::data::tokens::Erc20Token;
 use crate::swap::prepare_tx::{prepare_token_approval_tx, prepare_uniswap_swap_tx};
+use crate::swap::tx_trait::Txs;
 use crate::utils::tx::{
     amount_of_token_to_purchase, get_current_block, get_swap_exact_eth_for_tokens_calldata,
     get_swap_exact_tokens_for_eth_calldata, get_wallet_nonce,
@@ -69,7 +70,9 @@ impl TxWallet {
                 };
 
                 println!("........................................................");
-                new_token_balance = self.get_wallet_token_balance(token.address).await?;
+                new_token_balance = self
+                    .get_wallet_token_balance_by_address(token.address)
+                    .await?;
                 println!(
                     "{} balance after buying {}...",
                     new_token_balance, token.name
@@ -93,7 +96,9 @@ impl TxWallet {
 
         println!("........................................................");
         self.get_wallet_eth_balance().await?;
-        let amount_to_sell = self.get_wallet_token_balance(token.address).await?;
+        let amount_to_sell = self
+            .get_wallet_token_balance_by_address(token.address)
+            .await?;
 
         //  Get nonce
         let mut nonce = get_wallet_nonce(self.wallet.address(), &self.client).await?;
@@ -153,7 +158,9 @@ impl TxWallet {
                 // self.trace_transaction(tx_hash).await?;
 
                 println!("........................................................");
-                new_token_balance = self.get_wallet_token_balance(token.address).await?;
+                new_token_balance = self
+                    .get_wallet_token_balance_by_address(token.address)
+                    .await?;
                 println!(
                     "{} balance AFTER to selling {}",
                     token.name, new_token_balance

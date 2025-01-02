@@ -25,6 +25,7 @@ use snipper::data::token_data::{
 use snipper::data::tokens::TokenState;
 use snipper::events::PairCreatedEvent;
 use snipper::swap::anvil::simlator::AnvilSimulator;
+use snipper::swap::tx_trait::Txs;
 use snipper::token_tx::anvil::{buy_eligible_tokens_on_anvil, sell_eligible_tokens_on_anvil};
 use snipper::token_tx::mock_tx::mock_buy_eligible_tokens;
 use snipper::token_tx::time_intervals::mock_sell_eligible_tokens_at_time_intervals;
@@ -122,7 +123,7 @@ async fn test_anvil_meme_token_buy_sell_test() -> anyhow::Result<()> {
 
     let anvil_lock = setup.anvil_simulator.lock().await;
     let mut token_balance = anvil_lock
-        .get_token_balance_by_address(setup.token_address)
+        .get_wallet_token_balance_by_address(setup.token_address)
         .await?;
     assert!(token_balance > U256::from(0));
 
@@ -138,7 +139,7 @@ async fn test_anvil_meme_token_buy_sell_test() -> anyhow::Result<()> {
 
     let anvil_lock = setup.anvil_simulator.lock().await;
     token_balance = anvil_lock
-        .get_token_balance_by_address(setup.token_address)
+        .get_wallet_token_balance_by_address(setup.token_address)
         .await?;
     assert_eq!(token_balance, U256::from(0));
     assert_eq!(number_of_tokens, 0);
@@ -166,7 +167,7 @@ async fn test_anvil_token_buy_sell_test() -> anyhow::Result<()> {
 
     let anvil_lock = setup.anvil_simulator.lock().await;
     let mut token_balance = anvil_lock
-        .get_token_balance_by_address(setup.token_address)
+        .get_wallet_token_balance_by_address(setup.token_address)
         .await?;
     assert!(token_balance > U256::from(0));
 
@@ -182,7 +183,7 @@ async fn test_anvil_token_buy_sell_test() -> anyhow::Result<()> {
 
     let anvil_lock = setup.anvil_simulator.lock().await;
     token_balance = anvil_lock
-        .get_token_balance_by_address(setup.token_address)
+        .get_wallet_token_balance_by_address(setup.token_address)
         .await?;
     assert_eq!(token_balance, U256::from(0));
     assert_eq!(number_of_tokens, 0);
@@ -210,7 +211,7 @@ async fn test_anvil_token_buy_no_sell_test() -> anyhow::Result<()> {
 
     let anvil_lock = setup.anvil_simulator.lock().await;
     let token_balance = anvil_lock
-        .get_token_balance_by_address(setup.token_address)
+        .get_wallet_token_balance_by_address(setup.token_address)
         .await?;
     assert!(token_balance > U256::from(0));
 
@@ -226,7 +227,7 @@ async fn test_anvil_token_buy_no_sell_test() -> anyhow::Result<()> {
     number_of_tokens = get_number_of_tokens().await;
     let anvil_lock = setup.anvil_simulator.lock().await;
     let new_token_balance = anvil_lock
-        .get_token_balance_by_address(setup.token_address)
+        .get_wallet_token_balance_by_address(setup.token_address)
         .await?;
     assert_eq!(new_token_balance, token_balance);
     assert_eq!(number_of_tokens, 1);

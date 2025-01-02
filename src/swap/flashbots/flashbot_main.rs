@@ -1,3 +1,4 @@
+use crate::abi::erc20::ERC20;
 use crate::data::tokens::Erc20Token;
 use crate::swap::flashbots::submit_tx::{
     create_flashbot_bundle_with_tx, generate_flashbot_signed_client_with_builders,
@@ -7,9 +8,10 @@ use crate::swap::prepare_tx::prepare_uniswap_swap_tx;
 use crate::utils::tx::{
     amount_of_token_to_purchase, get_current_block, get_swap_exact_eth_for_tokens_calldata,
     get_swap_exact_tokens_for_eth_calldata, get_transaction_cost_in_eth, get_wallet,
-    get_wallet_nonce, get_wallet_token_balance,
+    get_wallet_nonce,
 };
 use anyhow::Result;
+use ethers::abi::Address;
 use ethers::core::k256::ecdsa::SigningKey;
 use ethers::providers::{Provider, Ws};
 use ethers::signers::{Signer, Wallet};
@@ -201,4 +203,17 @@ pub async fn submit_flashbots_tx(
     }
 
     Ok(())
+}
+
+async fn get_wallet_token_balance(
+    token_address: Address,
+    wallet: &Wallet<SigningKey>,
+    client: &Arc<Provider<Ws>>,
+) -> anyhow::Result<U256> {
+    let token_contract = ERC20::new(token_address, client.clone());
+    let wallet_address = wallet.address();
+
+    let token_balance = token_contract.balance_of(wallet_address).await?;
+
+    Ok(token_balance)
 }

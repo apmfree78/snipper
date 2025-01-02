@@ -56,4 +56,5 @@ pub mod swap {
     }
     pub mod prepare_tx;
     pub mod token_price;
+    pub mod tx_trait;
 }
