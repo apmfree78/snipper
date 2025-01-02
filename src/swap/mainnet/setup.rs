@@ -14,7 +14,6 @@ pub struct TxWallet {
     pub client: Arc<Provider<Ws>>,
     pub wallet: Wallet<SigningKey>,
     pub sender: Address,
-    // pub starting_eth_balance: U256,
 }
 
 impl TxWallet {

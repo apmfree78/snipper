@@ -10,9 +10,7 @@ use snipper::data::token_data::{
 use snipper::data::tokens::Erc20Token;
 use snipper::events::PairCreatedEvent;
 // use snipper::swap::anvil::simlator::AnvilSimulator;
-use snipper::swap::anvil::validation::{
-    validate_token_with_simulated_buy_sell, TokenLiquidity, TokenStatus,
-};
+use snipper::swap::anvil::validation::{TokenLiquidity, TokenStatus};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -81,8 +79,10 @@ async fn test_successful_token_validation() -> anyhow::Result<()> {
     assert!(token_tradable);
 
     let start = Instant::now();
-    let token_status =
-        validate_token_with_simulated_buy_sell(&setup.token, TokenLiquidity::HasEnough).await?;
+    let token_status = setup
+        .token
+        .validate_with_simulated_buy_sell(TokenLiquidity::HasEnough)
+        .await?;
     let duration = start.elapsed();
     println!("Time elapsed: {} seconds", duration.as_secs());
 
@@ -100,8 +100,10 @@ async fn test_failed_token_validation() -> anyhow::Result<()> {
     let token_tradable = is_token_tradable(setup.token.address).await;
     assert!(token_tradable);
 
-    let token_status =
-        validate_token_with_simulated_buy_sell(&setup.token, TokenLiquidity::HasEnough).await?;
+    let token_status = setup
+        .token
+        .validate_with_simulated_buy_sell(TokenLiquidity::HasEnough)
+        .await?;
 
     assert_eq!(token_status, TokenStatus::CannotSell);
 

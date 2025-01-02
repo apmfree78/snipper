@@ -7,6 +7,7 @@ use ethers::{
 };
 use futures::{lock::Mutex, stream, StreamExt};
 use log::{error, info, warn};
+use snipper::swap::mainnet::setup::TxWallet;
 use snipper::{
     data::{
         contracts::CHAIN,
@@ -19,12 +20,18 @@ use snipper::{
     data::{contracts::CONTRACT, token_data::display_token_time_stats},
     events,
     token_tx::{
-        mock_tx::mock_buy_eligible_tokens,
-        time_intervals::mock_sell_eligible_tokens_at_time_intervals,
+        time_intervals::sell_eligible_tokens_at_time_intervals, tx::buy_eligible_tokens,
         validate::add_validate_buy_new_token,
     },
 };
 use std::sync::Arc;
+
+pub enum AppMode {
+    Production,
+    Simulation,
+}
+
+pub const APP_MODE: AppMode = AppMode::Simulation;
 
 enum Event {
     Block(ethers::types::Block<TxHash>),
@@ -43,6 +50,8 @@ async fn main() -> Result<()> {
 
     let provider = Provider::<Ws>::connect(ws_url.clone()).await?;
     let client = Arc::new(provider);
+    let tx_wallet = TxWallet::new().await?;
+    let tx_wallet = Arc::new(tx_wallet);
     info!("Connected to {:#?}", CHAIN);
 
     // TRACT TIME
@@ -84,6 +93,7 @@ async fn main() -> Result<()> {
         .for_each(|event| async {
             let client = Arc::clone(&client);
             let last_timestamp = Arc::clone(&last_block_timestamp);
+            let tx_wallet = Arc::clone(&tx_wallet);
 
             match event {
                 Ok(Event::Log(log)) => match events::decode_pair_created_event(&log) {
@@ -94,9 +104,12 @@ async fn main() -> Result<()> {
                             last_time.clone()
                         };
 
-                        if let Err(error) =
-                            add_validate_buy_new_token(&pair_created_event, &client, current_time)
-                                .await
+                        if let Err(error) = add_validate_buy_new_token(
+                            &pair_created_event,
+                            &tx_wallet,
+                            current_time,
+                        )
+                        .await
                         {
                             warn!("Could not run add_validate_buy_new_token => {}", error);
                         }
@@ -109,7 +122,7 @@ async fn main() -> Result<()> {
                         last_time.clone()
                     };
                     if let Err(error) =
-                        detect_token_add_liquidity_and_validate(tx, &client, current_time).await
+                        detect_token_add_liquidity_and_validate(tx, &tx_wallet, current_time).await
                     {
                         error!(
                             "problem with detect_token_add_liquidity_and_validate => {}",
@@ -135,16 +148,14 @@ async fn main() -> Result<()> {
                     }
 
                     if let Err(error) =
-                        mock_buy_eligible_tokens(&client, current_block_timestamp).await
+                        buy_eligible_tokens(&tx_wallet, current_block_timestamp).await
                     {
                         error!("error running buy_eligible_tokens_on_anvil => {}", error);
                     }
 
-                    if let Err(error) = mock_sell_eligible_tokens_at_time_intervals(
-                        &client,
-                        current_block_timestamp,
-                    )
-                    .await
+                    if let Err(error) =
+                        sell_eligible_tokens_at_time_intervals(&client, current_block_timestamp)
+                            .await
                     {
                         error!("error running sell_eligible_tokens_on_anvil => {}", error);
                     }

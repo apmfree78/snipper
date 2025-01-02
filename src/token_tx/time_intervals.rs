@@ -14,7 +14,7 @@ pub const TIME_ROUNDS: usize = 12;
 //******************** TIME BUY SELL ***************************************************
 //****************************************************************************************
 //****************************************************************************************
-pub async fn mock_sell_eligible_tokens_at_time_intervals(
+pub async fn sell_eligible_tokens_at_time_intervals(
     client: &Arc<Provider<Ws>>,
     current_time: u32,
 ) -> anyhow::Result<()> {

@@ -1,9 +1,6 @@
 use crate::abi::erc20::ERC20;
 use crate::events::PairCreatedEvent;
-use crate::swap::anvil::validation::{
-    validate_token_with_simulated_buy_sell, TokenLiquidity, TokenStatus,
-};
-use crate::swap::token_price::get_token_weth_total_supply;
+use crate::swap::anvil::validation::{TokenLiquidity, TokenStatus};
 use crate::token_tx::time_intervals::TIME_ROUNDS;
 use crate::utils::tx::get_token_sell_interval;
 use crate::utils::type_conversion::address_to_string;
@@ -175,7 +172,7 @@ pub async fn check_all_tokens_are_tradable(client: &Arc<Provider<Ws>>) -> anyhow
     for token in tokens.values_mut() {
         if !token.is_tradable {
             // check liquidity
-            let total_supply = get_token_weth_total_supply(&token, client).await?;
+            let total_supply = token.get_total_supply(client).await?;
 
             if total_supply > U256::from(0) {
                 token.is_tradable = true;
@@ -201,9 +198,9 @@ pub async fn validate_tradable_tokens() -> anyhow::Result<()> {
                 if token.is_tradable && token.state == TokenState::NotValidated {
                     set_token_to_(TokenState::Validating, &token).await;
 
-                    let token_status =
-                        validate_token_with_simulated_buy_sell(&token, TokenLiquidity::HasEnough)
-                            .await?;
+                    let token_status = token
+                        .validate_with_simulated_buy_sell(TokenLiquidity::HasEnough)
+                        .await?;
                     if token_status == TokenStatus::Legit {
                         info!("{} is validated!", token.name);
                         set_token_to_(TokenState::Validating, &token).await;

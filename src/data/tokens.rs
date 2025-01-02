@@ -1,5 +1,9 @@
+use ethers::providers::{Provider, Ws};
 use ethers::types::{Address, U256};
+use log::info;
+use std::sync::Arc;
 
+use crate::abi::uniswap_pair::UNISWAP_PAIR;
 use crate::token_tx::time_intervals::TIME_ROUNDS;
 use crate::token_tx::volume_intervals::VOLUME_ROUNDS;
 use crate::utils::type_conversion::address_to_string;
@@ -46,6 +50,15 @@ pub struct Erc20Token {
 }
 
 impl Erc20Token {
+    pub async fn get_total_supply(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<U256> {
+        let pool = UNISWAP_PAIR::new(self.pair_address, client.clone());
+
+        info!("getting total liquidity");
+        let supply = pool.total_supply().call().await?;
+
+        Ok(supply)
+    }
+
     pub fn profit(&self) -> anyhow::Result<f32> {
         if self.eth_recieved_at_sale == U256::zero() {
             return Ok(0_f32);

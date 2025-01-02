@@ -51,15 +51,3 @@ use crate::data::tokens::Erc20Token;
 //
 //     Ok(price)
 // }
-
-pub async fn get_token_weth_total_supply(
-    token: &Erc20Token,
-    client: &Arc<Provider<Ws>>,
-) -> anyhow::Result<U256> {
-    let pool = UNISWAP_PAIR::new(token.pair_address, client.clone());
-
-    info!("getting total liquidity");
-    let supply = pool.total_supply().call().await?;
-
-    Ok(supply)
-}

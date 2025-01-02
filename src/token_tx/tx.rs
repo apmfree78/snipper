@@ -1,6 +1,7 @@
 use crate::data::contracts::CONTRACT;
 use crate::data::token_data::{get_tokens, set_token_to_, update_token};
 use crate::data::tokens::{Erc20Token, TokenState};
+use crate::swap::mainnet::setup::TxWallet;
 use crate::utils::tx::{get_amount_out_uniswap_v2, TxSlippage};
 use ethers::types::Address;
 use ethers::utils::format_units;
@@ -117,16 +118,13 @@ impl Erc20Token {
 //****************************************************************************************
 //****************************************************************************************
 
-pub async fn mock_buy_eligible_tokens(
-    client: &Arc<Provider<Ws>>,
-    timestamp: u32,
-) -> anyhow::Result<()> {
+pub async fn buy_eligible_tokens(tx_wallet: &Arc<TxWallet>, timestamp: u32) -> anyhow::Result<()> {
     let tokens = get_tokens().await;
 
     println!("finding tokens to buy");
     for token in tokens.values() {
         if token.is_tradable && token.state == TokenState::Validated {
-            token.mock_purchase(client, timestamp).await?;
+            token.mock_purchase(&tx_wallet.client, timestamp).await?;
         }
     }
     println!("done with purchasing...");
@@ -134,7 +132,7 @@ pub async fn mock_buy_eligible_tokens(
 }
 
 pub async fn mock_sell_eligible_tokens(
-    client: &Arc<Provider<Ws>>,
+    tx_wallet: &Arc<TxWallet>,
     current_time: u32,
 ) -> anyhow::Result<()> {
     let tokens = get_tokens().await;
@@ -147,11 +145,10 @@ pub async fn mock_sell_eligible_tokens(
         let sell_time = time_to_sell + token.time_of_purchase;
 
         if token.state == TokenState::Bought && current_time >= sell_time {
-            token.mock_sell(client).await?;
+            token.mock_sell(&tx_wallet.client).await?;
         }
     }
 
     println!("done with selling...");
     Ok(())
 }
-

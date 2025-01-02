@@ -27,8 +27,8 @@ use snipper::events::PairCreatedEvent;
 use snipper::swap::anvil::simlator::AnvilSimulator;
 use snipper::swap::tx_trait::Txs;
 use snipper::token_tx::anvil::{buy_eligible_tokens_on_anvil, sell_eligible_tokens_on_anvil};
-use snipper::token_tx::mock_tx::mock_buy_eligible_tokens;
-use snipper::token_tx::time_intervals::mock_sell_eligible_tokens_at_time_intervals;
+use snipper::token_tx::time_intervals::sell_eligible_tokens_at_time_intervals;
+use snipper::token_tx::tx::buy_eligible_tokens;
 use snipper::token_tx::volume_intervals::{
     mock_buy_eligible_tokens_at_volume_interval, mock_sell_eligible_tokens_at_volume_interval,
 };
@@ -288,15 +288,13 @@ async fn test_mock_token_buy_sell_time_intervals_test() -> anyhow::Result<()> {
     let token_tradable = is_token_tradable(setup.token_address).await;
     assert!(token_tradable);
 
-    if let Err(error) = mock_buy_eligible_tokens(&setup.client, setup.last_block_timestamp).await {
+    if let Err(error) = buy_eligible_tokens(&setup.client, setup.last_block_timestamp).await {
         println!("error running buy_eligible_tokens_on_anvil => {}", error);
     }
 
     for x in (token_sell_interval..=6000).step_by(token_sell_interval) {
         let sell_time = setup.last_block_timestamp + x as u32;
-        if let Err(error) =
-            mock_sell_eligible_tokens_at_time_intervals(&setup.client, sell_time).await
-        {
+        if let Err(error) = sell_eligible_tokens_at_time_intervals(&setup.client, sell_time).await {
             println!("error running sell_eligible_tokens_on_anvil => {}", error);
         }
     }

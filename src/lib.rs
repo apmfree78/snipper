@@ -30,8 +30,8 @@ pub mod data {
 
 pub mod token_tx {
     pub mod anvil;
-    pub mod mock_tx;
     pub mod time_intervals;
+    pub mod tx;
     pub mod validate;
     pub mod volume_intervals;
 }
