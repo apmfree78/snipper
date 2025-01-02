@@ -1,4 +1,4 @@
-use crate::data::token_data::{get_tokens, set_token_to_, update_token};
+use crate::data::token_data::{get_tokens, update_token};
 use crate::data::tokens::{Erc20Token, TokenState};
 use crate::utils::type_conversion::get_time_interval;
 use ethers::{
@@ -46,7 +46,7 @@ impl Erc20Token {
         match interval {
             Some(time_index) => {
                 if time_index > 0 {
-                    set_token_to_(TokenState::Selling, self).await;
+                    self.set_state_to_(TokenState::Selling).await;
                     let amount_sold = self.mock_sell_for_weth(client).await?;
                     println!("sold at time index: {}", time_index);
 
@@ -65,7 +65,7 @@ impl Erc20Token {
             }
             None => {
                 println!("interval returned None");
-                set_token_to_(TokenState::Sold, self).await;
+                self.set_state_to_(TokenState::Sold).await;
             }
         }
 

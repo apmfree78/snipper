@@ -1,6 +1,5 @@
 use crate::data::token_data::get_and_save_erc20_by_token_address;
 use crate::data::token_data::remove_token;
-use crate::data::token_data::set_token_to_;
 use crate::data::token_data::set_token_to_tradable;
 use crate::data::tokens::Erc20Token;
 use crate::data::tokens::TokenState;
@@ -33,13 +32,13 @@ pub async fn add_validate_buy_new_token(
                 token.name, total_supply
             );
 
-            set_token_to_(TokenState::Validating, &token).await;
+            token.set_state_to_(TokenState::Validating).await;
             let token_status = token
                 .validate_with_simulated_buy_sell(TokenLiquidity::HasEnough)
                 .await?;
 
             if token_status == TokenStatus::Legit {
-                set_token_to_(TokenState::Validated, &token).await;
+                token.set_state_to_(TokenState::Validated).await;
                 token.mock_purchase(&tx_wallet.client, current_time).await?;
             } else {
                 // cannot buy or sell token remove it
@@ -64,14 +63,14 @@ pub async fn validate_token_from_mempool_and_buy(
         return Ok(());
     }
 
-    set_token_to_(TokenState::Validating, &token).await;
+    token.set_state_to_(TokenState::Validating).await;
     let token_status = token
         .validate_with_simulated_buy_sell(TokenLiquidity::NeedToAdd(add_liquidity_tx.clone()))
         .await?;
 
     if token_status == TokenStatus::Legit {
         info!("{} token validated from mempool!", token.name);
-        set_token_to_(TokenState::Validated, token).await;
+        token.set_state_to_(TokenState::Validated).await;
 
         // check if token is tradable
         let total_supply = token.get_total_supply(&tx_wallet.client).await?;

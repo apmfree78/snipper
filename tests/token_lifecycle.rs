@@ -20,7 +20,7 @@ use snipper::abi::uniswap_pair::UNISWAP_PAIR;
 use snipper::data::contracts::CONTRACT;
 use snipper::data::token_data::{
     check_all_tokens_are_tradable, display_token_time_stats, display_token_volume_stats,
-    get_and_save_erc20_by_token_address, get_number_of_tokens, is_token_tradable, set_token_to_,
+    get_and_save_erc20_by_token_address, get_number_of_tokens, is_token_tradable,
 };
 use snipper::data::tokens::TokenState;
 use snipper::events::PairCreatedEvent;
@@ -93,7 +93,7 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
     }
 
     // for testing purposes assure it svalided
-    set_token_to_(TokenState::Validated, &token).await;
+    token.set_state_to_(TokenState::Validated).await;
 
     Ok(TestSetup {
         tx_wallet,

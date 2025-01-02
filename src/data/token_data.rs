@@ -196,14 +196,14 @@ pub async fn validate_tradable_tokens() -> anyhow::Result<()> {
         let handle = tokio::spawn(async move {
             let result: anyhow::Result<()> = async move {
                 if token.is_tradable && token.state == TokenState::NotValidated {
-                    set_token_to_(TokenState::Validating, &token).await;
+                    token.set_state_to_(TokenState::Validating).await;
 
                     let token_status = token
                         .validate_with_simulated_buy_sell(TokenLiquidity::HasEnough)
                         .await?;
                     if token_status == TokenStatus::Legit {
                         info!("{} is validated!", token.name);
-                        set_token_to_(TokenState::Validating, &token).await;
+                        token.set_state_to_(TokenState::Validating).await;
                     } else {
                         let scam_token = remove_token(token.address).await;
                         let scam_token = scam_token.unwrap();
@@ -281,18 +281,20 @@ pub async fn update_token_gas_cost(token_address: Address, gas_cost: U256) {
     }
 }
 
-pub async fn set_token_to_(state: TokenState, token: &Erc20Token) {
-    let token_data_hash = Arc::clone(&TOKEN_HASH);
-    let mut tokens = token_data_hash.lock().await;
-    let token_address_string = token.lowercase_address();
+impl Erc20Token {
+    pub async fn set_state_to_(&self, state: TokenState) {
+        let token_data_hash = Arc::clone(&TOKEN_HASH);
+        let mut tokens = token_data_hash.lock().await;
+        let token_address_string = self.lowercase_address();
 
-    match tokens.get_mut(&token_address_string) {
-        Some(token) => token.state = state,
-        None => {
-            error!(
-                "{} is not in token hash, cannot update.",
-                token_address_string
-            );
+        match tokens.get_mut(&token_address_string) {
+            Some(token) => token.state = state,
+            None => {
+                error!(
+                    "{} is not in token hash, cannot update.",
+                    token_address_string
+                );
+            }
         }
     }
 }

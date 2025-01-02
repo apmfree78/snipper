@@ -1,5 +1,5 @@
 use crate::data::contracts::CONTRACT;
-use crate::data::token_data::{get_tokens, set_token_to_, update_token};
+use crate::data::token_data::{get_tokens, update_token};
 use crate::data::tokens::{Erc20Token, TokenState};
 use crate::swap::mainnet::setup::TxWallet;
 use crate::utils::tx::{get_amount_out_uniswap_v2, TxSlippage};
@@ -24,7 +24,7 @@ impl Erc20Token {
         client: &Arc<Provider<Ws>>,
         current_time: u32,
     ) -> anyhow::Result<()> {
-        set_token_to_(TokenState::Buying, self).await;
+        self.set_state_to_(TokenState::Buying).await;
         let token_balance = self.mock_buy_with_weth(client).await?;
 
         if token_balance > U256::from(0) {
@@ -54,7 +54,7 @@ impl Erc20Token {
             update_token(&updated_token).await;
         }
 
-        set_token_to_(TokenState::Sold, self).await;
+        self.set_state_to_(TokenState::Sold).await;
         info!("token {} sold!", self.name);
 
         Ok(())
