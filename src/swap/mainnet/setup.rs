@@ -1,7 +1,4 @@
-use crate::{
-    data::contracts::{CHAIN, CONTRACT},
-    utils::tx::get_wallet,
-};
+use crate::{data::contracts::CONTRACT, utils::tx::get_wallet};
 use anyhow::Result;
 use ethers::{
     core::k256::ecdsa::SigningKey,

@@ -1,20 +1,14 @@
 use crate::abi::erc20::ERC20;
-use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
-use crate::data::contracts::{CHAIN, CONTRACT};
 use crate::data::tokens::Erc20Token;
-use crate::utils::tx::{
-    calculate_next_block_base_fee, get_approval_calldata, get_current_block, TxSlippage,
-};
+use crate::utils::tx::{calculate_next_block_base_fee, get_current_block};
 use async_trait::async_trait;
-use ethers::types::{Address, Block, H256, U256};
+use ethers::types::{Address, U256};
 use ethers::utils::format_units;
 use ethers::{
     core::k256::ecdsa::SigningKey,
-    core::types::Chain,
     middleware::SignerMiddleware,
     providers::{Middleware, Provider, Ws},
-    signers::{Signer, Wallet},
-    types::{Eip1559TransactionRequest, NameOrAddress},
+    signers::Wallet,
 };
 use log::info;
 use std::sync::Arc;

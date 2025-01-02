@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use ethers::core::k256::ecdsa::SigningKey;
 use ethers::core::rand::thread_rng;
 use ethers::signers::Wallet;
@@ -11,7 +10,7 @@ use ethers::{
     types::Eip1559TransactionRequest,
 };
 use ethers_flashbots::{BroadcasterMiddleware, BundleRequest, PendingBundleError, SimulatedBundle};
-use log::{error, info};
+use log::info;
 use std::sync::Arc;
 use url::Url;
 

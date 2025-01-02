@@ -4,8 +4,8 @@ use crate::data::contracts::{CHAIN, CONTRACT};
 use crate::data::tokens::Erc20Token;
 use anyhow::{anyhow, Result};
 use ethers::core::k256::ecdsa::SigningKey;
-use ethers::types::{Address, Block, BlockId, BlockNumber, Bytes, Chain, H256, U256, U64};
-use ethers::utils::{format_units, parse_units};
+use ethers::types::{Address, Block, BlockId, BlockNumber, Bytes, H256, U256, U64};
+use ethers::utils::format_units;
 use ethers::{
     providers::{Middleware, Provider, Ws},
     signers::{LocalWallet, Signer, Wallet},
@@ -40,18 +40,6 @@ pub async fn get_wallet_nonce(
         .get_transaction_count(wallet_address, Some(BlockId::Number(BlockNumber::Latest)))
         .await?;
     Ok(nonce)
-}
-pub async fn get_wallet_token_balance(
-    token_address: Address,
-    wallet: &Wallet<SigningKey>,
-    client: &Arc<Provider<Ws>>,
-) -> anyhow::Result<U256> {
-    let token_contract = ERC20::new(token_address, client.clone());
-    let wallet_address = wallet.address();
-
-    let token_balance = token_contract.balance_of(wallet_address).await?;
-
-    Ok(token_balance)
 }
 
 // ************************** BLOCK ***************************************************

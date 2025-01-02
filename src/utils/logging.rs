@@ -2,7 +2,7 @@ use colored::*;
 use std::fs::File;
 
 pub fn setup_logger() -> Result<(), fern::InitError> {
-    // File::create("eth_liquidation.log").expect("Failed to create/log file");
+    File::create("snipper.log").expect("Failed to create/log file");
 
     fern::Dispatch::new()
         .format(|out, message, record| {
@@ -25,7 +25,7 @@ pub fn setup_logger() -> Result<(), fern::InitError> {
         .level_for("ethers_providers", log::LevelFilter::Off) // Disable logging for ethers_providers
         .level_for("hyper", log::LevelFilter::Off) // Disable logging for hyper
         .chain(std::io::stdout())
-        // .chain(fern::log_file("eth_liquidation.log")?)
+        .chain(fern::log_file("snipper.log")?)
         .apply()?;
     Ok(())
 }
