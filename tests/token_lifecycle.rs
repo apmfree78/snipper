@@ -25,6 +25,7 @@ use snipper::data::token_data::{
 use snipper::data::tokens::TokenState;
 use snipper::events::PairCreatedEvent;
 use snipper::swap::anvil::simlator::AnvilSimulator;
+use snipper::swap::mainnet::setup::TxWallet;
 use snipper::swap::tx_trait::Txs;
 use snipper::token_tx::anvil::{buy_eligible_tokens_on_anvil, sell_eligible_tokens_on_anvil};
 use snipper::token_tx::time_intervals::sell_eligible_tokens_at_time_intervals;
@@ -37,7 +38,7 @@ use std::sync::Arc;
 
 struct TestSetup {
     anvil_simulator: Arc<Mutex<AnvilSimulator>>,
-    client: Arc<Provider<Ws>>,
+    tx_wallet: Arc<TxWallet>,
     token_address: Address,
     last_block_timestamp: u32,
     sell_after: u32,
@@ -47,10 +48,14 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
     dotenv().ok();
 
     let ws_url = CONTRACT.get_address().ws_url.clone();
-    let provider = Provider::<Ws>::connect(ws_url.clone()).await?;
-    let client = Arc::new(provider);
+    let tx_wallet = TxWallet::new().await?;
+    let tx_wallet = Arc::new(tx_wallet);
 
-    let initial_block = client.get_block(BlockNumber::Latest).await?.unwrap();
+    let initial_block = tx_wallet
+        .client
+        .get_block(BlockNumber::Latest)
+        .await?
+        .unwrap();
     let last_block_timestamp = initial_block.timestamp.as_u32();
     println!("initial block timestamp => {}", last_block_timestamp);
 
@@ -60,12 +65,12 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
 
     let factory_address: Address = CONTRACT.get_address().uniswap_v2_factory.parse()?;
     let weth_address: Address = CONTRACT.get_address().weth.parse()?;
-    let factory = UNISWAP_V2_FACTORY::new(factory_address, client.clone());
+    let factory = UNISWAP_V2_FACTORY::new(factory_address, tx_wallet.client());
 
     let pair_address = factory.get_pair(token_address, weth_address).call().await?;
     println!("pair address for WETH-TOKEN: {:?}", pair_address);
 
-    let pair = UNISWAP_PAIR::new(pair_address, client.clone());
+    let pair = UNISWAP_PAIR::new(pair_address, tx_wallet.client());
     let token_0 = pair.token_0().call().await?;
     let token_1 = pair.token_1().call().await?;
 
@@ -80,10 +85,10 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
     let anvil_simulator = AnvilSimulator::new(&ws_url).await?;
     let anvil_simulator = Arc::new(Mutex::new(anvil_simulator));
 
-    let token = get_and_save_erc20_by_token_address(&pair_created_event, &client).await?;
+    let token = get_and_save_erc20_by_token_address(&pair_created_event, &tx_wallet.client).await?;
     let token = token.unwrap();
     // check token liquidity
-    if let Err(error) = check_all_tokens_are_tradable(&client).await {
+    if let Err(error) = check_all_tokens_are_tradable(&tx_wallet.client).await {
         println!("could not check token tradability => {}", error);
     }
 
@@ -91,7 +96,7 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
     set_token_to_(TokenState::Validated, &token).await;
 
     Ok(TestSetup {
-        client,
+        tx_wallet,
         anvil_simulator,
         token_address,
         last_block_timestamp,
@@ -247,17 +252,22 @@ async fn test_mock_token_buy_sell_test() -> anyhow::Result<()> {
     let token_tradable = is_token_tradable(setup.token_address).await;
     assert!(token_tradable);
 
-    if let Err(error) =
-        mock_buy_eligible_tokens_at_volume_interval(&setup.client, setup.last_block_timestamp).await
+    if let Err(error) = mock_buy_eligible_tokens_at_volume_interval(
+        &setup.tx_wallet.client,
+        setup.last_block_timestamp,
+    )
+    .await
     {
         println!("error running buy_eligible_tokens_on_anvil => {}", error);
     }
 
     setup.last_block_timestamp += setup.sell_after;
 
-    if let Err(error) =
-        mock_sell_eligible_tokens_at_volume_interval(&setup.client, setup.last_block_timestamp)
-            .await
+    if let Err(error) = mock_sell_eligible_tokens_at_volume_interval(
+        &setup.tx_wallet.client,
+        setup.last_block_timestamp,
+    )
+    .await
     {
         println!("error running sell_eligible_tokens_on_anvil => {}", error);
     }
@@ -288,13 +298,15 @@ async fn test_mock_token_buy_sell_time_intervals_test() -> anyhow::Result<()> {
     let token_tradable = is_token_tradable(setup.token_address).await;
     assert!(token_tradable);
 
-    if let Err(error) = buy_eligible_tokens(&setup.client, setup.last_block_timestamp).await {
+    if let Err(error) = buy_eligible_tokens(&setup.tx_wallet, setup.last_block_timestamp).await {
         println!("error running buy_eligible_tokens_on_anvil => {}", error);
     }
 
     for x in (token_sell_interval..=6000).step_by(token_sell_interval) {
         let sell_time = setup.last_block_timestamp + x as u32;
-        if let Err(error) = sell_eligible_tokens_at_time_intervals(&setup.client, sell_time).await {
+        if let Err(error) =
+            sell_eligible_tokens_at_time_intervals(&setup.tx_wallet.client, sell_time).await
+        {
             println!("error running sell_eligible_tokens_on_anvil => {}", error);
         }
     }
