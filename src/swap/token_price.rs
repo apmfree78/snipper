@@ -1,11 +1,3 @@
-use ethers::providers::{Provider, Ws};
-use ethers::types::U256;
-use log::info;
-use std::sync::Arc;
-
-use crate::abi::uniswap_pair::UNISWAP_PAIR;
-use crate::data::tokens::Erc20Token;
-
 // pub async fn get_token_price(
 //     token: &Erc20Token,
 //     client: &Arc<Provider<Ws>>,

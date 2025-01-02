@@ -8,11 +8,8 @@ use crate::events::PairCreatedEvent;
 use crate::swap::anvil::validation::TokenLiquidity;
 use crate::swap::anvil::validation::TokenStatus;
 use crate::swap::mainnet::setup::TxWallet;
+use ethers::core::types::U256;
 use ethers::types::Transaction;
-use ethers::{
-    core::types::U256,
-    providers::{Provider, Ws},
-};
 use log::info;
 use log::warn;
 use std::sync::Arc;
