@@ -3,7 +3,7 @@ use dotenv::dotenv;
 use ethers::{
     core::types::{Log, TxHash},
     providers::Middleware,
-    types::BlockNumber,
+    types::{BlockNumber, Chain},
 };
 use futures::{lock::Mutex, stream, StreamExt};
 use log::{error, info, warn};
@@ -64,13 +64,6 @@ async fn main() -> Result<()> {
 
     info!("Subscribed to aave v3 logs");
 
-    let tx_stream: stream::BoxStream<'_, Result<Event>> = tx_wallet
-        .client
-        .subscribe_pending_txs()
-        .await?
-        .map(|tx| Ok(Event::PendingTransactions(tx)))
-        .boxed();
-
     let block_stream: stream::BoxStream<'_, Result<Event>> = tx_wallet
         .client
         .subscribe_blocks()
@@ -81,7 +74,18 @@ async fn main() -> Result<()> {
     info!("Subscribed to pending transactions");
 
     // Merge the streams into a single stream.
-    let combined_stream = stream::select_all(vec![log_stream, block_stream, tx_stream]);
+    let combined_stream = if CHAIN == Chain::Mainnet {
+        let tx_stream: stream::BoxStream<'_, Result<Event>> = tx_wallet
+            .client
+            .subscribe_pending_txs()
+            .await?
+            .map(|tx| Ok(Event::PendingTransactions(tx)))
+            .boxed();
+        stream::select_all(vec![log_stream, block_stream, tx_stream])
+    } else {
+        // for L2s that do not support access to mempool pending txs
+        stream::select_all(vec![log_stream, block_stream])
+    };
 
     info!("Combined streams");
 
@@ -126,7 +130,7 @@ async fn main() -> Result<()> {
                     }
                 }
                 Ok(Event::Block(block)) => {
-                    info!("NEW BLOCK ===> {}", block.timestamp);
+                    // info!("NEW BLOCK ===> {}", block.timestamp);
                     let mut last_time = last_timestamp.lock().await;
                     let current_block_timestamp = block.timestamp.as_u32();
 

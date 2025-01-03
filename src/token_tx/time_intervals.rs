@@ -20,17 +20,16 @@ pub async fn mock_sell_eligible_tokens_at_time_intervals(
 ) -> anyhow::Result<()> {
     let tokens = get_tokens().await;
 
-    println!("finding tokens to sell");
+    // println!("finding tokens to sell");
     for token in tokens.values() {
         if token.state == TokenState::Bought {
-            print!("mock selling now...");
             token
                 .mock_sell_at_time_intervals(client, current_time)
                 .await?;
         }
     }
 
-    println!("done with selling...");
+    // println!("done with selling...");
     Ok(())
 }
 

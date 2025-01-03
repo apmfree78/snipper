@@ -139,13 +139,13 @@ impl Erc20Token {
 pub async fn buy_eligible_tokens(tx_wallet: &Arc<TxWallet>, timestamp: u32) -> anyhow::Result<()> {
     let tokens = get_tokens().await;
 
-    println!("finding tokens to buy");
+    // println!("finding tokens to buy");
     for token in tokens.values() {
         if token.is_tradable && token.state == TokenState::Validated {
             token.purchase(tx_wallet, timestamp).await?;
         }
     }
-    println!("done with purchasing...");
+    // println!("done with purchasing...");
     Ok(())
 }
 
@@ -158,7 +158,7 @@ pub async fn sell_eligible_tokens(
         std::env::var("SELL_TOKEN_AFTER").expect("SELL_TOKEN_AFTER not found in .env");
     let time_to_sell: u32 = time_to_sell.parse()?;
 
-    println!("finding tokens to sell");
+    // println!("finding tokens to sell");
     for token in tokens.values() {
         let sell_time = time_to_sell + token.time_of_purchase;
 
@@ -167,6 +167,6 @@ pub async fn sell_eligible_tokens(
         }
     }
 
-    println!("done with selling...");
+    // println!("done with selling...");
     Ok(())
 }

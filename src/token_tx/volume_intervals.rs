@@ -21,7 +21,7 @@ pub async fn mock_buy_eligible_tokens_at_volume_interval(
 ) -> anyhow::Result<()> {
     let tokens = get_tokens().await;
 
-    println!("finding tokens to buy");
+    // println!("finding tokens to buy");
     for token in tokens.values() {
         if token.is_tradable && token.state == TokenState::Validated {
             token
@@ -29,7 +29,7 @@ pub async fn mock_buy_eligible_tokens_at_volume_interval(
                 .await?;
         }
     }
-    println!("done with purchasing...");
+    // println!("done with purchasing...");
     Ok(())
 }
 
@@ -42,7 +42,7 @@ pub async fn mock_sell_eligible_tokens_at_volume_interval(
         std::env::var("SELL_TOKEN_AFTER").expect("SELL_TOKEN_AFTER not found in .env");
     let time_to_sell: u32 = time_to_sell.parse()?;
 
-    println!("finding tokens to sell");
+    // println!("finding tokens to sell");
     for token in tokens.values() {
         let sell_time = time_to_sell + token.time_of_purchase;
 
@@ -51,7 +51,7 @@ pub async fn mock_sell_eligible_tokens_at_volume_interval(
         }
     }
 
-    println!("done with selling...");
+    // println!("done with selling...");
     Ok(())
 }
 
