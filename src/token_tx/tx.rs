@@ -1,3 +1,4 @@
+use crate::app_config::{AppMode, APP_MODE};
 use crate::data::contracts::CONTRACT;
 use crate::data::token_data::{get_tokens, update_token};
 use crate::data::tokens::{Erc20Token, TokenState};
@@ -19,13 +20,19 @@ use std::sync::Arc;
 //****************************************************************************************
 //****************************************************************************************
 impl Erc20Token {
-    pub async fn mock_purchase(
+    pub async fn purchase(
         &self,
-        client: &Arc<Provider<Ws>>,
+        tx_wallet: &Arc<TxWallet>,
         current_time: u32,
     ) -> anyhow::Result<()> {
         self.set_state_to_(TokenState::Buying).await;
-        let token_balance = self.mock_buy_with_weth(client).await?;
+
+        let token_balance = if APP_MODE == AppMode::Production {
+            tx_wallet.buy_tokens_for_eth(self).await?
+        } else {
+            // simulation mode
+            self.mock_buy_with_eth(&tx_wallet.client).await?
+        };
 
         if token_balance > U256::from(0) {
             let updated_token = Erc20Token {
@@ -43,8 +50,13 @@ impl Erc20Token {
         Ok(())
     }
 
-    pub async fn mock_sell(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<()> {
-        let eth_revenue_from_sale = self.mock_sell_for_weth(client).await?;
+    pub async fn sell(&self, tx_wallet: &Arc<TxWallet>) -> anyhow::Result<()> {
+        let eth_revenue_from_sale = if APP_MODE == AppMode::Production {
+            tx_wallet.buy_tokens_for_eth(self).await?
+        } else {
+            // simulation mode
+            self.mock_sell_for_eth(&tx_wallet.client).await?
+        };
 
         if eth_revenue_from_sale > U256::zero() {
             let updated_token = Erc20Token {
@@ -60,7 +72,7 @@ impl Erc20Token {
         Ok(())
     }
 
-    pub async fn mock_buy_with_weth(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<U256> {
+    pub async fn mock_buy_with_eth(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<U256> {
         let weth_address: Address = CONTRACT.get_address().weth.parse()?;
 
         println!("........................................................");
@@ -86,7 +98,7 @@ impl Erc20Token {
         Ok(amount_out)
     }
 
-    pub async fn mock_sell_for_weth(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<U256> {
+    pub async fn mock_sell_for_eth(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<U256> {
         let weth_address: Address = CONTRACT.get_address().weth.parse()?;
 
         println!("........................................................");
@@ -124,7 +136,7 @@ pub async fn buy_eligible_tokens(tx_wallet: &Arc<TxWallet>, timestamp: u32) -> a
     println!("finding tokens to buy");
     for token in tokens.values() {
         if token.is_tradable && token.state == TokenState::Validated {
-            token.mock_purchase(&tx_wallet.client, timestamp).await?;
+            token.purchase(tx_wallet, timestamp).await?;
         }
     }
     println!("done with purchasing...");
@@ -145,7 +157,7 @@ pub async fn mock_sell_eligible_tokens(
         let sell_time = time_to_sell + token.time_of_purchase;
 
         if token.state == TokenState::Bought && current_time >= sell_time {
-            token.mock_sell(&tx_wallet.client).await?;
+            token.sell(tx_wallet).await?;
         }
     }
 

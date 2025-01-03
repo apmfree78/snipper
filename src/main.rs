@@ -7,12 +7,9 @@ use ethers::{
 };
 use futures::{lock::Mutex, stream, StreamExt};
 use log::{error, info, warn};
-use snipper::swap::mainnet::setup::TxWallet;
+use snipper::{app_config::CHAIN, swap::mainnet::setup::TxWallet};
 use snipper::{
-    data::{
-        contracts::CHAIN,
-        token_data::{check_all_tokens_are_tradable, validate_tradable_tokens},
-    },
+    data::token_data::{check_all_tokens_are_tradable, validate_tradable_tokens},
     mempool::detect_add_liquidity::detect_token_add_liquidity_and_validate,
     utils::logging::setup_logger,
 };
@@ -25,13 +22,6 @@ use snipper::{
     },
 };
 use std::sync::Arc;
-
-pub enum AppMode {
-    Production,
-    Simulation,
-}
-
-pub const APP_MODE: AppMode = AppMode::Simulation;
 
 enum Event {
     Block(ethers::types::Block<TxHash>),

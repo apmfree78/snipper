@@ -47,7 +47,7 @@ impl Erc20Token {
             Some(time_index) => {
                 if time_index > 0 {
                     self.set_state_to_(TokenState::Selling).await;
-                    let amount_sold = self.mock_sell_for_weth(client).await?;
+                    let amount_sold = self.mock_sell_for_eth(client).await?;
                     println!("sold at time index: {}", time_index);
 
                     let mut current_amounts_sold = self.amount_sold_at_time.clone();

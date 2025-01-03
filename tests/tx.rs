@@ -82,7 +82,7 @@ async fn test_buy_sell_tx() -> anyhow::Result<()> {
     let aixbt_address = AIXBT.parse()?;
     let setup = setup(aixbt_address).await?;
 
-    let tokens_bought = setup.tx_wallet.buy_token_for_eth(&setup.token).await?;
+    let tokens_bought = setup.tx_wallet.buy_tokens_for_eth(&setup.token).await?;
 
     if tokens_bought > U256::zero() {
         let _ = setup.tx_wallet.sell_token_for_eth(&setup.token).await?;

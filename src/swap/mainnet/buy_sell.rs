@@ -15,7 +15,7 @@ use log::{error, info, warn};
 use super::setup::TxWallet;
 
 impl TxWallet {
-    pub async fn buy_token_for_eth(&self, token: &Erc20Token) -> anyhow::Result<U256> {
+    pub async fn buy_tokens_for_eth(&self, token: &Erc20Token) -> anyhow::Result<U256> {
         let (block, _) = get_current_block(&self.client).await?;
         let mut new_token_balance = U256::from(0);
 

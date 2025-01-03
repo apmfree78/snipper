@@ -3,18 +3,8 @@ use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::{collections::HashMap, fs};
 
-//*****************************************
-//*****************************************
-//*****************************************
-//*****************************************
-//*****************************************
-// CHANGE THIS VALUE TO SET CHAIN FOR BUILD
-pub const CHAIN: Chain = Chain::Base;
-//*****************************************
-//*****************************************
-//*****************************************
-//*****************************************
-//*****************************************
+use crate::app_config::CHAIN;
+
 pub const ETH: &str = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 pub const BTC: &str = "0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB";
 pub const USD: &str = "0x0000000000000000000000000000000000000348";

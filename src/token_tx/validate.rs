@@ -1,3 +1,5 @@
+use crate::app_config::AppMode;
+use crate::app_config::APP_MODE;
 use crate::data::token_data::get_and_save_erc20_by_token_address;
 use crate::data::token_data::remove_token;
 use crate::data::token_data::set_token_to_tradable;
@@ -39,7 +41,7 @@ pub async fn add_validate_buy_new_token(
 
             if token_status == TokenStatus::Legit {
                 token.set_state_to_(TokenState::Validated).await;
-                token.mock_purchase(&tx_wallet.client, current_time).await?;
+                token.purchase(tx_wallet, current_time).await?;
             } else {
                 // cannot buy or sell token remove it
                 let removed_token = remove_token(token.address).await.unwrap();
@@ -78,7 +80,7 @@ pub async fn validate_token_from_mempool_and_buy(
             set_token_to_tradable(&token).await;
 
             // go ahead and purchase
-            token.mock_purchase(&tx_wallet.client, current_time).await?;
+            token.purchase(tx_wallet, current_time).await?;
         }
     } else {
         let scam_token = remove_token(token.address).await;

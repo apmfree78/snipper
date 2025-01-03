@@ -1,4 +1,3 @@
-use crate::data::contracts::CHAIN;
 use anyhow::Result;
 use ethers::{
     core::k256::ecdsa::SigningKey,
@@ -9,6 +8,8 @@ use ethers::{
     utils::{Anvil, AnvilInstance},
 };
 use std::sync::Arc;
+
+use crate::app_config::CHAIN;
 
 pub const STARTING_BALANCE: f64 = 1000.0;
 

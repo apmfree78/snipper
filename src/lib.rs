@@ -36,6 +36,7 @@ pub mod token_tx {
     pub mod volume_intervals;
 }
 
+pub mod app_config;
 pub mod events;
 
 pub mod swap {

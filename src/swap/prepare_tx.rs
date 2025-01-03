@@ -1,4 +1,5 @@
-use crate::data::contracts::{CHAIN, CONTRACT};
+use crate::app_config::CHAIN;
+use crate::data::contracts::CONTRACT;
 use crate::data::tokens::Erc20Token;
 use crate::utils::tx::{calculate_next_block_base_fee, get_approval_calldata};
 use ethers::types::{Address, Block, H256, U256};

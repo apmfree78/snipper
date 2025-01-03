@@ -1,6 +1,7 @@
 use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
-use crate::data::contracts::{CHAIN, CONTRACT};
+use crate::app_config::CHAIN;
+use crate::data::contracts::CONTRACT;
 use crate::data::tokens::Erc20Token;
 use anyhow::{anyhow, Result};
 use ethers::core::k256::ecdsa::SigningKey;
