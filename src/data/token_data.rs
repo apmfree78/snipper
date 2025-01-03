@@ -48,10 +48,11 @@ pub async fn get_and_save_erc20_by_token_address(
     let token_contract = ERC20::new(token_address, client.clone());
 
     // get basic toke data
-    info!("getting basic token info...");
+    // info!("getting basic token info...");
     let symbol = token_contract.symbol().call().await?;
     let decimals = token_contract.decimals().call().await?;
     let name = token_contract.name().call().await?;
+    info!("new token: {} ({}) detected!", name, symbol);
 
     let token = Erc20Token {
         name,
@@ -178,7 +179,7 @@ pub async fn check_all_tokens_are_tradable(client: &Arc<Provider<Ws>>) -> anyhow
                 token.is_tradable = true;
                 info!("{} is tradable", token.name);
             } else {
-                info!("{} is not tradable", token.name);
+                // info!("{} is not tradable", token.name);
             }
         }
     }

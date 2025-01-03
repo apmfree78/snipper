@@ -3,7 +3,7 @@ use crate::data::contracts::CONTRACT;
 use crate::data::token_data::get_tokens;
 use crate::data::tokens::{Erc20Token, TokenState};
 use crate::swap::mainnet::setup::TxWallet;
-use crate::utils::tx::{get_amount_out_uniswap_v2, TxSlippage};
+use crate::utils::tx::{get_amount_out_uniswap_v2, token_tx_profit_loss, TxSlippage};
 use ethers::types::Address;
 use ethers::utils::format_units;
 use ethers::{
@@ -44,7 +44,7 @@ impl Erc20Token {
             };
 
             updated_token.update_state().await;
-            info!("token updated and saved");
+            // info!("token updated and saved");
         } else {
             warn!("{} token purchase failed", self.name);
             self.set_state_to_(TokenState::Validated).await;
@@ -122,7 +122,11 @@ impl Erc20Token {
         .await?;
 
         let amount_out_min_readable = format_units(amount_out, 18u32)?;
-        println!("sold {} for {} eth", self.name, amount_out_min_readable);
+        let profit = token_tx_profit_loss(amount_out)?;
+        println!(
+            "sold {} for {} eth with profit {}",
+            self.name, amount_out_min_readable, profit
+        );
         println!("........................................................");
 
         Ok(amount_out)

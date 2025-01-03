@@ -53,7 +53,7 @@ impl Erc20Token {
     pub async fn get_total_supply(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<U256> {
         let pool = UNISWAP_PAIR::new(self.pair_address, client.clone());
 
-        info!("getting total liquidity");
+        // info!("getting total liquidity");
         let supply = pool.total_supply().call().await?;
 
         Ok(supply)

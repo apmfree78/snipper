@@ -51,7 +51,7 @@ pub trait Txs {
         token_address: Address,
     ) -> anyhow::Result<U256> {
         // get account balance to see how much of new token recieved
-        info!("getting token balance");
+        // info!("getting token balance");
         let token_contract = ERC20::new(token_address, self.signed_client());
 
         let new_token_balance_u256 = token_contract.balance_of(self.sender()).call().await?;
@@ -66,9 +66,9 @@ pub trait Txs {
             .signed_client()
             .get_balance(self.sender(), None)
             .await?;
-        let eth_balance = format_units(new_eth_balance_u256, 18u32)?;
+        // let eth_balance = format_units(new_eth_balance_u256, 18u32)?;
 
-        println!("YOU HAVE {} of ETH", eth_balance);
+        // println!("YOU HAVE {} of ETH", eth_balance);
         Ok(new_eth_balance_u256)
     }
 

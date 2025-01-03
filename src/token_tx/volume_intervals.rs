@@ -72,7 +72,7 @@ impl Erc20Token {
         };
 
         updated_token.update_state().await;
-        println!("token updated and saved");
+        // println!("token updated and saved");
 
         Ok(())
     }

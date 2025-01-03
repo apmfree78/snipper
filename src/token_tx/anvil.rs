@@ -73,7 +73,7 @@ pub async fn purchase_token_on_anvil(
         };
 
         updated_token.update_state().await;
-        info!("token updated and saved");
+        // info!("token updated and saved");
     }
 
     Ok(())

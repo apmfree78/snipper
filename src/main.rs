@@ -97,7 +97,7 @@ async fn main() -> Result<()> {
             match event {
                 Ok(Event::Log(log)) => match events::decode_pair_created_event(&log) {
                     Ok(pair_created_event) => {
-                        info!("pair created event {:#?}", pair_created_event);
+                        // info!("pair created event {:#?}", pair_created_event);
                         let current_time = {
                             let last_time = last_timestamp.lock().await;
                             last_time.clone()

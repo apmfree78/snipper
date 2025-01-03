@@ -14,9 +14,9 @@ use ethers::{
 };
 use rand::Rng;
 use std::cmp::min;
-use std::env;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::{any, env};
 
 #[derive(PartialEq, Eq)]
 pub enum TxSlippage {
@@ -230,6 +230,21 @@ pub fn get_approval_calldata(
         .calldata()
         .expect("Failed to encode approval calldata");
     Ok(calldata)
+}
+
+pub fn token_tx_profit_loss(sold_revenue: U256) -> anyhow::Result<String> {
+    let bought_amount = amount_of_token_to_purchase()?;
+
+    if sold_revenue > bought_amount {
+        let profit = sold_revenue - bought_amount;
+        let profit = format_units(profit, "ether")?;
+        return Ok(profit);
+    } else {
+        let loss = bought_amount - sold_revenue;
+
+        let loss = format_units(loss, "ether")?;
+        return Ok("-".to_string() + &loss);
+    }
 }
 
 pub fn amount_of_token_to_purchase() -> anyhow::Result<U256> {

@@ -25,7 +25,7 @@ impl AnvilSimulator {
         // Convert and send the first transaction
         let mempool_tx_typed = convert_transaction_to_typed_transaction(&mempool_tx);
 
-        println!("calculating oracle update on anvil");
+        // println!("calculating oracle update on anvil");
         // Send the transaction and get the PendingTransaction
         let pending_tx = self
             .signed_client
@@ -34,7 +34,7 @@ impl AnvilSimulator {
 
         // Await the transaction receipt immediately to avoid capturing `pending_tx` in the async state
         let _receipt = pending_tx.await?;
-        println!("add liquidity eth complete!");
+        // println!("add liquidity eth complete!");
 
         // Stop impersonating the account
         self.signed_client
@@ -57,13 +57,13 @@ impl AnvilSimulator {
             .request::<_, ()>("anvil_impersonateAccount", [self.sender])
             .await?;
 
-        println!("........................................................");
+        // println!("........................................................");
         self.get_wallet_eth_balance().await?;
         let amount_in = amount_of_token_to_purchase()?;
-        println!("buying {}", token.name);
+        // println!("buying {}", token.name);
 
         // calculate amount amount out and gas used
-        println!("........................................................");
+        // println!("........................................................");
         let amount_out_min = get_amount_out_uniswap_v2(
             weth_address,
             token.address,
@@ -74,8 +74,8 @@ impl AnvilSimulator {
         .await?;
 
         let amount_out_min_readable = format_units(amount_out_min, 18u32)?;
-        println!("calculated amount out min {}", amount_out_min_readable);
-        println!("........................................................");
+        // println!("calculated amount out min {}", amount_out_min_readable);
+        // println!("........................................................");
 
         let deadline = self.get_current_timestamp().await?;
         let deadline = deadline + 300; //  add 5 mins
@@ -94,7 +94,7 @@ impl AnvilSimulator {
             .gas(U256::from(300_000));
 
         // sent transaction
-        info!("sending tx");
+        // info!("sending tx");
         let pending_tx_result = tx.send().await;
 
         match pending_tx_result {
@@ -105,22 +105,24 @@ impl AnvilSimulator {
                 // debug!("tx_hash => {:?}", tx_hash);
 
                 // wait for transaction receipt
-                info!("awaiting tx receipt");
+                // info!("awaiting tx receipt");
                 let receipt = pending_tx.await?.unwrap();
 
                 // gas update
                 // println!("updating gas cost");
                 update_tx_gas_cost_data(&receipt, &token).await?;
 
-                let tx_hash = receipt.transaction_hash;
+                // let tx_hash = receipt.transaction_hash;
 
-                self.trace_transaction(tx_hash).await?;
+                // self.trace_transaction(tx_hash).await?;
 
-                println!("........................................................");
-                println!("balance after buying {}...", token.name);
-                new_token_balance = self.get_wallet_token_balance(&token).await?;
+                // println!("........................................................");
+                // println!("balance after buying {}...", token.name);
+                new_token_balance = self
+                    .get_wallet_token_balance_by_address(token.address)
+                    .await?;
                 self.get_wallet_eth_balance().await?;
-                println!("........................................................");
+                // println!("........................................................");
             }
             Err(tx_err) => {
                 // Sending the transaction failed
@@ -160,11 +162,13 @@ impl AnvilSimulator {
             .request::<_, ()>("anvil_impersonateAccount", [self.sender])
             .await?;
 
-        self.show_eth_uniswap_v2_pair(&token).await?;
+        // self.show_eth_uniswap_v2_pair(&token).await?;
 
-        println!("........................................................");
+        // println!("........................................................");
         self.get_wallet_eth_balance().await?;
-        let amount_to_sell = self.get_wallet_token_balance(&token).await?;
+        let amount_to_sell = self
+            .get_wallet_token_balance_by_address(token.address)
+            .await?;
 
         //approve swap router to trade token
         token_contract
@@ -172,7 +176,7 @@ impl AnvilSimulator {
             .send()
             .await?;
 
-        println!("........................................................");
+        // println!("........................................................");
         let amount_out_min = get_amount_out_uniswap_v2(
             token.address,
             weth_address,
@@ -182,9 +186,9 @@ impl AnvilSimulator {
         )
         .await?;
 
-        let amount_out_min_readable = format_units(amount_out_min, 18u32)?;
-        println!("calculated amount out min {}", amount_out_min_readable);
-        println!("........................................................");
+        // let amount_out_min_readable = format_units(amount_out_min, 18u32)?;
+        // println!("calculated amount out min {}", amount_out_min_readable);
+        // println!("........................................................");
 
         let deadline = self.get_current_timestamp().await?;
         let deadline = deadline + 300; //  add 5 mins
@@ -200,11 +204,11 @@ impl AnvilSimulator {
             U256::from(deadline),
         );
 
-        info!("set gas limit for transaction");
+        // info!("set gas limit for transaction");
         let tx = tx.gas(U256::from(300_000));
 
         // sent transaction
-        info!("sending swap transcation");
+        // info!("sending swap transcation");
         let pending_tx_result = tx.send().await;
 
         match pending_tx_result {
@@ -215,19 +219,21 @@ impl AnvilSimulator {
                 // debug!("tx_hash => {:?}", tx_hash);
 
                 // wait for transaction receipt
-                info!("awaiting transaction receipt");
+                // info!("awaiting transaction receipt");
                 let receipt = pending_tx.await?.unwrap();
 
                 // gas update
                 update_tx_gas_cost_data(&receipt, &token).await?;
 
-                let tx_hash = receipt.transaction_hash;
+                // let tx_hash = receipt.transaction_hash;
+                //
+                // self.trace_transaction(tx_hash).await?;
 
-                self.trace_transaction(tx_hash).await?;
-
-                println!("........................................................");
-                println!("balance AFTER to selling {}", token.name);
-                new_token_balance = self.get_wallet_token_balance(&token).await?;
+                // println!("........................................................");
+                // println!("balance AFTER to selling {}", token.name);
+                new_token_balance = self
+                    .get_wallet_token_balance_by_address(token.address)
+                    .await?;
                 self.get_wallet_eth_balance().await?;
             }
             Err(tx_err) => {

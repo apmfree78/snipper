@@ -60,6 +60,7 @@ impl Erc20Token {
                         };
                         updated_token.update_state().await;
                     }
+                    self.set_state_to_(TokenState::Bought).await;
                 }
             }
             None => {
