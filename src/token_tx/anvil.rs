@@ -1,5 +1,5 @@
+use crate::data::token_data::get_tokens;
 use crate::data::token_data::remove_token;
-use crate::data::token_data::{get_tokens, update_token};
 use crate::data::tokens::{Erc20Token, TokenState};
 use crate::swap::anvil::simlator::AnvilSimulator;
 use ethers::core::types::U256;
@@ -72,7 +72,7 @@ pub async fn purchase_token_on_anvil(
             ..token.clone()
         };
 
-        update_token(&updated_token).await;
+        updated_token.update_state().await;
         info!("token updated and saved");
     }
 

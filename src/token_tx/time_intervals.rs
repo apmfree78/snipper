@@ -1,4 +1,4 @@
-use crate::data::token_data::{get_tokens, update_token};
+use crate::data::token_data::get_tokens;
 use crate::data::tokens::{Erc20Token, TokenState};
 use crate::utils::type_conversion::get_time_interval;
 use ethers::{
@@ -14,7 +14,7 @@ pub const TIME_ROUNDS: usize = 12;
 //******************** TIME BUY SELL ***************************************************
 //****************************************************************************************
 //****************************************************************************************
-pub async fn sell_eligible_tokens_at_time_intervals(
+pub async fn mock_sell_eligible_tokens_at_time_intervals(
     client: &Arc<Provider<Ws>>,
     current_time: u32,
 ) -> anyhow::Result<()> {
@@ -59,7 +59,7 @@ impl Erc20Token {
                             amount_sold_at_time: current_amounts_sold,
                             ..self.clone()
                         };
-                        update_token(&updated_token).await;
+                        updated_token.update_state().await;
                     }
                 }
             }

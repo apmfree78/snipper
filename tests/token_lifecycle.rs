@@ -28,7 +28,7 @@ use snipper::swap::anvil::simlator::AnvilSimulator;
 use snipper::swap::mainnet::setup::TxWallet;
 use snipper::swap::tx_trait::Txs;
 use snipper::token_tx::anvil::{buy_eligible_tokens_on_anvil, sell_eligible_tokens_on_anvil};
-use snipper::token_tx::time_intervals::sell_eligible_tokens_at_time_intervals;
+use snipper::token_tx::time_intervals::mock_sell_eligible_tokens_at_time_intervals;
 use snipper::token_tx::tx::buy_eligible_tokens;
 use snipper::token_tx::volume_intervals::{
     mock_buy_eligible_tokens_at_volume_interval, mock_sell_eligible_tokens_at_volume_interval,
@@ -305,7 +305,7 @@ async fn test_mock_token_buy_sell_time_intervals_test() -> anyhow::Result<()> {
     for x in (token_sell_interval..=6000).step_by(token_sell_interval) {
         let sell_time = setup.last_block_timestamp + x as u32;
         if let Err(error) =
-            sell_eligible_tokens_at_time_intervals(&setup.tx_wallet.client, sell_time).await
+            mock_sell_eligible_tokens_at_time_intervals(&setup.tx_wallet.client, sell_time).await
         {
             println!("error running sell_eligible_tokens_on_anvil => {}", error);
         }

@@ -1,8 +1,5 @@
 use anyhow::Result;
-use ethers::{
-    core::types::TxHash,
-    providers::{Provider, Ws},
-};
+use ethers::core::types::TxHash;
 use ethers::{prelude::*, utils::keccak256};
 use log::{error, info, warn};
 use std::sync::Arc;

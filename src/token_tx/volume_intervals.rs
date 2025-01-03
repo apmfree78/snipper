@@ -1,5 +1,5 @@
 use crate::data::contracts::CONTRACT;
-use crate::data::token_data::{get_tokens, update_token};
+use crate::data::token_data::get_tokens;
 use crate::data::tokens::{Erc20Token, TokenState};
 use crate::utils::tx::{get_amount_out_uniswap_v2, TxSlippage};
 use ethers::providers::{Provider, Ws};
@@ -71,7 +71,7 @@ impl Erc20Token {
             ..self.clone()
         };
 
-        update_token(&updated_token).await;
+        updated_token.update_state().await;
         println!("token updated and saved");
 
         Ok(())
@@ -87,7 +87,7 @@ impl Erc20Token {
             amounts_sold,
             ..self.clone()
         };
-        update_token(&updated_token).await;
+        updated_token.update_state().await;
 
         // let token = remove_token(token.address).await.unwrap();
         // println!("token {} sold and removed!", token.name);

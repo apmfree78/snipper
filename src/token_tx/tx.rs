@@ -1,6 +1,6 @@
 use crate::app_config::{AppMode, APP_MODE};
 use crate::data::contracts::CONTRACT;
-use crate::data::token_data::{get_tokens, update_token};
+use crate::data::token_data::get_tokens;
 use crate::data::tokens::{Erc20Token, TokenState};
 use crate::swap::mainnet::setup::TxWallet;
 use crate::utils::tx::{get_amount_out_uniswap_v2, TxSlippage};
@@ -10,7 +10,7 @@ use ethers::{
     core::types::U256,
     providers::{Provider, Ws},
 };
-use log::info;
+use log::{info, warn};
 use std::sync::Arc;
 
 //****************************************************************************************
@@ -43,16 +43,20 @@ impl Erc20Token {
                 ..self.clone()
             };
 
-            update_token(&updated_token).await;
+            updated_token.update_state().await;
             info!("token updated and saved");
+        } else {
+            warn!("{} token purchase failed", self.name);
+            self.set_state_to_(TokenState::Validated).await;
         }
 
         Ok(())
     }
 
     pub async fn sell(&self, tx_wallet: &Arc<TxWallet>) -> anyhow::Result<()> {
+        self.set_state_to_(TokenState::Selling).await;
         let eth_revenue_from_sale = if APP_MODE == AppMode::Production {
-            tx_wallet.buy_tokens_for_eth(self).await?
+            tx_wallet.sell_token_for_eth(self).await?
         } else {
             // simulation mode
             self.mock_sell_for_eth(&tx_wallet.client).await?
@@ -61,13 +65,15 @@ impl Erc20Token {
         if eth_revenue_from_sale > U256::zero() {
             let updated_token = Erc20Token {
                 eth_recieved_at_sale: eth_revenue_from_sale,
+                state: TokenState::Sold,
                 ..self.clone()
             };
-            update_token(&updated_token).await;
+            updated_token.update_state().await;
+            info!("token {} sold!", self.name);
+        } else {
+            warn!("failed to sell token {}", self.name);
+            self.set_state_to_(TokenState::Bought).await;
         }
-
-        self.set_state_to_(TokenState::Sold).await;
-        info!("token {} sold!", self.name);
 
         Ok(())
     }
@@ -143,7 +149,7 @@ pub async fn buy_eligible_tokens(tx_wallet: &Arc<TxWallet>, timestamp: u32) -> a
     Ok(())
 }
 
-pub async fn mock_sell_eligible_tokens(
+pub async fn sell_eligible_tokens(
     tx_wallet: &Arc<TxWallet>,
     current_time: u32,
 ) -> anyhow::Result<()> {

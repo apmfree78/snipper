@@ -192,6 +192,7 @@ pub async fn validate_tradable_tokens() -> anyhow::Result<()> {
     let mut handles = vec![];
     for token_ref in tokens.values() {
         let token = token_ref.clone();
+
         // SEPARATE THREAD FOR EACH TOKEN VALIDATION CHECK
         let handle = tokio::spawn(async move {
             let result: anyhow::Result<()> = async move {
@@ -256,13 +257,6 @@ pub async fn is_token_tradable(token_address: Address) -> bool {
     }
 }
 
-pub async fn update_token(updated_token: &Erc20Token) {
-    let token_data_hash = Arc::clone(&TOKEN_HASH);
-    let mut tokens = token_data_hash.lock().await;
-    let token_address = updated_token.lowercase_address();
-    tokens.insert(token_address, updated_token.clone());
-}
-
 pub async fn update_token_gas_cost(token_address: Address, gas_cost: U256) {
     let token_data_hash = Arc::clone(&TOKEN_HASH);
     let mut tokens = token_data_hash.lock().await;
@@ -281,7 +275,21 @@ pub async fn update_token_gas_cost(token_address: Address, gas_cost: U256) {
     }
 }
 
+pub async fn get_number_of_tokens() -> usize {
+    let token_data_hash = Arc::clone(&TOKEN_HASH);
+    let tokens = token_data_hash.lock().await;
+
+    tokens.len()
+}
+
 impl Erc20Token {
+    pub async fn update_state(&self) {
+        let token_data_hash = Arc::clone(&TOKEN_HASH);
+        let mut tokens = token_data_hash.lock().await;
+        let token_address = self.lowercase_address();
+        tokens.insert(token_address, self.clone());
+    }
+
     pub async fn set_state_to_(&self, state: TokenState) {
         let token_data_hash = Arc::clone(&TOKEN_HASH);
         let mut tokens = token_data_hash.lock().await;
@@ -297,29 +305,22 @@ impl Erc20Token {
             }
         }
     }
-}
 
-pub async fn set_token_to_tradable(token: &Erc20Token) {
-    let token_data_hash = Arc::clone(&TOKEN_HASH);
-    let mut tokens = token_data_hash.lock().await;
-    let token_address_string = token.lowercase_address();
+    pub async fn set_to_tradable(&self) {
+        let token_data_hash = Arc::clone(&TOKEN_HASH);
+        let mut tokens = token_data_hash.lock().await;
+        let token_address_string = self.lowercase_address();
 
-    match tokens.get_mut(&token_address_string) {
-        Some(token) => {
-            token.is_tradable = true;
-        }
-        None => {
-            error!(
-                "{} is not in token hash, cannot update.",
-                token_address_string
-            );
+        match tokens.get_mut(&token_address_string) {
+            Some(token) => {
+                token.is_tradable = true;
+            }
+            None => {
+                error!(
+                    "{} is not in token hash, cannot update.",
+                    token_address_string
+                );
+            }
         }
     }
-}
-
-pub async fn get_number_of_tokens() -> usize {
-    let token_data_hash = Arc::clone(&TOKEN_HASH);
-    let tokens = token_data_hash.lock().await;
-
-    tokens.len()
 }

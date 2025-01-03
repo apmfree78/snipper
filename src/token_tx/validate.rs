@@ -1,8 +1,5 @@
-use crate::app_config::AppMode;
-use crate::app_config::APP_MODE;
 use crate::data::token_data::get_and_save_erc20_by_token_address;
 use crate::data::token_data::remove_token;
-use crate::data::token_data::set_token_to_tradable;
 use crate::data::tokens::Erc20Token;
 use crate::data::tokens::TokenState;
 use crate::events::PairCreatedEvent;
@@ -28,7 +25,7 @@ pub async fn add_validate_buy_new_token(
         let total_supply = token.get_total_supply(&tx_wallet.client).await?;
 
         if total_supply > U256::from(0) {
-            set_token_to_tradable(&token).await;
+            token.set_to_tradable().await;
             info!(
                 "{} has immediate liquidity of {} and ready for trading",
                 token.name, total_supply
@@ -77,7 +74,7 @@ pub async fn validate_token_from_mempool_and_buy(
         // check if token is tradable
         let total_supply = token.get_total_supply(&tx_wallet.client).await?;
         if total_supply > U256::from(0) {
-            set_token_to_tradable(&token).await;
+            token.set_to_tradable().await;
 
             // go ahead and purchase
             token.purchase(tx_wallet, current_time).await?;
