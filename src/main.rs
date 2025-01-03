@@ -2,7 +2,7 @@ use anyhow::Result;
 use dotenv::dotenv;
 use ethers::{
     core::types::{Log, TxHash},
-    providers::{Middleware, Provider, Ws},
+    providers::Middleware,
     types::BlockNumber,
 };
 use futures::{lock::Mutex, stream, StreamExt};
@@ -13,17 +13,17 @@ use snipper::{
     token_tx::tx::sell_eligible_tokens,
 };
 use snipper::{
-    data::token_data::{check_all_tokens_are_tradable, validate_tradable_tokens},
-    mempool::detect_add_liquidity::detect_token_add_liquidity_and_validate,
-    utils::logging::setup_logger,
-};
-use snipper::{
-    data::{contracts::CONTRACT, token_data::display_token_time_stats},
+    data::token_data::display_token_time_stats,
     events,
     token_tx::{
         time_intervals::mock_sell_eligible_tokens_at_time_intervals, tx::buy_eligible_tokens,
         validate::add_validate_buy_new_token,
     },
+};
+use snipper::{
+    data::token_data::{check_all_tokens_are_tradable, validate_tradable_tokens},
+    mempool::detect_add_liquidity::detect_token_add_liquidity_and_validate,
+    utils::logging::setup_logger,
 };
 use std::sync::Arc;
 
