@@ -14,9 +14,9 @@ use ethers::{
 };
 use rand::Rng;
 use std::cmp::min;
+use std::env;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::{any, env};
 
 #[derive(PartialEq, Eq)]
 pub enum TxSlippage {
@@ -251,7 +251,7 @@ pub fn amount_of_token_to_purchase() -> anyhow::Result<U256> {
     let amount_to_buy =
         std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
     let amount_in = ethers::utils::parse_ether(amount_to_buy)?;
-    let purchase_amount = format_units(amount_in, "ether")?;
-    println!("buying {} of token", purchase_amount);
+    // let purchase_amount = format_units(amount_in, "ether")?;
+    // println!("buying {} of token", purchase_amount);
     Ok(amount_in)
 }

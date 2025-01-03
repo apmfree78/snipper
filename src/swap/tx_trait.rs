@@ -10,7 +10,6 @@ use ethers::{
     providers::{Middleware, Provider, Ws},
     signers::Wallet,
 };
-use log::info;
 use std::sync::Arc;
 
 use super::anvil::simlator::AnvilSimulator;

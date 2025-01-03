@@ -7,9 +7,8 @@ use crate::swap::tx_trait::Txs;
 use crate::utils::tx::{amount_of_token_to_purchase, get_amount_out_uniswap_v2, TxSlippage};
 use crate::utils::type_conversion::convert_transaction_to_typed_transaction;
 use ethers::types::{Transaction, U256};
-use ethers::utils::format_units;
 use ethers::{providers::Middleware, types::Address};
-use log::{error, info};
+use log::error;
 
 use super::simlator::AnvilSimulator;
 
@@ -73,7 +72,7 @@ impl AnvilSimulator {
         )
         .await?;
 
-        let amount_out_min_readable = format_units(amount_out_min, 18u32)?;
+        // let amount_out_min_readable = format_units(amount_out_min, 18u32)?;
         // println!("calculated amount out min {}", amount_out_min_readable);
         // println!("........................................................");
 
