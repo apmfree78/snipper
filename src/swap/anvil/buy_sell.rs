@@ -1,5 +1,6 @@
 use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
+use crate::app_config::{AppMode, APP_MODE};
 use crate::data::contracts::CONTRACT;
 use crate::data::gas::update_tx_gas_cost_data;
 use crate::data::tokens::Erc20Token;
@@ -221,8 +222,11 @@ impl AnvilSimulator {
                 // info!("awaiting transaction receipt");
                 let receipt = pending_tx.await?.unwrap();
 
-                // gas update
-                update_tx_gas_cost_data(&receipt, &token).await?;
+                // gas update only for simulation, otherwise get gas from
+                // actual transaction
+                if APP_MODE == AppMode::Simulation {
+                    update_tx_gas_cost_data(&receipt, &token).await?;
+                }
 
                 // let tx_hash = receipt.transaction_hash;
                 //

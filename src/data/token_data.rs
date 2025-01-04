@@ -86,11 +86,10 @@ pub async fn display_token_time_stats() -> anyhow::Result<()> {
     let tokens = get_tokens().await;
     let time_bought = get_token_sell_interval()?;
 
-    let mut sum_profit_per_interval = Vec::<f32>::new();
-    let mut average_profit_per_interval = Vec::<f32>::new();
-    let mut sum_roi_per_interval = Vec::<f32>::new();
-    let mut average_roi_per_interval = Vec::<f32>::new();
-    let mut tokens_sold_at_this_interval = Vec::<u8>::new();
+    let mut sum_profit_per_interval = [0.0; TIME_ROUNDS];
+    let mut sum_roi_per_interval = [0.0; TIME_ROUNDS];
+    let mut average_roi_per_interval = [0.0; TIME_ROUNDS];
+    let mut tokens_sold_at_this_interval: [u32; TIME_ROUNDS] = [0; TIME_ROUNDS];
     println!("----------------------------------------------");
     println!("----------------TOKEN STATS------------------");
     println!("----------------------------------------------");
@@ -121,10 +120,10 @@ pub async fn display_token_time_stats() -> anyhow::Result<()> {
         }
     }
 
-    for i in 0..TIME_ROUNDS {
-        average_profit_per_interval[i] =
-            sum_profit_per_interval[i] / tokens_sold_at_this_interval[i] as f32;
-    }
+    // for i in 0..TIME_ROUNDS {
+    //     total_profit_per_interval[i] =
+    //         sum_profit_per_interval[i] / tokens_sold_at_this_interval[i] as f32;
+    // }
 
     for i in 0..TIME_ROUNDS {
         average_roi_per_interval[i] =
@@ -134,11 +133,11 @@ pub async fn display_token_time_stats() -> anyhow::Result<()> {
     println!("------PROFIT PERFORMANCE BY TIME INTERVAL-----");
     println!("----------------------------------------------");
 
-    for i in 0..TIME_ROUNDS {
+    for i in 1..TIME_ROUNDS {
         println!(
             "{} secs => profit of {}, and roi of {}",
             time_bought * i as u32,
-            average_profit_per_interval[i],
+            sum_profit_per_interval[i],
             average_roi_per_interval[i]
         );
         println!("----------------------------------------------");

@@ -1,5 +1,6 @@
 use crate::data::gas::update_tx_gas_cost_data;
 use crate::data::tokens::Erc20Token;
+use crate::events::{decode_pair_created_event, parse_swap_receipt_logs_to_get_eth_amount_out};
 use crate::swap::prepare_tx::{prepare_token_approval_tx, prepare_uniswap_swap_tx};
 use crate::swap::tx_trait::Txs;
 use crate::utils::tx::{
@@ -10,6 +11,7 @@ use ethers::providers::Middleware;
 use ethers::signers::Signer;
 use ethers::types::transaction::eip2718::TypedTransaction;
 use ethers::types::U256;
+use ethers::utils::format_units;
 use log::{error, info, warn};
 
 use super::setup::TxWallet;
@@ -136,6 +138,8 @@ impl TxWallet {
         let (uniswap_swap_tx, _) =
             prepare_uniswap_swap_tx(token_swap_calldata, U256::zero(), &block, nonce)?;
 
+        // get eth balane before token sale
+
         // sent transaction
         info!("sending swap transcation");
         let pending_tx_result = self
@@ -144,40 +148,53 @@ impl TxWallet {
             .await;
         // let pending_tx_result = tx.send().await;
 
-        match pending_tx_result {
+        let eth_recieved_from_sale = match pending_tx_result {
             Ok(pending_tx) => {
                 // wait for transaction receipt
                 info!("awaiting transaction receipt");
-                let receipt = pending_tx.await?.unwrap();
+                let eth_from_sale = match pending_tx.await? {
+                    Some(receipt) => {
+                        // gas update
+                        update_tx_gas_cost_data(&receipt, &token).await?;
 
-                // gas update
-                update_tx_gas_cost_data(&receipt, &token).await?;
+                        let amount_out =
+                            parse_swap_receipt_logs_to_get_eth_amount_out(&receipt, token)?;
+                        amount_out
+                    }
+                    None => {
+                        warn!("could not get transaction receipt ");
+                        U256::zero()
+                    }
+                };
 
-                let _ = receipt.transaction_hash;
+                // let _ = receipt.transaction_hash;
 
                 // self.trace_transaction(tx_hash).await?;
+                let eth_recieved = format_units(eth_from_sale, "ether")?;
 
                 println!("........................................................");
                 new_token_balance = self
                     .get_wallet_token_balance_by_address(token.address)
                     .await?;
-                println!(
-                    "{} balance AFTER to selling {}",
-                    token.name, new_token_balance
-                );
-                self.get_wallet_eth_balance().await?;
+                println!("{} eth recieved from sale of {}", eth_recieved, token.name);
+                println!("{} of {} remaining", new_token_balance, token.name);
+                // self.get_wallet_eth_balance().await?;
                 println!("........................................................");
                 println!("........................................................");
                 // self.get_current_profit_loss().await?;
                 println!("........................................................");
                 println!("........................................................");
+
+                // return amount of eth recieved from sale
+                eth_from_sale
             }
             Err(tx_err) => {
                 // Sending the transaction failed
                 error!("Failed to send transaction: {:?}", tx_err);
+                U256::zero()
             }
-        }
+        };
 
-        Ok(new_token_balance)
+        Ok(eth_recieved_from_sale)
     }
 }

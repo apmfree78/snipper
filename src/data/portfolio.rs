@@ -38,21 +38,25 @@ impl Erc20Token {
         Ok(())
     }
 
-    pub fn display_token_portfolio_time_interval(&self) -> anyhow::Result<(Vec<f32>, Vec<f32>)> {
+    pub fn display_token_portfolio_time_interval(
+        &self,
+    ) -> anyhow::Result<([f32; TIME_ROUNDS], [f32; TIME_ROUNDS])> {
         let time_bought = get_token_sell_interval()?;
-        let mut profit_per_interval = Vec::<f32>::new();
-        let mut roi_per_interval = Vec::<f32>::new();
+        let mut profit_per_interval = [0.0; TIME_ROUNDS];
+        let mut roi_per_interval = [0.0; TIME_ROUNDS];
 
         let token_address = self.lowercase_address();
 
-        println!("Stats for {} ({})", self.name, token_address);
-        for i in 0..TIME_ROUNDS {
+        for i in 1..TIME_ROUNDS {
             let profit = self.profit_at_time_interval_(i + 1)?;
             let roi = self.roi_at_time_interval(i + 1)?;
 
-            profit_per_interval.push(profit);
-            roi_per_interval.push(roi);
+            profit_per_interval[i] = profit;
+            roi_per_interval[i] = roi;
             if profit != 0.0 && roi != 0.0 {
+                if i == 1 {
+                    println!("Stats for {} ({})", self.name, token_address);
+                }
                 println!(
                     "{} secs => profit of {}, and roi of {}",
                     time_bought * i as u32,

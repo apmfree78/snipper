@@ -1,11 +1,11 @@
 use ethers::providers::{Provider, Ws};
 use ethers::types::{Address, U256};
-use log::info;
 use std::sync::Arc;
 
 use crate::abi::uniswap_pair::UNISWAP_PAIR;
 use crate::token_tx::time_intervals::TIME_ROUNDS;
 use crate::token_tx::volume_intervals::VOLUME_ROUNDS;
+use crate::utils::tx::amount_of_token_to_purchase;
 use crate::utils::type_conversion::address_to_string;
 
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
@@ -143,9 +143,7 @@ impl Erc20Token {
             return Ok(0_f32);
         }
 
-        let eth_basis =
-            std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
-        let eth_basis = ethers::utils::parse_ether(eth_basis)?;
+        let eth_basis = amount_of_token_to_purchase()?;
 
         let total_cost = eth_basis + self.tx_gas_cost;
         let profit = if self.amount_sold_at_time[interval - 1] >= total_cost {
@@ -166,9 +164,7 @@ impl Erc20Token {
             return Ok(0_f32);
         }
 
-        let eth_basis =
-            std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
-        let eth_basis = ethers::utils::parse_ether(eth_basis)?;
+        let eth_basis = amount_of_token_to_purchase()?;
 
         let eth_basis = eth_basis.as_u128() as f64 / 1e18_f64;
 

@@ -1,6 +1,7 @@
 use dotenv::dotenv;
 use ethers::providers::{Middleware, Provider, Ws};
 use ethers::types::{Address, BlockNumber, U256};
+use ethers::utils::format_units;
 use snipper::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
 use snipper::abi::uniswap_pair::UNISWAP_PAIR;
 use snipper::data::contracts::CONTRACT;
@@ -10,6 +11,7 @@ use snipper::data::token_data::{
 use snipper::data::tokens::{Erc20Token, TokenState};
 use snipper::events::PairCreatedEvent;
 use snipper::swap::mainnet::setup::TxWallet;
+use snipper::swap::tx_trait::Txs;
 use std::str::FromStr;
 use std::sync::Arc;
 pub const PEPE: &str = "0x6982508145454Ce325dDbE47a25d4ec3d2311933";
@@ -77,20 +79,37 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
     })
 }
 
+// SET CHAIN TO BASE TO TEST and SET TOKEN_TO_BUY_IN_ETH = 0.003
 #[tokio::test]
 async fn test_buy_sell_tx() -> anyhow::Result<()> {
     let aixbt_address = AIXBT.parse()?;
     let setup = setup(aixbt_address).await?;
 
+    let eth = setup.tx_wallet.get_wallet_eth_balance().await?;
+
+    let eth_balance = format_units(eth, "ether")?;
+    println!("YOU HAVE {} of ETH at start", eth_balance);
+
     let tokens_bought = setup.tx_wallet.buy_tokens_for_eth(&setup.token).await?;
 
+    let eth = setup.tx_wallet.get_wallet_eth_balance().await?;
+
+    let eth_balance = format_units(eth, "ether")?;
+    println!("YOU HAVE {} of ETH after buy", eth_balance);
+
     if tokens_bought > U256::zero() {
-        let _ = setup.tx_wallet.sell_token_for_eth(&setup.token).await?;
+        let eth_recieved = setup.tx_wallet.sell_token_for_eth(&setup.token).await?;
+        let eth_readable = format_units(eth_recieved, "ether")?;
+        println!("got {} eth from sale", eth_readable);
     }
+
+    let eth = setup.tx_wallet.get_wallet_eth_balance().await?;
+
+    let eth_balance = format_units(eth, "ether")?;
+    println!("YOU HAVE {} of ETH after selling", eth_balance);
     Ok(())
 }
 
-// SET CHAIN TO BASE TO TEST and SET TOKEN_TO_BUY_IN_ETH = 0.003
 #[tokio::test]
 #[ignore]
 async fn test_sell_tx() -> anyhow::Result<()> {

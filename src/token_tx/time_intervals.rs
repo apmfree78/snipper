@@ -1,4 +1,4 @@
-use crate::data::token_data::get_tokens;
+use crate::data::token_data::{display_token_time_stats, get_tokens};
 use crate::data::tokens::{Erc20Token, TokenState};
 use crate::utils::type_conversion::get_time_interval;
 use ethers::{
@@ -44,7 +44,9 @@ impl Erc20Token {
 
         match interval {
             Some(time_index) => {
-                if time_index > 0 {
+                // self.amount_sold_at_time[time_index] == U256::zero() then mock purchase already
+                // complete
+                if time_index > 0 && self.amount_sold_at_time[time_index] == U256::zero() {
                     self.set_state_to_(TokenState::Selling).await;
                     let amount_sold = self.mock_sell_for_eth(client).await?;
                     println!("sold at time index: {}", time_index);
@@ -61,6 +63,9 @@ impl Erc20Token {
                         updated_token.update_state().await;
                     }
                     self.set_state_to_(TokenState::Bought).await;
+
+                    // display stats
+                    display_token_time_stats().await?;
                 }
             }
             None => {
