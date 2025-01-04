@@ -10,7 +10,7 @@ use ethers::{
     core::types::U256,
     providers::{Provider, Ws},
 };
-use log::{info, warn};
+use log::{error, info, warn};
 use std::sync::Arc;
 
 //****************************************************************************************
@@ -146,7 +146,13 @@ pub async fn buy_eligible_tokens(tx_wallet: &Arc<TxWallet>, timestamp: u32) -> a
     // println!("finding tokens to buy");
     for token in tokens.values() {
         if token.is_tradable && token.state == TokenState::Validated {
-            token.purchase(tx_wallet, timestamp).await?;
+            let spawn_token = token.clone();
+            let spawn_tx_wallet = Arc::clone(tx_wallet);
+            tokio::spawn(async move {
+                if let Err(error) = spawn_token.purchase(&spawn_tx_wallet, timestamp).await {
+                    error!("could not purchase token => {}", error);
+                }
+            });
         }
     }
     // println!("done with purchasing...");
@@ -167,7 +173,13 @@ pub async fn sell_eligible_tokens(
         let sell_time = time_to_sell + token.time_of_purchase;
 
         if token.state == TokenState::Bought && current_time >= sell_time {
-            token.sell(tx_wallet).await?;
+            let spawn_token = token.clone();
+            let spawn_tx_wallet = Arc::clone(tx_wallet);
+            tokio::spawn(async move {
+                if let Err(error) = spawn_token.sell(&spawn_tx_wallet).await {
+                    error!("could not purchase token => {}", error);
+                }
+            });
         }
     }
 
