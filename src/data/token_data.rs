@@ -165,8 +165,16 @@ pub async fn display_token_stats() -> anyhow::Result<()> {
         }
     }
 
-    let avg_roi = sum_roi / tokens_sold as f64;
-    let avg_profit = total_profit / tokens_sold as f64;
+    let avg_roi = if tokens_sold > 0 {
+        sum_roi / tokens_sold as f64
+    } else {
+        0.0
+    };
+    let avg_profit = if tokens_sold > 0 {
+        total_profit / tokens_sold as f64
+    } else {
+        0.0
+    };
 
     println!("----------------------------------------------");
     println!("------PROFIT PERFORMANCE ---------------------");

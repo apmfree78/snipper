@@ -180,7 +180,7 @@ async fn main() -> Result<()> {
                     // display stats every 5 mins
                     match block.number {
                         Some(block_number) => {
-                            if block_number.as_u64() % 30 == 0 {
+                            if block_number.as_u64() % 100 == 0 {
                                 if APP_MODE == AppMode::Production {
                                     if let Err(error) = display_token_stats().await {
                                         error!("error displaying stats => {}", error);
