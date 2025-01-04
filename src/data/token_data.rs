@@ -106,7 +106,7 @@ pub async fn display_token_time_stats() -> anyhow::Result<()> {
                 sum_profit_per_interval[i] += p;
                 // if profit is exactly zero then token was not sold at this interval yet,
                 // so do not count it when averaging out profit and roi
-                tokens_sold_at_this_interval[i] += if p == 0.0 { 1 } else { 0 };
+                tokens_sold_at_this_interval[i] += if p == 0.0 { 0 } else { 1 };
             }
         }
 
@@ -142,6 +142,44 @@ pub async fn display_token_time_stats() -> anyhow::Result<()> {
         );
         println!("----------------------------------------------");
     }
+
+    Ok(())
+}
+
+pub async fn display_token_stats() -> anyhow::Result<()> {
+    let tokens = get_tokens().await;
+
+    let mut total_profit = 0.0;
+    let mut sum_roi = 0.0;
+    let mut tokens_sold: u32 = 0;
+    println!("----------------------------------------------");
+    println!("----------------TOKEN STATS------------------");
+    println!("----------------------------------------------");
+    for token in tokens.values() {
+        let (profits, roi) = token.display_token_portfolio().await?;
+
+        if profits != 0.0 {
+            total_profit += profits;
+            sum_roi += roi;
+            tokens_sold += 1;
+        }
+    }
+
+    let avg_roi = sum_roi / tokens_sold as f64;
+    let avg_profit = total_profit / tokens_sold as f64;
+
+    println!("----------------------------------------------");
+    println!("------PROFIT PERFORMANCE ---------------------");
+    println!("----------------------------------------------");
+
+    println!("profit of {}, and roi of {}", total_profit, avg_roi);
+    println!(
+        "{} tokens sold, {} profit per token",
+        tokens_sold, avg_profit
+    );
+
+    println!("----------------------------------------------");
+    println!("----------------------------------------------");
 
     Ok(())
 }

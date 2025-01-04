@@ -64,7 +64,7 @@ impl TxWallet {
                         println!("updating gas cost");
                         update_tx_gas_cost_data(&receipt, &token).await?;
 
-                        let _ = receipt.transaction_hash;
+                        // let _ = receipt.transaction_hash;
 
                         // self.trace_transaction(tx_hash).await?;
                     }

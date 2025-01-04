@@ -3,12 +3,13 @@ use dotenv::dotenv;
 use ethers::{
     core::types::{Log, TxHash},
     providers::Middleware,
-    types::{BlockNumber, Chain},
+    types::{BlockNumber, Chain, U64},
 };
 use futures::{lock::Mutex, stream, StreamExt};
 use log::{error, info, warn};
 use snipper::{
     app_config::{AppMode, APP_MODE, CHAIN},
+    data::token_data::display_token_stats,
     swap::mainnet::setup::TxWallet,
     token_tx::tx::sell_eligible_tokens,
 };
@@ -173,10 +174,21 @@ async fn main() -> Result<()> {
                     }
 
                     // display stats every 5 mins
-                    if current_block_timestamp % 300 == 0 {
-                        if let Err(error) = display_token_time_stats().await {
-                            error!("error displaying stats => {}", error);
+                    match block.number {
+                        Some(block_number) => {
+                            if block_number.as_u64() % 30 == 0 {
+                                if APP_MODE == AppMode::Production {
+                                    if let Err(error) = display_token_stats().await {
+                                        error!("error displaying stats => {}", error);
+                                    }
+                                } else {
+                                    if let Err(error) = display_token_time_stats().await {
+                                        error!("error displaying stats => {}", error);
+                                    }
+                                }
+                            }
                         }
+                        None => warn!("could not get block number!"),
                     }
                 }
                 Err(e) => error!("Error: {:?}", e),

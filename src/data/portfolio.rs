@@ -70,19 +70,17 @@ impl Erc20Token {
         Ok((profit_per_interval, roi_per_interval))
     }
 
-    pub async fn display_token_portfolio(&self) -> anyhow::Result<()> {
-        println!("----------------------------------------------");
-        println!("----------------TOKEN STATS------------------");
+    pub async fn display_token_portfolio(&self) -> anyhow::Result<(f64, f64)> {
         println!("----------------------------------------------");
         let token_address = self.lowercase_address();
         let profit = self.profit()?;
         let roi = self.roi()?;
-        info!(
+        println!(
             "{} ({}) has profit of {}, and roi of {}",
             self.name, token_address, profit, roi
         );
-        info!("----------------------------------------------");
+        println!("----------------------------------------------");
 
-        Ok(())
+        Ok((profit, roi))
     }
 }

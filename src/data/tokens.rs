@@ -59,9 +59,9 @@ impl Erc20Token {
         Ok(supply)
     }
 
-    pub fn profit(&self) -> anyhow::Result<f32> {
+    pub fn profit(&self) -> anyhow::Result<f64> {
         if self.eth_recieved_at_sale == U256::zero() {
-            return Ok(0_f32);
+            return Ok(0_f64);
         }
 
         let eth_basis =
@@ -79,12 +79,12 @@ impl Erc20Token {
 
         let profit = profit as f64 / 1e18_f64;
 
-        Ok(profit as f32)
+        Ok(profit)
     }
 
-    pub fn roi(&self) -> anyhow::Result<f32> {
+    pub fn roi(&self) -> anyhow::Result<f64> {
         if self.eth_recieved_at_sale == U256::zero() {
-            return Ok(0_f32);
+            return Ok(0_f64);
         }
         let eth_basis =
             std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
@@ -93,9 +93,9 @@ impl Erc20Token {
         let eth_basis = eth_basis.as_u128() as f64 / 1e18_f64;
 
         let profit = self.profit()?;
-        let roi = profit / eth_basis as f32;
+        let roi = profit / eth_basis;
 
-        Ok(roi as f32)
+        Ok(roi)
     }
 
     // interval is 1..N
