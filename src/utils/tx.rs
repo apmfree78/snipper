@@ -33,16 +33,6 @@ pub fn get_wallet() -> anyhow::Result<Wallet<SigningKey>> {
     Ok(wallet)
 }
 
-pub async fn get_wallet_nonce(
-    wallet_address: Address,
-    client: &Arc<Provider<Ws>>,
-) -> anyhow::Result<U256> {
-    let nonce = client
-        .get_transaction_count(wallet_address, Some(BlockId::Number(BlockNumber::Latest)))
-        .await?;
-    Ok(nonce)
-}
-
 // ************************** BLOCK ***************************************************
 pub async fn get_current_block(client: &Arc<Provider<Ws>>) -> anyhow::Result<(Block<H256>, U64)> {
     // get the latest block

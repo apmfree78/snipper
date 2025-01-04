@@ -3,13 +3,13 @@ use dotenv::dotenv;
 use ethers::{
     core::types::{Log, TxHash},
     providers::Middleware,
-    types::{BlockNumber, Chain, U64},
+    types::{BlockNumber, Chain},
 };
 use futures::{lock::Mutex, stream, StreamExt};
 use log::{error, info, warn};
 use snipper::{
     app_config::{AppMode, APP_MODE, CHAIN},
-    data::token_data::display_token_stats,
+    data::{nonce::intialize_nonce, token_data::display_token_stats},
     swap::mainnet::setup::TxWallet,
     token_tx::tx::sell_eligible_tokens,
 };
@@ -40,9 +40,13 @@ async fn main() -> Result<()> {
     dotenv().ok();
     setup_logger().expect("Failed to initialize logger.");
 
+    // setup wallet for all rpc calls and txs
     let tx_wallet = TxWallet::new().await?;
     let tx_wallet = Arc::new(tx_wallet);
     info!("Connected to {:#?}", CHAIN);
+
+    // setup global nonce
+    intialize_nonce(&tx_wallet).await?;
 
     // TRACT TIME
     let initial_block = tx_wallet

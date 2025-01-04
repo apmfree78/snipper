@@ -1,4 +1,5 @@
 use crate::abi::erc20::ERC20;
+use crate::data::nonce::get_next_nonce;
 use crate::data::tokens::Erc20Token;
 use crate::swap::flashbots::submit_tx::{
     create_flashbot_bundle_with_tx, generate_flashbot_signed_client_with_builders,
@@ -8,7 +9,6 @@ use crate::swap::prepare_tx::prepare_uniswap_swap_tx;
 use crate::utils::tx::{
     amount_of_token_to_purchase, get_current_block, get_swap_exact_eth_for_tokens_calldata,
     get_swap_exact_tokens_for_eth_calldata, get_transaction_cost_in_eth, get_wallet,
-    get_wallet_nonce,
 };
 use anyhow::Result;
 use ethers::abi::Address;
@@ -46,7 +46,7 @@ pub async fn prepare_and_submit_flashbot_token_sell_tx(
     println!("getting calldata for approval...");
 
     // 4) Get nonce
-    let mut nonce = get_wallet_nonce(wallet.address(), client).await?;
+    let mut nonce = get_next_nonce().await;
     println!("nonce for approval tx => {}", nonce);
 
     println!("preparing approval tx...");
@@ -117,7 +117,7 @@ pub async fn prepare_and_submit_flashbot_token_purchase_tx(
     // FOR swap exact eth ONLY
     let eth_to_send_with_tx = amount_of_token_to_purchase()?;
 
-    let nonce = get_wallet_nonce(wallet.address(), client).await?;
+    let nonce = get_next_nonce().await;
     println!("nonce for purchase tx => {}", nonce);
 
     println!("getting amount of token to purchase...");

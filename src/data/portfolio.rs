@@ -4,7 +4,6 @@ use crate::{
     utils::{tx::get_token_sell_interval, type_conversion::format_to_5_decimals_decimal},
 };
 use ethers::types::U256;
-use log::info;
 
 impl Erc20Token {
     pub fn display_token_portfolio_volume_interval(&self) -> anyhow::Result<()> {
@@ -28,12 +27,6 @@ impl Erc20Token {
             );
             println!("----------------------------------------------");
         }
-
-        // let total_profit: f32 = portfolio_lock
-        //     .values()
-        //     .map(|token_stats| token_stats.profit)
-        //     .sum();
-        // info!("Total profit is ===> {}", total_profit);
 
         Ok(())
     }
