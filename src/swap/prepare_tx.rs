@@ -77,10 +77,16 @@ fn get_gas_and_priority_fees(block: &Block<H256>) -> anyhow::Result<(U256, U256)
         // 2) Grab next_base_fee (reuse your existing function)
         let next_base_fee = calculate_next_block_base_fee(block)?;
 
+        let ten_gwei_in_wei = U256::from(10_000_000_000u64);
         // 3) Add small buffer to max fee
-        let buffer = next_base_fee / 20;
+        let buffer = next_base_fee / U256::from(7);
         let max_fee = next_base_fee + buffer;
-        let priority_fee = max_fee / 10;
+        let priority_fee = if max_fee < ten_gwei_in_wei {
+            max_fee
+        } else {
+            ten_gwei_in_wei
+        };
+
         Ok((max_fee, priority_fee))
     }
 }

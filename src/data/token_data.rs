@@ -101,10 +101,13 @@ pub async fn total_token_spend() -> anyhow::Result<U256> {
 pub async fn total_token_gas_cost() -> U256 {
     let tokens = get_tokens().await;
 
-    tokens
-        .into_values()
-        .map(|token| token.tx_gas_cost)
-        .fold(U256::zero(), |acc, x| acc.saturating_add(x))
+    let mut total_gas = U256::zero();
+
+    for token in tokens.values() {
+        total_gas += token.tx_gas_cost;
+    }
+
+    total_gas
 }
 
 pub async fn display_token_volume_stats() -> anyhow::Result<()> {
@@ -160,7 +163,7 @@ pub async fn display_token_time_stats() -> anyhow::Result<()> {
 
     for i in 0..TIME_ROUNDS {
         average_roi_per_interval[i] = if tokens_sold_at_this_interval[i] > 0 {
-            sum_roi_per_interval[i] / tokens_sold_at_this_interval[i] as f32
+            sum_roi_per_interval[i] / tokens_sold_at_this_interval[i] as f64
         } else {
             0.0
         }
@@ -171,10 +174,11 @@ pub async fn display_token_time_stats() -> anyhow::Result<()> {
 
     for i in 1..TIME_ROUNDS {
         println!(
-            "{} secs => profit of {}, and roi of {}",
+            "{} secs => profit of {}, and roi of {} ({} tokens sold)",
             time_bought * i as u32,
             sum_profit_per_interval[i],
-            average_roi_per_interval[i]
+            average_roi_per_interval[i],
+            tokens_sold_at_this_interval[i]
         );
         println!("----------------------------------------------");
     }
@@ -365,22 +369,16 @@ pub async fn is_token_tradable(token_address: Address) -> bool {
     }
 }
 
-pub async fn update_token_gas_cost(token_address: Address, gas_cost: U256) {
-    let token_data_hash = Arc::clone(&TOKEN_HASH);
-    let mut tokens = token_data_hash.lock().await;
-    let token_address_string = address_to_string(token_address).to_lowercase();
-
-    match tokens.get_mut(&token_address_string) {
-        Some(token) => {
-            token.tx_gas_cost += gas_cost;
+pub async fn update_token_gas_cost(token: &Erc20Token, gas_cost: U256) -> anyhow::Result<()> {
+    match get_token(token.address).await {
+        Some(mut updated_token) => {
+            updated_token.tx_gas_cost = updated_token.tx_gas_cost + gas_cost;
+            updated_token.update_state().await;
         }
-        None => {
-            error!(
-                "{} is not in token hash, cannot update.",
-                token_address_string
-            );
-        }
+        None => warn!("could not find token"),
     }
+
+    Ok(())
 }
 
 pub async fn get_number_of_tokens() -> usize {

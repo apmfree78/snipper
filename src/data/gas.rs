@@ -12,7 +12,7 @@ pub async fn update_tx_gas_cost_data(
     let gas_cost_option = get_tx_gas_cost(&receipt)?;
     match gas_cost_option {
         Some(gas_cost) => {
-            update_token_gas_cost(token.address, gas_cost).await;
+            update_token_gas_cost(token, gas_cost).await?;
         }
         None => error!("error calculating gas cost of tx"),
     };

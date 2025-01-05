@@ -5,6 +5,7 @@ use ethers::utils::format_units;
 use snipper::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
 use snipper::abi::uniswap_pair::UNISWAP_PAIR;
 use snipper::data::contracts::CONTRACT;
+use snipper::data::nonce::intialize_nonce;
 use snipper::data::token_data::{
     check_all_tokens_are_tradable, get_and_save_erc20_by_token_address,
 };
@@ -70,6 +71,9 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
     token.set_state_to_(TokenState::Validated).await;
 
     let tx_wallet = TxWallet::new().await?;
+
+    // setup global nonce
+    intialize_nonce(&tx_wallet).await?;
 
     Ok(TestSetup {
         tx_wallet,

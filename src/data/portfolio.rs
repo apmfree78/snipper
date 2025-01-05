@@ -33,7 +33,7 @@ impl Erc20Token {
 
     pub fn display_token_portfolio_time_interval(
         &self,
-    ) -> anyhow::Result<([f32; TIME_ROUNDS], [f32; TIME_ROUNDS])> {
+    ) -> anyhow::Result<([f64; TIME_ROUNDS], [f64; TIME_ROUNDS])> {
         let time_bought = get_token_sell_interval()?;
         let mut profit_per_interval = [0.0; TIME_ROUNDS];
         let mut roi_per_interval = [0.0; TIME_ROUNDS];

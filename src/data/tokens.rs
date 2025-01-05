@@ -1,5 +1,6 @@
 use ethers::providers::{Provider, Ws};
 use ethers::types::{Address, U256};
+use ethers::utils::format_units;
 use std::sync::Arc;
 
 use crate::abi::uniswap_pair::UNISWAP_PAIR;
@@ -65,9 +66,7 @@ impl Erc20Token {
             return Ok(0_f64);
         }
 
-        let eth_basis =
-            std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
-        let eth_basis = ethers::utils::parse_ether(eth_basis)?;
+        let eth_basis = amount_of_token_to_purchase()?;
 
         let total_cost = eth_basis + self.tx_gas_cost;
         let profit = if self.eth_recieved_at_sale >= total_cost {
@@ -88,9 +87,7 @@ impl Erc20Token {
             return Ok(0_f64);
         }
 
-        let eth_basis =
-            std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
-        let eth_basis = ethers::utils::parse_ether(eth_basis)?;
+        let eth_basis = amount_of_token_to_purchase()?;
 
         let eth_basis = eth_basis.as_u128() as f64 / 1e18_f64;
 
@@ -106,9 +103,7 @@ impl Erc20Token {
             return Ok(0_f32);
         }
 
-        let eth_basis =
-            std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
-        let eth_basis = ethers::utils::parse_ether(eth_basis)?;
+        let eth_basis = amount_of_token_to_purchase()?;
 
         let total_cost = eth_basis * interval + self.tx_gas_cost;
         let profit = if self.amounts_sold[interval - 1] >= total_cost {
@@ -129,9 +124,7 @@ impl Erc20Token {
             return Ok(0_f32);
         }
 
-        let eth_basis =
-            std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
-        let eth_basis = ethers::utils::parse_ether(eth_basis)?;
+        let eth_basis = amount_of_token_to_purchase()?;
 
         let eth_basis = eth_basis.as_u128() as f64 / 1e18_f64;
 
@@ -141,9 +134,9 @@ impl Erc20Token {
         Ok(roi as f32)
     }
 
-    pub fn profit_at_time_interval_(&self, interval: usize) -> anyhow::Result<f32> {
+    pub fn profit_at_time_interval_(&self, interval: usize) -> anyhow::Result<f64> {
         if !self.is_sold_at_time[interval - 1] {
-            return Ok(0_f32);
+            return Ok(0_f64);
         }
 
         let eth_basis = amount_of_token_to_purchase()?;
@@ -159,12 +152,19 @@ impl Erc20Token {
 
         let profit = profit as f64 / 1e18_f64;
 
-        Ok(profit as f32)
+        let gas_cost = format_units(self.tx_gas_cost, "ether")?;
+        let cost = format_units(total_cost, "ether")?;
+
+        println!("total cost => {}", cost);
+        println!("gas cost => {}", gas_cost);
+        println!("profit => {}", profit);
+
+        Ok(profit)
     }
 
-    pub fn roi_at_time_interval(&self, interval: usize) -> anyhow::Result<f32> {
-        if self.amount_sold_at_time[interval - 1] == U256::zero() {
-            return Ok(0_f32);
+    pub fn roi_at_time_interval(&self, interval: usize) -> anyhow::Result<f64> {
+        if !self.is_sold_at_time[interval - 1] {
+            return Ok(0_f64);
         }
 
         let eth_basis = amount_of_token_to_purchase()?;
@@ -172,9 +172,9 @@ impl Erc20Token {
         let eth_basis = eth_basis.as_u128() as f64 / 1e18_f64;
 
         let profit = self.profit_at_time_interval_(interval)?;
-        let roi = profit / eth_basis as f32;
+        let roi = profit / eth_basis;
 
-        Ok(roi as f32)
+        Ok(roi)
     }
 
     pub fn lowercase_address(&self) -> String {
