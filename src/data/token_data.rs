@@ -2,11 +2,12 @@ use crate::abi::erc20::ERC20;
 use crate::events::PairCreatedEvent;
 use crate::swap::anvil::validation::{TokenLiquidity, TokenStatus};
 use crate::token_tx::time_intervals::TIME_ROUNDS;
-use crate::utils::tx::get_token_sell_interval;
+use crate::utils::tx::{amount_of_token_to_purchase, get_token_sell_interval};
 use crate::utils::type_conversion::address_to_string;
 use anyhow::Result;
 use ethers::providers::{Provider, Ws};
 use ethers::types::{Address, U256};
+use ethers::utils::format_units;
 use futures::lock::Mutex;
 use log::{error, info, warn};
 use once_cell::sync::Lazy;
@@ -69,6 +70,43 @@ pub async fn get_and_save_erc20_by_token_address(
     Ok(Some(token))
 }
 
+pub async fn token_count_by_state(state: TokenState) -> u32 {
+    let tokens = get_tokens().await;
+
+    tokens
+        .into_values()
+        .filter(|token| token.state == state)
+        .count() as u32
+}
+
+pub async fn total_token_sales_revenue() -> U256 {
+    let tokens = get_tokens().await;
+
+    tokens
+        .into_values()
+        .map(|token| token.eth_recieved_at_sale)
+        .fold(U256::zero(), |acc, x| acc.saturating_add(x))
+}
+
+pub async fn total_token_spend() -> anyhow::Result<U256> {
+    let amount = amount_of_token_to_purchase()?;
+
+    let token_count = token_count_by_state(TokenState::Bought).await;
+
+    let total_spend = amount * U256::from(token_count);
+
+    Ok(total_spend)
+}
+
+pub async fn total_token_gas_cost() -> U256 {
+    let tokens = get_tokens().await;
+
+    tokens
+        .into_values()
+        .map(|token| token.tx_gas_cost)
+        .fold(U256::zero(), |acc, x| acc.saturating_add(x))
+}
+
 pub async fn display_token_volume_stats() -> anyhow::Result<()> {
     let tokens = get_tokens().await;
 
@@ -120,14 +158,12 @@ pub async fn display_token_time_stats() -> anyhow::Result<()> {
         }
     }
 
-    // for i in 0..TIME_ROUNDS {
-    //     total_profit_per_interval[i] =
-    //         sum_profit_per_interval[i] / tokens_sold_at_this_interval[i] as f32;
-    // }
-
     for i in 0..TIME_ROUNDS {
-        average_roi_per_interval[i] =
-            sum_roi_per_interval[i] / tokens_sold_at_this_interval[i] as f32;
+        average_roi_per_interval[i] = if tokens_sold_at_this_interval[i] > 0 {
+            sum_roi_per_interval[i] / tokens_sold_at_this_interval[i] as f32
+        } else {
+            0.0
+        }
     }
     println!("----------------------------------------------");
     println!("------PROFIT PERFORMANCE BY TIME INTERVAL-----");
@@ -142,6 +178,8 @@ pub async fn display_token_time_stats() -> anyhow::Result<()> {
         );
         println!("----------------------------------------------");
     }
+    // show addtional token data
+    display_token_data().await?;
 
     Ok(())
 }
@@ -187,6 +225,30 @@ pub async fn display_token_stats() -> anyhow::Result<()> {
     );
 
     println!("----------------------------------------------");
+    println!("----------------------------------------------");
+
+    // show additional token data
+    display_token_data().await?;
+
+    Ok(())
+}
+
+pub async fn display_token_data() -> anyhow::Result<()> {
+    let tokens_bought = token_count_by_state(TokenState::Bought).await;
+    let tokens_sold = token_count_by_state(TokenState::Sold).await;
+    let total_gas_spent = total_token_gas_cost().await;
+    let total_token_cost = total_token_spend().await?;
+    let total_eth_cost = total_token_cost + total_gas_spent;
+    let _revenue = total_token_sales_revenue().await;
+
+    let gas_cost = format_units(total_gas_spent, "ether")?;
+    let eth_cost = format_units(total_eth_cost, "ether")?;
+
+    println!("----------------------------------------------");
+    println!("{} tokens bought", tokens_bought);
+    println!("{} tokens sold", tokens_sold);
+    println!("{} total eth spent", eth_cost);
+    println!("{} total gas spent", gas_cost);
     println!("----------------------------------------------");
 
     Ok(())

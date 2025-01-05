@@ -47,6 +47,7 @@ pub struct Erc20Token {
 
     // for mock buying/selling different times
     pub amount_sold_at_time: [U256; TIME_ROUNDS],
+    pub is_sold_at_time: [bool; TIME_ROUNDS],
 }
 
 impl Erc20Token {
@@ -60,7 +61,7 @@ impl Erc20Token {
     }
 
     pub fn profit(&self) -> anyhow::Result<f64> {
-        if self.eth_recieved_at_sale == U256::zero() {
+        if self.state != TokenState::Sold {
             return Ok(0_f64);
         }
 
@@ -83,9 +84,10 @@ impl Erc20Token {
     }
 
     pub fn roi(&self) -> anyhow::Result<f64> {
-        if self.eth_recieved_at_sale == U256::zero() {
+        if self.state != TokenState::Sold {
             return Ok(0_f64);
         }
+
         let eth_basis =
             std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
         let eth_basis = ethers::utils::parse_ether(eth_basis)?;
@@ -100,9 +102,10 @@ impl Erc20Token {
 
     // interval is 1..N
     pub fn profit_at_volume_interval_(&self, interval: usize) -> anyhow::Result<f32> {
-        if self.amounts_sold[interval - 1] == U256::zero() {
+        if !self.is_sold_at_time[interval - 1] {
             return Ok(0_f32);
         }
+
         let eth_basis =
             std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
         let eth_basis = ethers::utils::parse_ether(eth_basis)?;
@@ -122,7 +125,7 @@ impl Erc20Token {
     }
 
     pub fn roi_at_volume_interval(&self, interval: usize) -> anyhow::Result<f32> {
-        if self.amounts_sold[interval - 1] == U256::zero() {
+        if !self.is_sold_at_time[interval - 1] {
             return Ok(0_f32);
         }
 
@@ -139,7 +142,7 @@ impl Erc20Token {
     }
 
     pub fn profit_at_time_interval_(&self, interval: usize) -> anyhow::Result<f32> {
-        if self.amount_sold_at_time[interval - 1] == U256::zero() {
+        if !self.is_sold_at_time[interval - 1] {
             return Ok(0_f32);
         }
 

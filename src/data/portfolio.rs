@@ -64,15 +64,18 @@ impl Erc20Token {
     }
 
     pub async fn display_token_portfolio(&self) -> anyhow::Result<(f64, f64)> {
-        println!("----------------------------------------------");
         let token_address = self.lowercase_address();
         let profit = self.profit()?;
         let roi = self.roi()?;
-        println!(
-            "{} ({}) has profit of {}, and roi of {}",
-            self.name, token_address, profit, roi
-        );
-        println!("----------------------------------------------");
+
+        if profit != 0.0 {
+            println!("----------------------------------------------");
+            println!(
+                "{} ({}) has profit of {}, and roi of {}",
+                self.name, token_address, profit, roi
+            );
+            println!("----------------------------------------------");
+        }
 
         Ok((profit, roi))
     }

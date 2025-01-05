@@ -1,6 +1,6 @@
 use crate::app_config::{AppMode, APP_MODE};
 use crate::data::contracts::CONTRACT;
-use crate::data::token_data::get_tokens;
+use crate::data::token_data::{get_tokens, remove_token};
 use crate::data::tokens::{Erc20Token, TokenState};
 use crate::swap::mainnet::setup::TxWallet;
 use crate::utils::tx::{get_amount_out_uniswap_v2, token_tx_profit_loss, TxSlippage};
@@ -46,8 +46,8 @@ impl Erc20Token {
             updated_token.update_state().await;
             // info!("token updated and saved");
         } else {
-            warn!("{} token purchase failed", self.name);
-            self.set_state_to_(TokenState::Validated).await;
+            warn!("{} token purchase failed, removing", self.name);
+            remove_token(self.address).await;
         }
 
         Ok(())
@@ -71,8 +71,13 @@ impl Erc20Token {
             updated_token.update_state().await;
             info!("token {} sold!", self.name);
         } else {
-            warn!("failed to sell token {}", self.name);
-            self.set_state_to_(TokenState::Bought).await;
+            let updated_token = Erc20Token {
+                eth_recieved_at_sale: U256::zero(),
+                state: TokenState::Sold,
+                ..self.clone()
+            };
+            updated_token.update_state().await;
+            warn!("failed to sell token, rug pull => {}", self.name);
         }
 
         Ok(())
@@ -177,7 +182,7 @@ pub async fn sell_eligible_tokens(
             let spawn_tx_wallet = Arc::clone(tx_wallet);
             tokio::spawn(async move {
                 if let Err(error) = spawn_token.sell(&spawn_tx_wallet).await {
-                    error!("could not purchase token => {}", error);
+                    error!("could not sell token => {}", error);
                 }
             });
         }

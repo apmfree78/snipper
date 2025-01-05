@@ -7,7 +7,7 @@ use ethers::{
 };
 use std::sync::Arc;
 
-pub const TIME_ROUNDS: usize = 12;
+pub const TIME_ROUNDS: usize = 24;
 //****************************************************************************************
 //****************************************************************************************
 //****************************************************************************************
@@ -52,20 +52,20 @@ impl Erc20Token {
                     println!("sold at time index: {}", time_index);
 
                     let mut current_amounts_sold = self.amount_sold_at_time.clone();
+                    let mut is_sold_at_time = self.is_sold_at_time.clone();
 
-                    if current_amounts_sold[time_index] == U256::zero() {
+                    if !is_sold_at_time[time_index] {
                         current_amounts_sold[time_index] = amount_sold;
+                        is_sold_at_time[time_index] = true;
 
                         let updated_token = Erc20Token {
                             amount_sold_at_time: current_amounts_sold,
+                            is_sold_at_time,
                             ..self.clone()
                         };
                         updated_token.update_state().await;
                     }
                     self.set_state_to_(TokenState::Bought).await;
-
-                    // display stats
-                    display_token_time_stats().await?;
                 }
             }
             None => {
