@@ -22,6 +22,8 @@ use std::sync::Arc;
 pub enum TxSlippage {
     OnePercent,
     TwoPercent,
+    FivePercent,
+    TenPercent,
     None,
 }
 
@@ -91,6 +93,8 @@ pub async fn get_amount_out_uniswap_v2(
     let base_amount_out = amounts[amounts.len() - 1];
 
     let amount_out = match slippage_tolerance {
+        TxSlippage::TenPercent => base_amount_out * U256::from(90) / U256::from(100),
+        TxSlippage::FivePercent => base_amount_out * U256::from(95) / U256::from(100),
         TxSlippage::TwoPercent => base_amount_out * U256::from(98) / U256::from(100),
         TxSlippage::OnePercent => base_amount_out * U256::from(99) / U256::from(100),
         TxSlippage::None => base_amount_out,
@@ -171,6 +175,7 @@ pub async fn get_swap_exact_tokens_for_eth_calldata(
     tokens_to_sell: U256,
     current_time: u32,
     client: &Arc<Provider<Ws>>,
+    slippage: TxSlippage,
 ) -> anyhow::Result<Bytes> {
     let uniswap_v2_router_address: Address = CONTRACT.get_address().uniswap_v2_router.parse()?;
     let weth_address: Address = CONTRACT.get_address().weth.parse()?;
@@ -186,7 +191,7 @@ pub async fn get_swap_exact_tokens_for_eth_calldata(
         token.address,
         weth_address,
         tokens_to_sell,
-        TxSlippage::TwoPercent,
+        slippage,
         client,
     )
     .await?;

@@ -8,7 +8,7 @@ use crate::swap::flashbots::submit_tx::{
 use crate::swap::prepare_tx::prepare_uniswap_swap_tx;
 use crate::utils::tx::{
     amount_of_token_to_purchase, get_current_block, get_swap_exact_eth_for_tokens_calldata,
-    get_swap_exact_tokens_for_eth_calldata, get_transaction_cost_in_eth, get_wallet,
+    get_swap_exact_tokens_for_eth_calldata, get_transaction_cost_in_eth, get_wallet, TxSlippage,
 };
 use anyhow::Result;
 use ethers::abi::Address;
@@ -60,6 +60,7 @@ pub async fn prepare_and_submit_flashbot_token_sell_tx(
         token_balance,
         block.timestamp.as_u32(),
         client,
+        TxSlippage::TwoPercent,
     )
     .await?;
 

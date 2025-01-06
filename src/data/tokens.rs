@@ -1,10 +1,14 @@
+use derive_more::Display;
 use ethers::providers::{Provider, Ws};
 use ethers::types::{Address, U256};
 use ethers::utils::format_units;
 use std::sync::Arc;
 
 use crate::abi::uniswap_pair::UNISWAP_PAIR;
-use crate::token_tx::time_intervals::TIME_ROUNDS;
+use crate::app_config::{
+    HIGH_LIQUIDITY_THRESHOLD, LOW_LIQUIDITY_THRESHOLD, MEDIUM_LIQUIDITY_THRESHOLD, MIN_LIQUIDITY,
+    MIN_RESERVE_ETH_FACTOR, MIN_TRADE_FACTOR, TIME_ROUNDS, VERY_LOW_LIQUIDITY_THRESHOLD,
+};
 use crate::token_tx::volume_intervals::VOLUME_ROUNDS;
 use crate::utils::tx::amount_of_token_to_purchase;
 use crate::utils::type_conversion::address_to_string;
@@ -21,6 +25,23 @@ pub enum TokenState {
     Sold,
 }
 
+#[derive(Clone, Default, Display, Debug, PartialEq, Eq)]
+pub enum TokenLiquidity {
+    #[display(fmt = "Zero")]
+    #[default]
+    Zero,
+    #[display(fmt = "Micro")]
+    Micro(u128), // up to 1 ETH
+    #[display(fmt = "Very Low")]
+    VeryLow(u128), // 1 to 10 ETH
+    #[display(fmt = "Low")]
+    Low(u128), // 10 to 30 ETH
+    #[display(fmt = "Medium")]
+    Medium(u128), // 30 to 50 ETH
+    #[display(fmt = "High")]
+    High(u128), // over 50 ETH
+}
+
 #[derive(Clone, Default, Debug)]
 pub struct Erc20Token {
     // basic token data
@@ -35,6 +56,7 @@ pub struct Erc20Token {
     // token state
     pub is_tradable: bool,
     pub state: TokenState,
+    pub liquidity: TokenLiquidity,
     pub amount_bought: U256,
     pub eth_recieved_at_sale: U256,
     pub time_of_purchase: u32,
@@ -51,6 +73,17 @@ pub struct Erc20Token {
     pub is_sold_at_time: [bool; TIME_ROUNDS],
 }
 
+pub fn extract_liquidity_amount(liquidity: &TokenLiquidity) -> Option<u128> {
+    match liquidity {
+        TokenLiquidity::Zero => None,
+        TokenLiquidity::Micro(value) => Some(*value),
+        TokenLiquidity::VeryLow(value) => Some(*value),
+        TokenLiquidity::Low(value) => Some(*value),
+        TokenLiquidity::Medium(value) => Some(*value),
+        TokenLiquidity::High(value) => Some(*value),
+    }
+}
+
 impl Erc20Token {
     pub async fn get_total_supply(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<U256> {
         let pool = UNISWAP_PAIR::new(self.pair_address, client.clone());
@@ -59,6 +92,66 @@ impl Erc20Token {
         let supply = pool.total_supply().call().await?;
 
         Ok(supply)
+    }
+
+    pub async fn has_enough_liquidity(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<bool> {
+        let pool = UNISWAP_PAIR::new(self.pair_address, client.clone());
+
+        let (reserve0, reserve1, _) = pool.get_reserves().call().await?;
+
+        let eth_supply = if self.is_token_0 { reserve1 } else { reserve0 };
+
+        // let eth = eth_supply as f64 / 1e18_f64;
+
+        Ok(eth_supply >= MIN_LIQUIDITY)
+    }
+
+    pub async fn get_liquidity(
+        &self,
+        client: &Arc<Provider<Ws>>,
+    ) -> anyhow::Result<TokenLiquidity> {
+        let pool = UNISWAP_PAIR::new(self.pair_address, client.clone());
+
+        let (reserve0, reserve1, _) = pool.get_reserves().call().await?;
+
+        let eth_supply = if self.is_token_0 { reserve1 } else { reserve0 };
+
+        if eth_supply >= HIGH_LIQUIDITY_THRESHOLD {
+            Ok(TokenLiquidity::High(eth_supply))
+        } else if eth_supply >= MEDIUM_LIQUIDITY_THRESHOLD {
+            Ok(TokenLiquidity::Medium(eth_supply))
+        } else if eth_supply >= LOW_LIQUIDITY_THRESHOLD {
+            Ok(TokenLiquidity::Low(eth_supply))
+        } else if eth_supply >= VERY_LOW_LIQUIDITY_THRESHOLD {
+            Ok(TokenLiquidity::VeryLow(eth_supply))
+        } else if eth_supply != 0 {
+            Ok(TokenLiquidity::Micro(eth_supply))
+        } else {
+            Ok(TokenLiquidity::Zero)
+        }
+    }
+
+    pub async fn has_enough_liquidity_for_trade(
+        &self,
+        tokens_to_sell: U256,
+        client: &Arc<Provider<Ws>>,
+    ) -> anyhow::Result<bool> {
+        let pool = UNISWAP_PAIR::new(self.pair_address, client.clone());
+
+        let eth_amount_used_for_purchase = amount_of_token_to_purchase()?;
+
+        let (reserve0, reserve1, _) = pool.get_reserves().call().await?;
+
+        let (eth_supply, token_supply) = if self.is_token_0 {
+            (reserve1, reserve0)
+        } else {
+            (reserve0, reserve1)
+        };
+
+        let enough_liquidity = tokens_to_sell * MIN_TRADE_FACTOR < U256::from(token_supply)
+            && eth_amount_used_for_purchase * MIN_RESERVE_ETH_FACTOR < U256::from(eth_supply);
+
+        Ok(enough_liquidity)
     }
 
     pub fn profit(&self) -> anyhow::Result<f64> {
@@ -151,13 +244,6 @@ impl Erc20Token {
         };
 
         let profit = profit as f64 / 1e18_f64;
-
-        let gas_cost = format_units(self.tx_gas_cost, "ether")?;
-        let cost = format_units(total_cost, "ether")?;
-
-        println!("total cost => {}", cost);
-        println!("gas cost => {}", gas_cost);
-        println!("profit => {}", profit);
 
         Ok(profit)
     }

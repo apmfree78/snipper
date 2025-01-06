@@ -4,11 +4,8 @@ use ethers::{prelude::*, utils::keccak256};
 use log::{error, info, warn};
 use std::sync::Arc;
 
+use crate::data::{token_data::get_token, tokens::TokenState};
 use crate::swap::mainnet::setup::TxWallet;
-use crate::{
-    data::{token_data::get_token, tokens::TokenState},
-    token_tx::validate::validate_token_from_mempool_and_buy,
-};
 
 use super::decode_add_liquidity::decode_add_liquidity_eth_fn;
 
@@ -41,35 +38,35 @@ pub async fn detect_token_add_liquidity_and_validate(
                     );
 
                     // check that token is one we are looking for!
-                    let result = get_token(token_address).await;
+                    let _result = get_token(token_address).await;
 
-                    match result {
-                        Some(token) => {
-                            // validate token
-                            if token.state == TokenState::NotValidated {
-                                let spawn_token = token.clone();
-                                let spawn_tx = tx.clone();
-                                let spawn_tx_wallet = Arc::clone(tx_wallet);
-                                tokio::spawn(async move {
-                                    info!("validating {} token from mempool!", spawn_token.name);
-                                    if let Err(error) = validate_token_from_mempool_and_buy(
-                                        &spawn_token,
-                                        &spawn_tx,
-                                        &spawn_tx_wallet,
-                                        current_time,
-                                    )
-                                    .await
-                                    {
-                                        error!(
-                                            "could not validate_token_from_mempool_and_buy => {}",
-                                            error
-                                        );
-                                    }
-                                });
-                            };
-                        }
-                        None => warn!("this is not the token you're looking for"),
-                    }
+                    // match result {
+                    //     Some(token) => {
+                    //         // validate token
+                    //         if token.state == TokenState::NotValidated {
+                    //             let spawn_token = token.clone();
+                    //             let spawn_tx = tx.clone();
+                    //             let spawn_tx_wallet = Arc::clone(tx_wallet);
+                    //             tokio::spawn(async move {
+                    //                 info!("validating {} token from mempool!", spawn_token.name);
+                    //                 if let Err(error) = validate_token_from_mempool_and_buy(
+                    //                     &spawn_token,
+                    //                     &spawn_tx,
+                    //                     &spawn_tx_wallet,
+                    //                     current_time,
+                    //                 )
+                    //                 .await
+                    //                 {
+                    //                     error!(
+                    //                         "could not validate_token_from_mempool_and_buy => {}",
+                    //                         error
+                    //                     );
+                    //                 }
+                    //             });
+                    //         };
+                    //     }
+                    //     None => warn!("this is not the token you're looking for"),
+                    // }
                 }
             }
         }

@@ -1,13 +1,10 @@
-use crate::data::token_data::{display_token_time_stats, get_tokens};
+use crate::data::token_data::get_tokens;
 use crate::data::tokens::{Erc20Token, TokenState};
 use crate::utils::type_conversion::get_time_interval;
-use ethers::{
-    core::types::U256,
-    providers::{Provider, Ws},
-};
+use ethers::providers::{Provider, Ws};
+use ethers::utils::format_units;
 use std::sync::Arc;
 
-pub const TIME_ROUNDS: usize = 24;
 //****************************************************************************************
 //****************************************************************************************
 //****************************************************************************************
@@ -46,10 +43,11 @@ impl Erc20Token {
             Some(time_index) => {
                 // self.amount_sold_at_time[time_index] == U256::zero() then mock purchase already
                 // complete
-                if time_index > 0 && self.amount_sold_at_time[time_index] == U256::zero() {
+                if time_index > 0 && !self.is_sold_at_time[time_index] {
                     self.set_state_to_(TokenState::Selling).await;
                     let amount_sold = self.mock_sell_for_eth(client).await?;
-                    println!("sold at time index: {}", time_index);
+                    let sold = format_units(amount_sold, "ether")?;
+                    println!("sold {} at time index: {}", sold, time_index);
 
                     let mut current_amounts_sold = self.amount_sold_at_time.clone();
                     let mut is_sold_at_time = self.is_sold_at_time.clone();

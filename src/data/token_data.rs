@@ -1,7 +1,9 @@
 use crate::abi::erc20::ERC20;
+use crate::app_config::TIME_ROUNDS;
+use crate::data::tokens::extract_liquidity_amount;
 use crate::events::PairCreatedEvent;
-use crate::swap::anvil::validation::{TokenLiquidity, TokenStatus};
-use crate::token_tx::time_intervals::TIME_ROUNDS;
+use crate::swap::anvil::validation::{TokenLiquid, TokenStatus};
+use crate::token_tx::validate::liquidity_is_not_zero_nor_micro;
 use crate::utils::tx::{amount_of_token_to_purchase, get_token_sell_interval};
 use crate::utils::type_conversion::address_to_string;
 use anyhow::Result;
@@ -15,7 +17,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use super::contracts::CONTRACT;
-use super::tokens::{Erc20Token, TokenState};
+use super::tokens::{Erc20Token, TokenLiquidity, TokenState};
 
 static TOKEN_HASH: Lazy<Arc<Mutex<HashMap<String, Erc20Token>>>> =
     Lazy::new(|| Arc::new(Mutex::new(HashMap::<String, Erc20Token>::new())));
@@ -127,6 +129,12 @@ pub async fn display_token_time_stats() -> anyhow::Result<()> {
     let tokens = get_tokens().await;
     let time_bought = get_token_sell_interval()?;
 
+    let mut profit_micro_liquidity_per_interval = [0.0; TIME_ROUNDS];
+    let mut profit_very_low_liquidity_per_interval = [0.0; TIME_ROUNDS];
+    let mut profit_low_liquidity_per_interval = [0.0; TIME_ROUNDS];
+    let mut profit_medium_liquidity_per_interval = [0.0; TIME_ROUNDS];
+    let mut profit_high_liquidity_per_interval = [0.0; TIME_ROUNDS];
+
     let mut sum_profit_per_interval = [0.0; TIME_ROUNDS];
     let mut sum_roi_per_interval = [0.0; TIME_ROUNDS];
     let mut average_roi_per_interval = [0.0; TIME_ROUNDS];
@@ -148,6 +156,15 @@ pub async fn display_token_time_stats() -> anyhow::Result<()> {
                 // if profit is exactly zero then token was not sold at this interval yet,
                 // so do not count it when averaging out profit and roi
                 tokens_sold_at_this_interval[i] += if p == 0.0 { 0 } else { 1 };
+
+                match token.liquidity {
+                    TokenLiquidity::Micro(_) => profit_micro_liquidity_per_interval[i] += p,
+                    TokenLiquidity::VeryLow(_) => profit_very_low_liquidity_per_interval[i] += p,
+                    TokenLiquidity::Low(_) => profit_low_liquidity_per_interval[i] += p,
+                    TokenLiquidity::Medium(_) => profit_medium_liquidity_per_interval[i] += p,
+                    TokenLiquidity::High(_) => profit_high_liquidity_per_interval[i] += p,
+                    TokenLiquidity::Zero => {}
+                }
             }
         }
 
@@ -180,6 +197,36 @@ pub async fn display_token_time_stats() -> anyhow::Result<()> {
             average_roi_per_interval[i],
             tokens_sold_at_this_interval[i]
         );
+        if profit_micro_liquidity_per_interval[i] != 0.0 {
+            println!(
+                "micro liquidity => profit of {}",
+                profit_micro_liquidity_per_interval[i]
+            );
+        }
+        if profit_very_low_liquidity_per_interval[i] != 0.0 {
+            println!(
+                "very low liquidity => profit of {}",
+                profit_very_low_liquidity_per_interval[i]
+            );
+        }
+        if profit_low_liquidity_per_interval[i] != 0.0 {
+            println!(
+                "low liquidity => profit of {}",
+                profit_low_liquidity_per_interval[i]
+            );
+        }
+        if profit_medium_liquidity_per_interval[i] != 0.0 {
+            println!(
+                "medium liquidity => profit of {}",
+                profit_medium_liquidity_per_interval[i]
+            );
+        }
+        if profit_high_liquidity_per_interval[i] != 0.0 {
+            println!(
+                "high liquidity => profit of {}",
+                profit_high_liquidity_per_interval[i]
+            );
+        }
         println!("----------------------------------------------");
     }
     // show addtional token data
@@ -278,19 +325,26 @@ pub async fn get_token(token_address: Address) -> Option<Erc20Token> {
 }
 
 pub async fn check_all_tokens_are_tradable(client: &Arc<Provider<Ws>>) -> anyhow::Result<()> {
-    let token_data_hash = Arc::clone(&TOKEN_HASH);
-    let mut tokens = token_data_hash.lock().await;
+    let tokens = get_tokens().await;
 
-    for token in tokens.values_mut() {
+    for mut token in tokens.into_values() {
         if !token.is_tradable {
             // check liquidity
-            let total_supply = token.get_total_supply(client).await?;
-
-            if total_supply > U256::from(0) {
-                token.is_tradable = true;
-                info!("{} is tradable", token.name);
-            } else {
-                // info!("{} is not tradable", token.name);
+            let liquidity = token.get_liquidity(client).await?;
+            if liquidity_is_not_zero_nor_micro(&liquidity) {
+                token
+                    .set_to_tradable_plus_update_liquidity(&liquidity)
+                    .await;
+                let liquidity_amount = extract_liquidity_amount(&liquidity).unwrap();
+                info!(
+                    "{} has {} liquidity ({}) and ready for trading",
+                    liquidity_amount as f64 / 1e18_f64,
+                    token.name,
+                    liquidity
+                );
+            } else if liquidity != TokenLiquidity::Zero {
+                let removed_token = remove_token(token.address).await.unwrap();
+                warn!("micro liquidity scam token {} removed", removed_token.name);
             }
         }
     }
@@ -312,11 +366,18 @@ pub async fn validate_tradable_tokens() -> anyhow::Result<()> {
                     token.set_state_to_(TokenState::Validating).await;
 
                     let token_status = token
-                        .validate_with_simulated_buy_sell(TokenLiquidity::HasEnough)
+                        .validate_with_simulated_buy_sell(TokenLiquid::HasEnough)
                         .await?;
+
+                    let token_ = get_token(token.address).await.unwrap();
+                    print!("liquidity after anvil buy sell => {}", token_.liquidity);
+
                     if token_status == TokenStatus::Legit {
                         info!("{} is validated!", token.name);
-                        token.set_state_to_(TokenState::Validating).await;
+                        token.set_state_to_(TokenState::Validated).await;
+
+                        let token_ = get_token(token.address).await.unwrap();
+                        print!("liquidity after validation => {}", token_.liquidity);
                     } else {
                         let scam_token = remove_token(token.address).await;
                         let scam_token = scam_token.unwrap();
@@ -412,7 +473,23 @@ impl Erc20Token {
         }
     }
 
-    pub async fn set_to_tradable(&self) {
+    pub async fn set_liquidity_to_(&self, liquidity: TokenLiquidity) {
+        let token_data_hash = Arc::clone(&TOKEN_HASH);
+        let mut tokens = token_data_hash.lock().await;
+        let token_address_string = self.lowercase_address();
+
+        match tokens.get_mut(&token_address_string) {
+            Some(token) => token.liquidity = liquidity,
+            None => {
+                error!(
+                    "{} is not in token hash, cannot update.",
+                    token_address_string
+                );
+            }
+        }
+    }
+
+    pub async fn set_to_tradable_plus_update_liquidity(&mut self, liquidity: &TokenLiquidity) {
         let token_data_hash = Arc::clone(&TOKEN_HASH);
         let mut tokens = token_data_hash.lock().await;
         let token_address_string = self.lowercase_address();
@@ -420,6 +497,9 @@ impl Erc20Token {
         match tokens.get_mut(&token_address_string) {
             Some(token) => {
                 token.is_tradable = true;
+                token.liquidity = liquidity.clone();
+                self.liquidity = liquidity.clone();
+                println!("{} token liquidity set to {}", token.name, token.liquidity);
             }
             None => {
                 error!(

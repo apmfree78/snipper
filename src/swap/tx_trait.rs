@@ -51,7 +51,7 @@ pub trait Txs {
     ) -> anyhow::Result<U256> {
         // get account balance to see how much of new token recieved
         // info!("getting token balance");
-        let token_contract = ERC20::new(token_address, self.client());
+        let token_contract = ERC20::new(token_address, self.signed_client());
 
         let new_token_balance_u256 = token_contract.balance_of(self.sender()).call().await?;
 

@@ -6,7 +6,7 @@ use crate::swap::prepare_tx::{prepare_token_approval_tx, prepare_uniswap_swap_tx
 use crate::swap::tx_trait::Txs;
 use crate::utils::tx::{
     amount_of_token_to_purchase, get_current_block, get_swap_exact_eth_for_tokens_calldata,
-    get_swap_exact_tokens_for_eth_calldata,
+    get_swap_exact_tokens_for_eth_calldata, TxSlippage,
 };
 use ethers::providers::Middleware;
 use ethers::signers::Signer;
@@ -97,6 +97,9 @@ impl TxWallet {
     pub async fn sell_token_for_eth(&self, token: &Erc20Token) -> anyhow::Result<U256> {
         let (block, _) = get_current_block(&self.client).await?;
 
+        // check that token has liquidity
+        let supply = token.get_total_supply(&self.client).await?;
+        println!("token has liquidity of {}", supply);
         println!("........................................................");
         self.get_wallet_eth_balance().await?;
         let amount_to_sell = self
@@ -133,6 +136,7 @@ impl TxWallet {
             amount_to_sell,
             block.timestamp.as_u32(),
             &self.client,
+            TxSlippage::TenPercent,
         )
         .await?;
 

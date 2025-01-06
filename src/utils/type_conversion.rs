@@ -9,7 +9,7 @@ use rust_decimal::Decimal;
 use std::convert::TryInto;
 use std::str::FromStr;
 
-use crate::token_tx::time_intervals::TIME_ROUNDS;
+use crate::app_config::TIME_ROUNDS;
 
 pub fn get_function_selector(function_signature: &str) -> Bytes {
     let hash = H256::from(keccak256(function_signature.as_bytes()));

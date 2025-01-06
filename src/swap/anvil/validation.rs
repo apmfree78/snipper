@@ -11,7 +11,7 @@ pub enum TokenStatus {
     CannotBuy,
 }
 
-pub enum TokenLiquidity {
+pub enum TokenLiquid {
     NeedToAdd(Transaction),
     HasEnough,
 }
@@ -20,7 +20,7 @@ impl Erc20Token {
     /// Takes a snapshot of the current blockchain state using anvil
     pub async fn validate_with_simulated_buy_sell(
         &self,
-        liquidity_status: TokenLiquidity,
+        liquidity_status: TokenLiquid,
     ) -> anyhow::Result<TokenStatus> {
         // launch new anvil node for validation
         let ws_url = CONTRACT.get_address().alchemy_url.clone();
@@ -29,12 +29,12 @@ impl Erc20Token {
         info!("validating token...");
 
         match liquidity_status {
-            TokenLiquidity::NeedToAdd(add_liquidity_tx) => {
+            TokenLiquid::NeedToAdd(add_liquidity_tx) => {
                 // simulate adding liquidity
                 info!("simulate adding liquidity before buying");
                 anvil.add_liquidity_eth(&add_liquidity_tx).await?;
             }
-            TokenLiquidity::HasEnough => {}
+            TokenLiquid::HasEnough => {}
         }
 
         // Try to buy the token

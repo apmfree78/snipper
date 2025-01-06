@@ -3,7 +3,9 @@ use crate::data::contracts::CONTRACT;
 use crate::data::token_data::{get_tokens, remove_token};
 use crate::data::tokens::{Erc20Token, TokenState};
 use crate::swap::mainnet::setup::TxWallet;
-use crate::utils::tx::{get_amount_out_uniswap_v2, token_tx_profit_loss, TxSlippage};
+use crate::utils::tx::{
+    amount_of_token_to_purchase, get_amount_out_uniswap_v2, token_tx_profit_loss, TxSlippage,
+};
 use ethers::types::Address;
 use ethers::utils::format_units;
 use ethers::{
@@ -87,10 +89,8 @@ impl Erc20Token {
         let weth_address: Address = CONTRACT.get_address().weth.parse()?;
 
         println!("........................................................");
-        let amount_to_buy =
-            std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
-        println!("buying {} WETH of {}", amount_to_buy, self.name);
-        let amount_in = ethers::utils::parse_ether(amount_to_buy)?;
+
+        let amount_in = amount_of_token_to_purchase()?;
 
         // calculate amount amount out and gas used
         println!("........................................................");
@@ -110,6 +110,18 @@ impl Erc20Token {
     }
 
     pub async fn mock_sell_for_eth(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<U256> {
+        // check that token has liquidity
+        let amount_to_sell = self.amount_bought;
+
+        let has_enough_liquidity = self
+            .has_enough_liquidity_for_trade(amount_to_sell, client)
+            .await?;
+
+        if !has_enough_liquidity {
+            println!(".............RUG PULL.....................");
+            return Ok(U256::zero());
+        }
+
         let weth_address: Address = CONTRACT.get_address().weth.parse()?;
 
         println!("........................................................");

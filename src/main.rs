@@ -142,21 +142,25 @@ async fn main() -> Result<()> {
                     *last_time = current_block_timestamp;
 
                     // check token liquidty
+                    // info!("checking if tokens have liquidity...");
                     if let Err(error) = check_all_tokens_are_tradable(&tx_wallet.client).await {
                         error!("could not check token tradability => {}", error);
                     }
 
                     // validate tokens
+                    // info!("checking if tokens  are vaild...");
                     if let Err(error) = validate_tradable_tokens().await {
                         error!("could not validate tradable tokens => {}", error);
                     }
 
+                    // info!("buying eligible tokens...");
                     if let Err(error) =
                         buy_eligible_tokens(&tx_wallet, current_block_timestamp).await
                     {
                         error!("error running buy_eligible_tokens_on_anvil => {}", error);
                     }
 
+                    // info!("selling eligible tokens...");
                     if APP_MODE == AppMode::Production {
                         if let Err(error) =
                             sell_eligible_tokens(&tx_wallet, current_block_timestamp).await
@@ -180,7 +184,7 @@ async fn main() -> Result<()> {
                     // display stats every 5 mins
                     match block.number {
                         Some(block_number) => {
-                            if block_number.as_u64() % 50 == 0 {
+                            if block_number.as_u64() % 30 == 0 {
                                 if APP_MODE == AppMode::Production {
                                     if let Err(error) = display_token_stats().await {
                                         error!("error displaying stats => {}", error);

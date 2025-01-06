@@ -1,6 +1,7 @@
 use super::tokens::Erc20Token;
 use crate::{
-    token_tx::{time_intervals::TIME_ROUNDS, volume_intervals::VOLUME_ROUNDS},
+    app_config::TIME_ROUNDS,
+    token_tx::volume_intervals::VOLUME_ROUNDS,
     utils::{tx::get_token_sell_interval, type_conversion::format_to_5_decimals_decimal},
 };
 use ethers::types::U256;
@@ -51,10 +52,11 @@ impl Erc20Token {
                     println!("Stats for {} ({})", self.name, token_address);
                 }
                 println!(
-                    "{} secs => profit of {}, and roi of {}",
+                    "{} secs => profit of {}, and roi of {} ({})",
                     time_bought * i as u32,
                     profit,
-                    roi
+                    roi,
+                    self.liquidity
                 );
                 println!("----------------------------------------------");
             }
