@@ -344,13 +344,29 @@ pub async fn check_all_tokens_are_tradable(client: &Arc<Provider<Ws>>) -> anyhow
                     liquidity
                 );
 
-                // check that liqudity is locked
+                // check that if its a honeypot
                 // *********************************
-                let _ = token.validate_liquidity_is_locked(client).await?;
+                let is_honeypot = token.check_if_token_is_honeypot().await?;
+
+                if !is_honeypot {
+                    token.set_state_to_(TokenState::Validated).await;
+                    // check that liqudity is locked
+                    // *********************************
+                    let _ = token.validate_liquidity_is_locked(client).await?;
+                }
                 // *********************************
             } else if liquidity != TokenLiquidity::Zero {
                 let removed_token = remove_token(token.address).await.unwrap();
                 warn!("micro liquidity scam token {} removed", removed_token.name);
+            }
+        } else if token.state != TokenState::Validated {
+            let is_honeypot = token.check_if_token_is_honeypot().await?;
+
+            if !is_honeypot {
+                token.set_state_to_(TokenState::Validated).await;
+                // check that liqudity is locked
+                // *********************************
+                let _ = token.validate_liquidity_is_locked(client).await?;
             }
         } else if token.state != TokenState::Locked {
             println!("checking if liquidity data is avaliable for {}", token.name);

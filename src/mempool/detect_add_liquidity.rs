@@ -1,10 +1,10 @@
 use anyhow::Result;
 use ethers::core::types::TxHash;
 use ethers::{prelude::*, utils::keccak256};
-use log::{error, info, warn};
+use log::info;
 use std::sync::Arc;
 
-use crate::data::{token_data::get_token, tokens::TokenState};
+use crate::data::token_data::get_token;
 use crate::swap::mainnet::setup::TxWallet;
 
 use super::decode_add_liquidity::decode_add_liquidity_eth_fn;
@@ -12,7 +12,6 @@ use super::decode_add_liquidity::decode_add_liquidity_eth_fn;
 pub async fn detect_token_add_liquidity_and_validate(
     pending_tx: TxHash,
     tx_wallet: &Arc<TxWallet>,
-    current_time: u32,
 ) -> Result<()> {
     let add_liquidity_signature = "addLiquidityETH(address,uint,uint,uint,address,uint)";
 

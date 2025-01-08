@@ -23,7 +23,6 @@ pub async fn add_validate_buy_new_token(
     {
         let liquidity = token.get_liquidity(&tx_wallet.client).await?;
         if liquidity_is_not_zero_nor_micro(&liquidity) {
-            // TODO - set more conditons for tradibilty in production
             token
                 .set_to_tradable_plus_update_liquidity(&liquidity)
                 .await;
@@ -35,17 +34,23 @@ pub async fn add_validate_buy_new_token(
                 liquidity
             );
 
-            //******************************************
-            // let _token_status = validate_token(&token).await?;
+            // check that if its a honeypot
+            // *********************************
+            let is_honeypot = token.check_if_token_is_honeypot().await?;
 
-            // check that liqudity is locked
-            let is_locked = token
-                .validate_liquidity_is_locked(&tx_wallet.client)
-                .await?;
+            if !is_honeypot {
+                token.set_state_to_(TokenState::Validated).await;
+                // *********************************
+                // check that liqudity is locked
+                let is_locked = token
+                    .validate_liquidity_is_locked(&tx_wallet.client)
+                    .await?;
 
-            if is_locked {
-                token.purchase(tx_wallet, current_time).await?;
+                if is_locked {
+                    token.purchase(tx_wallet, current_time).await?;
+                }
             }
+            // *********************************
         } else {
             if liquidity == TokenLiquidity::Zero {
                 info!("{} has no liquidity, cannot purchase yet!", token.name);

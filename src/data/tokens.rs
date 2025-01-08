@@ -21,8 +21,8 @@ pub enum TokenState {
     NotValidated,
     Validating,
     CannotBuy,
-    Validated,
     Locked,
+    Validated,
     Buying,
     Bought,
     Selling,
@@ -112,6 +112,19 @@ impl Erc20Token {
                 return Ok(false);
             }
         }
+    }
+
+    pub async fn check_if_token_is_honeypot(&self) -> anyhow::Result<bool> {
+        let (summary, result) = self.is_honeypot().await?;
+        println!("{} token risk is {} ", self.name, summary.risk);
+        if result.is_honeypot {
+            println!("{} is a honeypot scam! Removing...", self.name);
+            let _ = remove_token(self.address).await.unwrap();
+        } else {
+            println!("{} is NOT a honeypot! :)", self.name);
+        }
+
+        Ok(result.is_honeypot)
     }
 
     pub async fn get_total_supply(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<U256> {
