@@ -1,7 +1,6 @@
 use derive_more::Display;
 use ethers::providers::{Provider, Ws};
 use ethers::types::{Address, U256};
-use ethers::utils::format_units;
 use std::sync::Arc;
 
 use crate::abi::uniswap_pair::UNISWAP_PAIR;
@@ -21,6 +20,7 @@ pub enum TokenState {
     #[default]
     NotValidated,
     Validating,
+    CannotBuy,
     Validated,
     Locked,
     Buying,

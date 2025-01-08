@@ -7,8 +7,6 @@ use crate::{
     verify::thegraph_api::fetch_uniswap_lp_holders,
 };
 
-use super::etherscan_api::get_token_holder_list;
-
 /// This function demonstrates how you might verify that >= 80% of the LP tokens
 /// for a given Uniswap V2 pair are held by "locker" contracts, the burn address,
 /// or any “safe” addresses you trust (like 0x00...dead).

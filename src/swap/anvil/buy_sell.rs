@@ -68,7 +68,7 @@ impl AnvilSimulator {
             weth_address,
             token.address,
             amount_in,
-            TxSlippage::None,
+            TxSlippage::TenPercent,
             &self.client,
         )
         .await?;
@@ -181,7 +181,7 @@ impl AnvilSimulator {
             token.address,
             weth_address,
             amount_to_sell,
-            TxSlippage::None,
+            TxSlippage::TenPercent,
             &self.client,
         )
         .await?;

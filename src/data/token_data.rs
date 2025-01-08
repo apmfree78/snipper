@@ -3,8 +3,7 @@ use crate::app_config::{LIQUIDITY_PERCENTAGE_LOCKED, TIME_ROUNDS};
 use crate::data::tokens::extract_liquidity_amount;
 use crate::events::PairCreatedEvent;
 use crate::swap::anvil::validation::{TokenLiquid, TokenStatus};
-use crate::swap::mainnet::setup::TxWallet;
-use crate::token_tx::validate::{liquidity_is_high, liquidity_is_not_zero_nor_micro};
+use crate::token_tx::validate::liquidity_is_not_zero_nor_micro;
 use crate::utils::tx::{amount_of_token_to_purchase, get_token_sell_interval};
 use crate::utils::type_conversion::address_to_string;
 use crate::verify::check_token_lock::is_liquidity_locked;
@@ -344,10 +343,18 @@ pub async fn check_all_tokens_are_tradable(client: &Arc<Provider<Ws>>) -> anyhow
                     token.name,
                     liquidity
                 );
+
+                // check that liqudity is locked
+                // *********************************
+                let _ = token.validate_liquidity_is_locked(client).await?;
+                // *********************************
             } else if liquidity != TokenLiquidity::Zero {
                 let removed_token = remove_token(token.address).await.unwrap();
                 warn!("micro liquidity scam token {} removed", removed_token.name);
             }
+        } else if token.state != TokenState::Locked {
+            println!("checking if liquidity data is avaliable for {}", token.name);
+            let _ = token.validate_liquidity_is_locked(client).await?;
         }
     }
 
@@ -372,11 +379,8 @@ pub async fn validate_tradable_tokens(client: &Arc<Provider<Ws>>) -> anyhow::Res
                         .validate_with_simulated_buy_sell(TokenLiquid::HasEnough)
                         .await?;
 
-                    let token_ = get_token(token.address).await.unwrap();
-                    print!("liquidity after anvil buy sell => {}", token_.liquidity);
-
                     if token_status == TokenStatus::Legit {
-                        info!("{} is validated!", token.name);
+                        info!("{} is legit!", token.name);
                         token.set_state_to_(TokenState::Validated).await;
 
                         token.validate_liquidity_is_locked(&client).await?;

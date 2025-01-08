@@ -136,7 +136,7 @@ impl TxWallet {
             amount_to_sell,
             block.timestamp.as_u32(),
             &self.client,
-            TxSlippage::ThreePercent,
+            TxSlippage::FivePercent,
         )
         .await?;
 

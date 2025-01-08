@@ -1,8 +1,7 @@
 use anyhow::{anyhow, Result};
-use ethers::types::{Address, U256};
+use ethers::types::Address;
 use reqwest::Client;
 use serde::Deserialize;
-use std::str::FromStr;
 
 use crate::utils::type_conversion::address_to_string;
 

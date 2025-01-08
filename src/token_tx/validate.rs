@@ -1,4 +1,3 @@
-use crate::app_config::LIQUIDITY_PERCENTAGE_LOCKED;
 use crate::data::token_data::get_and_save_erc20_by_token_address;
 use crate::data::token_data::remove_token;
 use crate::data::tokens::extract_liquidity_amount;
@@ -9,8 +8,6 @@ use crate::events::PairCreatedEvent;
 use crate::swap::anvil::validation::TokenLiquid;
 use crate::swap::anvil::validation::TokenStatus;
 use crate::swap::mainnet::setup::TxWallet;
-use crate::verify::check_token_lock::is_liquidity_locked;
-use ethers::types::Transaction;
 use log::info;
 use log::warn;
 use std::sync::Arc;
@@ -37,26 +34,17 @@ pub async fn add_validate_buy_new_token(
                 liquidity_amount as f64 / 1e18_f64,
                 liquidity
             );
-            token.set_state_to_(TokenState::Validating).await;
-            let token_status = token
-                .validate_with_simulated_buy_sell(TokenLiquid::HasEnough)
+
+            //******************************************
+            // let _token_status = validate_token(&token).await?;
+
+            // check that liqudity is locked
+            let is_locked = token
+                .validate_liquidity_is_locked(&tx_wallet.client)
                 .await?;
 
-            if token_status == TokenStatus::Legit {
-                token.set_state_to_(TokenState::Validated).await;
-
-                // check that liqudity is locked
-                let is_locked = token
-                    .validate_liquidity_is_locked(&tx_wallet.client)
-                    .await?;
-
-                if is_locked {
-                    token.purchase(tx_wallet, current_time).await?;
-                }
-            } else {
-                // cannot buy or sell token remove it
-                let removed_token = remove_token(token.address).await.unwrap();
-                warn!("scam token {} removed", removed_token.name);
+            if is_locked {
+                token.purchase(tx_wallet, current_time).await?;
             }
         } else {
             if liquidity == TokenLiquidity::Zero {
@@ -69,6 +57,25 @@ pub async fn add_validate_buy_new_token(
     }
 
     Ok(())
+}
+
+pub async fn validate_token(token: &Erc20Token) -> anyhow::Result<TokenStatus> {
+    //******************************************
+    token.set_state_to_(TokenState::Validating).await;
+    let token_status = token
+        .validate_with_simulated_buy_sell(TokenLiquid::HasEnough)
+        .await?;
+
+    if token_status == TokenStatus::Legit {
+        info!("{} is legit!", token.name);
+        token.set_state_to_(TokenState::Validated).await;
+    } else {
+        // cannot buy or sell token remove it
+        let removed_token = remove_token(token.address).await.unwrap();
+        warn!("scam token {} removed", removed_token.name);
+    }
+    // ********************************************
+    Ok(token_status)
 }
 
 pub fn liquidity_is_not_zero_nor_micro(liquidity: &TokenLiquidity) -> bool {

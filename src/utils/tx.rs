@@ -150,7 +150,7 @@ pub async fn get_swap_exact_eth_for_tokens_calldata(
         weth_address,
         token.address,
         amount_to_buy,
-        TxSlippage::ThreePercent,
+        TxSlippage::FivePercent,
         client,
     )
     .await?;
