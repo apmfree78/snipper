@@ -1,3 +1,4 @@
+use crate::app_config::LIQUIDITY_PERCENTAGE_LOCKED;
 use crate::data::token_data::get_and_save_erc20_by_token_address;
 use crate::data::token_data::remove_token;
 use crate::data::tokens::extract_liquidity_amount;
@@ -8,6 +9,7 @@ use crate::events::PairCreatedEvent;
 use crate::swap::anvil::validation::TokenLiquid;
 use crate::swap::anvil::validation::TokenStatus;
 use crate::swap::mainnet::setup::TxWallet;
+use crate::verify::check_token_lock::is_liquidity_locked;
 use ethers::types::Transaction;
 use log::info;
 use log::warn;
@@ -42,7 +44,15 @@ pub async fn add_validate_buy_new_token(
 
             if token_status == TokenStatus::Legit {
                 token.set_state_to_(TokenState::Validated).await;
-                token.purchase(tx_wallet, current_time).await?;
+
+                // check that liqudity is locked
+                let is_locked = token
+                    .validate_liquidity_is_locked(&tx_wallet.client)
+                    .await?;
+
+                if is_locked {
+                    token.purchase(tx_wallet, current_time).await?;
+                }
             } else {
                 // cannot buy or sell token remove it
                 let removed_token = remove_token(token.address).await.unwrap();
@@ -65,6 +75,13 @@ pub fn liquidity_is_not_zero_nor_micro(liquidity: &TokenLiquidity) -> bool {
     match liquidity {
         TokenLiquidity::Zero | TokenLiquidity::Micro(_) => false,
         _ => true,
+    }
+}
+
+pub fn liquidity_is_high(liquidity: &TokenLiquidity) -> bool {
+    match liquidity {
+        TokenLiquidity::High(_) => true,
+        _ => false,
     }
 }
 

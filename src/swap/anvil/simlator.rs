@@ -27,6 +27,7 @@ impl AnvilSimulator {
             // .args(["--no-storage-caching", "--code-size-limit", "2048"])
             .fork(rpc_url) // URL of your Geth node
             .chain_id(CHAIN)
+            .args(["--no-storage-caching"])
             .spawn();
 
         // setup mock sender

@@ -1,11 +1,13 @@
 use crate::abi::erc20::ERC20;
-use crate::app_config::TIME_ROUNDS;
+use crate::app_config::{LIQUIDITY_PERCENTAGE_LOCKED, TIME_ROUNDS};
 use crate::data::tokens::extract_liquidity_amount;
 use crate::events::PairCreatedEvent;
 use crate::swap::anvil::validation::{TokenLiquid, TokenStatus};
-use crate::token_tx::validate::liquidity_is_not_zero_nor_micro;
+use crate::swap::mainnet::setup::TxWallet;
+use crate::token_tx::validate::{liquidity_is_high, liquidity_is_not_zero_nor_micro};
 use crate::utils::tx::{amount_of_token_to_purchase, get_token_sell_interval};
 use crate::utils::type_conversion::address_to_string;
+use crate::verify::check_token_lock::is_liquidity_locked;
 use anyhow::Result;
 use ethers::providers::{Provider, Ws};
 use ethers::types::{Address, U256};
@@ -352,12 +354,13 @@ pub async fn check_all_tokens_are_tradable(client: &Arc<Provider<Ws>>) -> anyhow
     Ok(())
 }
 
-pub async fn validate_tradable_tokens() -> anyhow::Result<()> {
+pub async fn validate_tradable_tokens(client: &Arc<Provider<Ws>>) -> anyhow::Result<()> {
     let tokens = get_tokens().await;
 
     let mut handles = vec![];
     for token_ref in tokens.values() {
         let token = token_ref.clone();
+        let client = client.clone();
 
         // SEPARATE THREAD FOR EACH TOKEN VALIDATION CHECK
         let handle = tokio::spawn(async move {
@@ -376,12 +379,27 @@ pub async fn validate_tradable_tokens() -> anyhow::Result<()> {
                         info!("{} is validated!", token.name);
                         token.set_state_to_(TokenState::Validated).await;
 
-                        let token_ = get_token(token.address).await.unwrap();
-                        print!("liquidity after validation => {}", token_.liquidity);
+                        token.validate_liquidity_is_locked(&client).await?;
                     } else {
                         let scam_token = remove_token(token.address).await;
                         let scam_token = scam_token.unwrap();
                         warn!("removed {}", scam_token.symbol);
+                    }
+                } else if token.state == TokenState::Validated {
+                    // check if liquidity is locked
+                    match is_liquidity_locked(&token, LIQUIDITY_PERCENTAGE_LOCKED, &client).await? {
+                        Some(is_locked) => {
+                            if is_locked {
+                                token.set_state_to_(TokenState::Locked).await;
+                            } else {
+                                println!(
+                                    "{} does not have locked liquidity... removing",
+                                    token.name
+                                );
+                                remove_token(token.address).await;
+                            }
+                        }
+                        None => {}
                     }
                 }
                 Ok(())

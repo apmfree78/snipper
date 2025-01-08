@@ -6,12 +6,15 @@ use std::sync::Arc;
 
 use crate::abi::uniswap_pair::UNISWAP_PAIR;
 use crate::app_config::{
-    HIGH_LIQUIDITY_THRESHOLD, LOW_LIQUIDITY_THRESHOLD, MEDIUM_LIQUIDITY_THRESHOLD, MIN_LIQUIDITY,
-    MIN_RESERVE_ETH_FACTOR, MIN_TRADE_FACTOR, TIME_ROUNDS, VERY_LOW_LIQUIDITY_THRESHOLD,
+    HIGH_LIQUIDITY_THRESHOLD, LIQUIDITY_PERCENTAGE_LOCKED, LOW_LIQUIDITY_THRESHOLD,
+    MEDIUM_LIQUIDITY_THRESHOLD, MIN_LIQUIDITY, MIN_RESERVE_ETH_FACTOR, MIN_TRADE_FACTOR,
+    TIME_ROUNDS, VERY_LOW_LIQUIDITY_THRESHOLD,
 };
+use crate::data::token_data::remove_token;
 use crate::token_tx::volume_intervals::VOLUME_ROUNDS;
 use crate::utils::tx::amount_of_token_to_purchase;
 use crate::utils::type_conversion::address_to_string;
+use crate::verify::check_token_lock::is_liquidity_locked;
 
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub enum TokenState {
@@ -19,6 +22,7 @@ pub enum TokenState {
     NotValidated,
     Validating,
     Validated,
+    Locked,
     Buying,
     Bought,
     Selling,
@@ -85,6 +89,31 @@ pub fn extract_liquidity_amount(liquidity: &TokenLiquidity) -> Option<u128> {
 }
 
 impl Erc20Token {
+    pub async fn validate_liquidity_is_locked(
+        &self,
+        client: &Arc<Provider<Ws>>,
+    ) -> anyhow::Result<bool> {
+        match is_liquidity_locked(self, LIQUIDITY_PERCENTAGE_LOCKED, client).await? {
+            Some(is_locked) => {
+                if is_locked {
+                    println!("{} has locked liquidity!", self.name);
+                    self.set_state_to_(TokenState::Locked).await;
+                } else {
+                    println!("{} does not have locked liquidity... removing", self.name);
+                    remove_token(self.address).await;
+                }
+                return Ok(is_locked);
+            }
+            None => {
+                println!(
+                    "{} waiting for graphql to provide liquidity data",
+                    self.name
+                );
+                return Ok(false);
+            }
+        }
+    }
+
     pub async fn get_total_supply(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<U256> {
         let pool = UNISWAP_PAIR::new(self.pair_address, client.clone());
 

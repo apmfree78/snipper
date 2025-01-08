@@ -22,6 +22,7 @@ use std::sync::Arc;
 pub enum TxSlippage {
     OnePercent,
     TwoPercent,
+    ThreePercent,
     FivePercent,
     TenPercent,
     None,
@@ -96,6 +97,7 @@ pub async fn get_amount_out_uniswap_v2(
         TxSlippage::TenPercent => base_amount_out * U256::from(90) / U256::from(100),
         TxSlippage::FivePercent => base_amount_out * U256::from(95) / U256::from(100),
         TxSlippage::TwoPercent => base_amount_out * U256::from(98) / U256::from(100),
+        TxSlippage::ThreePercent => base_amount_out * U256::from(97) / U256::from(100),
         TxSlippage::OnePercent => base_amount_out * U256::from(99) / U256::from(100),
         TxSlippage::None => base_amount_out,
     };
@@ -148,7 +150,7 @@ pub async fn get_swap_exact_eth_for_tokens_calldata(
         weth_address,
         token.address,
         amount_to_buy,
-        TxSlippage::TwoPercent,
+        TxSlippage::ThreePercent,
         client,
     )
     .await?;

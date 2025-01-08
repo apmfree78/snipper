@@ -14,6 +14,12 @@ pub mod mempool {
     pub mod detect_add_liquidity;
 }
 
+pub mod verify {
+    pub mod check_token_lock;
+    pub mod etherscan_api;
+    pub mod thegraph_api;
+}
+
 pub mod utils {
     pub mod logging;
     pub mod tx;

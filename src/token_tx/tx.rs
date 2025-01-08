@@ -2,6 +2,7 @@ use crate::app_config::{AppMode, APP_MODE};
 use crate::data::contracts::CONTRACT;
 use crate::data::token_data::{get_tokens, remove_token};
 use crate::data::tokens::{Erc20Token, TokenState};
+use crate::swap::anvil::validation::{TokenLiquid, TokenStatus};
 use crate::swap::mainnet::setup::TxWallet;
 use crate::utils::tx::{
     amount_of_token_to_purchase, get_amount_out_uniswap_v2, token_tx_profit_loss, TxSlippage,
@@ -122,6 +123,19 @@ impl Erc20Token {
             return Ok(U256::zero());
         }
 
+        // now validate token is not rugged
+        println!("re-validating token {}", self.name);
+        let token_status = self
+            .validate_with_simulated_buy_sell(TokenLiquid::HasEnough)
+            .await?;
+
+        if token_status != TokenStatus::Legit {
+            println!(".............RUG PULL.....................");
+            println!("{} failed re-validation", self.name);
+            return Ok(U256::zero());
+        }
+        println!("{} successfully re-validated", self.name);
+
         let weth_address: Address = CONTRACT.get_address().weth.parse()?;
 
         println!("........................................................");
@@ -162,7 +176,7 @@ pub async fn buy_eligible_tokens(tx_wallet: &Arc<TxWallet>, timestamp: u32) -> a
 
     // println!("finding tokens to buy");
     for token in tokens.values() {
-        if token.is_tradable && token.state == TokenState::Validated {
+        if token.is_tradable && token.state == TokenState::Locked {
             let spawn_token = token.clone();
             let spawn_tx_wallet = Arc::clone(tx_wallet);
             tokio::spawn(async move {

@@ -130,14 +130,22 @@ pub fn f64_to_u256(value: f64) -> Result<U256> {
         return Err(anyhow!("Invalid f64 value: NaN or Infinity"));
     }
 
+    if value < 0.0 {
+        return Err(anyhow!("Negative values are not supported"));
+    }
+
     // Scale the float by 1e18 to move the decimal point
     let scaled_value = value * 1e18;
 
-    // Convert the scaled float to u64, handling potential overflow
-    let integer_value = u64::try_from(scaled_value.round() as i64)
-        .map_err(|_| anyhow!("Overflow in conversion to u64"))?;
+    // Check for overflow/underflow issues before conversion
+    if scaled_value > u128::MAX as f64 {
+        return Err(anyhow!("Value is too large for u128"));
+    }
 
-    // Convert u64 to U256
+    // Safely convert the scaled float to u128, assuming we are within range now
+    let integer_value = scaled_value as u128;
+
+    // Convert u128 to U256
     Ok(U256::from(integer_value))
 }
 

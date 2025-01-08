@@ -149,7 +149,7 @@ async fn main() -> Result<()> {
 
                     // validate tokens
                     // info!("checking if tokens  are vaild...");
-                    if let Err(error) = validate_tradable_tokens().await {
+                    if let Err(error) = validate_tradable_tokens(&tx_wallet.client).await {
                         error!("could not validate tradable tokens => {}", error);
                     }
 
