@@ -1,9 +1,10 @@
-use crate::data::token_data::update_token_gas_cost;
 use crate::data::tokens::Erc20Token;
 
 use ethers::types::{TransactionReceipt, U256};
 use ethers::utils::format_units;
 use log::{error, warn};
+
+use super::token_data::get_token;
 
 pub async fn update_tx_gas_cost_data(
     receipt: &TransactionReceipt,
@@ -32,4 +33,16 @@ pub fn get_tx_gas_cost(receipt: &TransactionReceipt) -> anyhow::Result<Option<U2
         warn!("No gas usage or gas price info in receipt");
         Ok(None)
     }
+}
+
+pub async fn update_token_gas_cost(token: &Erc20Token, gas_cost: U256) -> anyhow::Result<()> {
+    match get_token(token.address).await {
+        Some(mut updated_token) => {
+            updated_token.tx_gas_cost = updated_token.tx_gas_cost + gas_cost;
+            updated_token.update_state().await;
+        }
+        None => warn!("could not find token"),
+    }
+
+    Ok(())
 }

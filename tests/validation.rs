@@ -4,18 +4,16 @@ use ethers::types::{Address, BlockNumber};
 use snipper::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
 use snipper::abi::uniswap_pair::UNISWAP_PAIR;
 use snipper::data::contracts::CONTRACT;
-use snipper::data::token_data::{
-    check_all_tokens_are_tradable, get_and_save_erc20_by_token_address, is_token_tradable,
-};
+use snipper::data::token_data::is_token_tradable;
+use snipper::data::token_state_update::get_and_save_erc20_by_token_address;
 use snipper::data::tokens::Erc20Token;
 use snipper::events::PairCreatedEvent;
-// use snipper::swap::anvil::simlator::AnvilSimulator;
 use snipper::swap::anvil::validation::{TokenLiquid, TokenStatus};
+use snipper::token_tx::validate::check_all_tokens_are_tradable;
 use std::sync::Arc;
 use std::time::Instant;
 
 struct TestSetupValidation {
-    // anvil_simulator: Arc<AnvilSimulator>,
     token: Erc20Token,
 }
 

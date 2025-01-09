@@ -3,7 +3,9 @@ use ethers::prelude::*;
 use std::sync::Arc;
 
 use crate::{
-    app_config::TOKEN_LOCKERS, data::tokens::Erc20Token, utils::type_conversion::f64_to_u256,
+    app_config::{API_CHECK_LIMIT, TOKEN_LOCKERS},
+    data::tokens::Erc20Token,
+    utils::type_conversion::f64_to_u256,
     verify::thegraph_api::fetch_uniswap_lp_holders,
 };
 
@@ -41,11 +43,21 @@ pub async fn is_liquidity_locked(
     threshold_percent: u64,
     client: &Arc<Provider<Ws>>,
 ) -> Result<Option<bool>> {
+    // check api limit for this token is not reached
+    let api_count = token.graphql_check_count().await;
+    if api_count > API_CHECK_LIMIT {
+        println!("api limit reached for {}", token.name);
+        return Ok(Some(false));
+    }
+
     let total_supply = token.get_total_supply(client).await?;
     // Step 2) Retrieve top holder info. This is the part you'll have to implement
     //         with a subgraph or block explorer. For now, we assume a function:
     // fetch_top_lp_holders(pair_address) -> Vec<LpHolderInfo>
     let top_holders: Vec<TokenHolders> = fetch_uniswap_lp_holders(token.pair_address).await?;
+
+    //increment api count
+    token.increment_graphql_checks().await;
 
     if top_holders.is_empty() {
         // no token holders found yet!

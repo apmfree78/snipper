@@ -9,19 +9,21 @@ use futures::{lock::Mutex, stream, StreamExt};
 use log::{error, info, warn};
 use snipper::{
     app_config::{AppMode, APP_MODE, CHAIN},
-    data::{nonce::intialize_nonce, token_data::display_token_stats},
+    data::{
+        nonce::intialize_nonce,
+        portfolio::{display_token_stats, display_token_time_stats},
+    },
     swap::mainnet::setup::TxWallet,
     token_tx::tx::sell_eligible_tokens,
 };
-use snipper::{data::token_data::check_all_tokens_are_tradable, utils::logging::setup_logger};
 use snipper::{
-    data::token_data::display_token_time_stats,
     events,
     token_tx::{
         time_intervals::mock_sell_eligible_tokens_at_time_intervals, tx::buy_eligible_tokens,
         validate::add_validate_buy_new_token,
     },
 };
+use snipper::{token_tx::validate::check_all_tokens_are_tradable, utils::logging::setup_logger};
 use std::sync::Arc;
 
 enum Event {

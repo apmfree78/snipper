@@ -12,16 +12,15 @@
 // }/
 //
 use dotenv::dotenv;
-use ethers::providers::{Middleware, Provider, Ws};
+use ethers::providers::Middleware;
 use ethers::types::{Address, BlockNumber, U256};
 use futures::lock::Mutex;
 use snipper::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
 use snipper::abi::uniswap_pair::UNISWAP_PAIR;
 use snipper::data::contracts::CONTRACT;
-use snipper::data::token_data::{
-    check_all_tokens_are_tradable, display_token_time_stats, display_token_volume_stats,
-    get_and_save_erc20_by_token_address, get_number_of_tokens, is_token_tradable,
-};
+use snipper::data::portfolio::{display_token_time_stats, display_token_volume_stats};
+use snipper::data::token_data::{get_number_of_tokens, is_token_tradable};
+use snipper::data::token_state_update::get_and_save_erc20_by_token_address;
 use snipper::data::tokens::TokenState;
 use snipper::events::PairCreatedEvent;
 use snipper::swap::anvil::simlator::AnvilSimulator;
@@ -30,6 +29,7 @@ use snipper::swap::tx_trait::Txs;
 use snipper::token_tx::anvil::{buy_eligible_tokens_on_anvil, sell_eligible_tokens_on_anvil};
 use snipper::token_tx::time_intervals::mock_sell_eligible_tokens_at_time_intervals;
 use snipper::token_tx::tx::buy_eligible_tokens;
+use snipper::token_tx::validate::check_all_tokens_are_tradable;
 use snipper::token_tx::volume_intervals::{
     mock_buy_eligible_tokens_at_volume_interval, mock_sell_eligible_tokens_at_volume_interval,
 };

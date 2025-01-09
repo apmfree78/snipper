@@ -49,21 +49,7 @@ impl Erc20Token {
                     let sold = format_units(amount_sold, "ether")?;
                     println!("sold {} at time index: {}", sold, time_index);
 
-                    let mut current_amounts_sold = self.amount_sold_at_time.clone();
-                    let mut is_sold_at_time = self.is_sold_at_time.clone();
-
-                    if !is_sold_at_time[time_index] {
-                        current_amounts_sold[time_index] = amount_sold;
-                        is_sold_at_time[time_index] = true;
-
-                        let updated_token = Erc20Token {
-                            amount_sold_at_time: current_amounts_sold,
-                            is_sold_at_time,
-                            ..self.clone()
-                        };
-                        updated_token.update_state().await;
-                    }
-                    self.set_state_to_(TokenState::Bought).await;
+                    self.update_post_time_sale(amount_sold, time_index).await;
                 }
             }
             None => {

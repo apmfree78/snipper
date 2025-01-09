@@ -1,19 +1,15 @@
 use dotenv::dotenv;
 use ethers::providers::{Middleware, Provider, Ws};
 use ethers::types::{Address, BlockNumber, U256};
-use ethers::utils::format_units;
 use snipper::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
 use snipper::abi::uniswap_pair::UNISWAP_PAIR;
 use snipper::data::contracts::CONTRACT;
 use snipper::data::nonce::intialize_nonce;
-use snipper::data::token_data::{
-    check_all_tokens_are_tradable, get_and_save_erc20_by_token_address,
-};
+use snipper::data::token_state_update::get_and_save_erc20_by_token_address;
 use snipper::data::tokens::{Erc20Token, TokenState};
 use snipper::events::PairCreatedEvent;
 use snipper::swap::mainnet::setup::TxWallet;
-use snipper::swap::tx_trait::Txs;
-use snipper::verify::check_token_lock::is_liquidity_locked;
+use snipper::token_tx::validate::check_all_tokens_are_tradable;
 use std::str::FromStr;
 use std::sync::Arc;
 pub const PEPE: &str = "0x6982508145454Ce325dDbE47a25d4ec3d2311933";

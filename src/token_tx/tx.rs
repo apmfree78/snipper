@@ -1,6 +1,7 @@
 use crate::app_config::{AppMode, APP_MODE};
 use crate::data::contracts::CONTRACT;
-use crate::data::token_data::{get_tokens, remove_token};
+use crate::data::token_data::get_tokens;
+use crate::data::token_state_update::remove_token;
 use crate::data::tokens::{Erc20Token, TokenState};
 use crate::swap::anvil::validation::{TokenLiquid, TokenStatus};
 use crate::swap::mainnet::setup::TxWallet;
@@ -38,16 +39,7 @@ impl Erc20Token {
         };
 
         if token_balance > U256::from(0) {
-            let updated_token = Erc20Token {
-                is_tradable: true,
-                amount_bought: token_balance,
-                time_of_purchase: current_time,
-                state: TokenState::Bought,
-                ..self.clone()
-            };
-
-            updated_token.update_state().await;
-            // info!("token updated and saved");
+            self.update_post_purchase(token_balance, current_time).await;
         } else {
             warn!("{} token purchase failed, removing", self.name);
             remove_token(self.address).await;
@@ -66,20 +58,10 @@ impl Erc20Token {
         };
 
         if eth_revenue_from_sale > U256::zero() {
-            let updated_token = Erc20Token {
-                eth_recieved_at_sale: eth_revenue_from_sale,
-                state: TokenState::Sold,
-                ..self.clone()
-            };
-            updated_token.update_state().await;
+            self.update_post_sale(eth_revenue_from_sale).await;
             info!("token {} sold!", self.name);
         } else {
-            let updated_token = Erc20Token {
-                eth_recieved_at_sale: U256::zero(),
-                state: TokenState::Sold,
-                ..self.clone()
-            };
-            updated_token.update_state().await;
+            self.update_post_sale(U256::zero()).await;
             warn!("failed to sell token, rug pull => {}", self.name);
         }
 

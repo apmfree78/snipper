@@ -9,10 +9,9 @@ use crate::app_config::{
     MEDIUM_LIQUIDITY_THRESHOLD, MIN_LIQUIDITY, MIN_RESERVE_ETH_FACTOR, MIN_TRADE_FACTOR,
     TIME_ROUNDS, VERY_LOW_LIQUIDITY_THRESHOLD,
 };
-use crate::data::token_data::remove_token;
+use crate::data::token_state_update::remove_token;
 use crate::token_tx::volume_intervals::VOLUME_ROUNDS;
 use crate::utils::tx::amount_of_token_to_purchase;
-use crate::utils::type_conversion::address_to_string;
 use crate::verify::check_token_lock::is_liquidity_locked;
 
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
@@ -64,6 +63,10 @@ pub struct Erc20Token {
     pub amount_bought: U256,
     pub eth_recieved_at_sale: U256,
     pub time_of_purchase: u32,
+
+    //api retry limits
+    pub honeypot_checks: u8,
+    pub graphql_checks: u8,
 
     // total gas cost for buy + sell of token
     pub tx_gas_cost: U256,
@@ -194,120 +197,5 @@ impl Erc20Token {
             && eth_amount_used_for_purchase * MIN_RESERVE_ETH_FACTOR < U256::from(eth_supply);
 
         Ok(enough_liquidity)
-    }
-
-    pub fn profit(&self) -> anyhow::Result<f64> {
-        if self.state != TokenState::Sold {
-            return Ok(0_f64);
-        }
-
-        let eth_basis = amount_of_token_to_purchase()?;
-
-        let total_cost = eth_basis + self.tx_gas_cost;
-        let profit = if self.eth_recieved_at_sale >= total_cost {
-            let abs_profit = self.eth_recieved_at_sale - total_cost;
-            abs_profit.as_u128() as i128
-        } else {
-            let abs_profit = total_cost - self.eth_recieved_at_sale;
-            -(abs_profit.as_u128() as i128)
-        };
-
-        let profit = profit as f64 / 1e18_f64;
-
-        Ok(profit)
-    }
-
-    pub fn roi(&self) -> anyhow::Result<f64> {
-        if self.state != TokenState::Sold {
-            return Ok(0_f64);
-        }
-
-        let eth_basis = amount_of_token_to_purchase()?;
-
-        let eth_basis = eth_basis.as_u128() as f64 / 1e18_f64;
-
-        let profit = self.profit()?;
-        let roi = profit / eth_basis;
-
-        Ok(roi)
-    }
-
-    // interval is 1..N
-    pub fn profit_at_volume_interval_(&self, interval: usize) -> anyhow::Result<f32> {
-        if !self.is_sold_at_time[interval - 1] {
-            return Ok(0_f32);
-        }
-
-        let eth_basis = amount_of_token_to_purchase()?;
-
-        let total_cost = eth_basis * interval + self.tx_gas_cost;
-        let profit = if self.amounts_sold[interval - 1] >= total_cost {
-            let abs_profit = self.amounts_sold[interval - 1] - total_cost;
-            abs_profit.as_u128() as i128
-        } else {
-            let abs_profit = total_cost - self.amounts_sold[interval - 1];
-            -(abs_profit.as_u128() as i128)
-        };
-
-        let profit = profit as f64 / 1e18_f64;
-
-        Ok(profit as f32)
-    }
-
-    pub fn roi_at_volume_interval(&self, interval: usize) -> anyhow::Result<f32> {
-        if !self.is_sold_at_time[interval - 1] {
-            return Ok(0_f32);
-        }
-
-        let eth_basis = amount_of_token_to_purchase()?;
-
-        let eth_basis = eth_basis.as_u128() as f64 / 1e18_f64;
-
-        let profit = self.profit_at_volume_interval_(interval)?;
-        let roi = profit / eth_basis as f32;
-
-        Ok(roi as f32)
-    }
-
-    pub fn profit_at_time_interval_(&self, interval: usize) -> anyhow::Result<f64> {
-        if !self.is_sold_at_time[interval - 1] {
-            return Ok(0_f64);
-        }
-
-        let eth_basis = amount_of_token_to_purchase()?;
-
-        let total_cost = eth_basis + self.tx_gas_cost;
-        let profit = if self.amount_sold_at_time[interval - 1] >= total_cost {
-            let abs_profit = self.amount_sold_at_time[interval - 1] - total_cost;
-            abs_profit.as_u128() as i128
-        } else {
-            let abs_profit = total_cost - self.amount_sold_at_time[interval - 1];
-            -(abs_profit.as_u128() as i128)
-        };
-
-        let profit = profit as f64 / 1e18_f64;
-
-        Ok(profit)
-    }
-
-    pub fn roi_at_time_interval(&self, interval: usize) -> anyhow::Result<f64> {
-        if !self.is_sold_at_time[interval - 1] {
-            return Ok(0_f64);
-        }
-
-        let eth_basis = amount_of_token_to_purchase()?;
-
-        let eth_basis = eth_basis.as_u128() as f64 / 1e18_f64;
-
-        let profit = self.profit_at_time_interval_(interval)?;
-        let roi = profit / eth_basis;
-
-        Ok(roi)
-    }
-
-    pub fn lowercase_address(&self) -> String {
-        let address_string = address_to_string(self.address);
-
-        return address_string.to_lowercase();
     }
 }

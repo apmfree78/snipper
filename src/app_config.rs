@@ -36,6 +36,8 @@ pub const TOKEN_LOCKERS: [&str; 4] = [
     "0x0000000000000000000000000000000000000000", // token burn
 ];
 
+pub const API_CHECK_LIMIT: u8 = 10;
+
 // pub const TOKEN_LOCKERS: [&str; 4] = [
 //     "0xE2fE530C047f2d85298b07D9333C05737f1435fB", // team finance
 //     "0x663A5C229c09b049E36dCc11a9B0d4a8Eb9db214", // UNCX
