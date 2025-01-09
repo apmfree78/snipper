@@ -41,9 +41,9 @@ impl Erc20Token {
 
         match interval {
             Some(time_index) => {
-                // self.amount_sold_at_time[time_index] == U256::zero() then mock purchase already
-                // complete
-                if time_index > 0 && !self.is_sold_at_time[time_index] {
+                let is_sold_at_this_time_index = self.is_sold_at_time_(time_index).await;
+
+                if time_index > 0 && !is_sold_at_this_time_index {
                     self.set_state_to_(TokenState::Selling).await;
                     let amount_sold = self.mock_sell_for_eth(client).await?;
                     let sold = format_units(amount_sold, "ether")?;

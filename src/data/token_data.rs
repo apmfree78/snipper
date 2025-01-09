@@ -71,6 +71,25 @@ pub async fn get_token(token_address: Address) -> Option<Erc20Token> {
     }
 }
 
+impl Erc20Token {
+    pub async fn is_sold_at_time_(&self, time_index: usize) -> bool {
+        let token_data_hash = Arc::clone(&TOKEN_HASH);
+        let tokens = token_data_hash.lock().await;
+        let token_address_string = address_to_string(self.address).to_lowercase();
+
+        match tokens.get(&token_address_string) {
+            Some(token) => token.is_sold_at_time[time_index],
+            None => {
+                error!(
+                    "{} is not in token hash, cannot update.",
+                    token_address_string
+                );
+                false
+            }
+        }
+    }
+}
+
 pub async fn is_token_tradable(token_address: Address) -> bool {
     let token_data_hash = Arc::clone(&TOKEN_HASH);
     let tokens = token_data_hash.lock().await;

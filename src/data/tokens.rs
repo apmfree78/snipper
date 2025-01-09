@@ -10,7 +10,6 @@ use crate::app_config::{
     TIME_ROUNDS, VERY_LOW_LIQUIDITY_THRESHOLD,
 };
 use crate::data::token_state_update::remove_token;
-use crate::token_tx::volume_intervals::VOLUME_ROUNDS;
 use crate::utils::tx::amount_of_token_to_purchase;
 use crate::verify::check_token_lock::is_liquidity_locked;
 
@@ -70,10 +69,6 @@ pub struct Erc20Token {
 
     // total gas cost for buy + sell of token
     pub tx_gas_cost: U256,
-
-    // for mock buying/selling different amounts of token
-    pub amounts_bought: [U256; VOLUME_ROUNDS],
-    pub amounts_sold: [U256; VOLUME_ROUNDS],
 
     // for mock buying/selling different times
     pub amount_sold_at_time: [U256; TIME_ROUNDS],

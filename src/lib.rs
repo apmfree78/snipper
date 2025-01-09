@@ -43,7 +43,6 @@ pub mod token_tx {
     pub mod time_intervals;
     pub mod tx;
     pub mod validate;
-    pub mod volume_intervals;
 }
 
 pub mod app_config;

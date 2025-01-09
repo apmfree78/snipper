@@ -8,40 +8,14 @@ use crate::{
         },
         tokens::{TokenLiquidity, TokenState},
     },
-    token_tx::volume_intervals::VOLUME_ROUNDS,
     utils::{
         tx::{amount_of_token_to_purchase, get_token_sell_interval},
-        type_conversion::{address_to_string, format_to_5_decimals_decimal},
+        type_conversion::address_to_string,
     },
 };
-use ethers::{types::U256, utils::format_units};
+use ethers::utils::format_units;
 
 impl Erc20Token {
-    pub fn display_token_portfolio_volume_interval(&self) -> anyhow::Result<()> {
-        let amount_bought =
-            std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
-        let amount_bought_ether = ethers::utils::parse_ether(amount_bought)?;
-
-        let token_address = self.lowercase_address();
-
-        println!("Stats for {} ({})", self.name, token_address);
-        for i in 0..VOLUME_ROUNDS {
-            let profit = self.profit_at_volume_interval_(i + 1)?;
-            let roi = self.roi_at_volume_interval(i + 1)?;
-
-            // let ether_used_to_buy = format_units(amount_bought_ether * U256::from(i + 1), 18u32)?;
-            let ether_used_to_buy =
-                format_to_5_decimals_decimal(amount_bought_ether * U256::from(i + 1), 18u32);
-            println!(
-                "{} ether => profit of {}, and roi of {}",
-                ether_used_to_buy, profit, roi
-            );
-            println!("----------------------------------------------");
-        }
-
-        Ok(())
-    }
-
     pub fn display_token_portfolio_time_interval(
         &self,
     ) -> anyhow::Result<([f64; TIME_ROUNDS], [f64; TIME_ROUNDS])> {
@@ -128,43 +102,6 @@ impl Erc20Token {
         Ok(roi)
     }
 
-    // interval is 1..N
-    pub fn profit_at_volume_interval_(&self, interval: usize) -> anyhow::Result<f32> {
-        if !self.is_sold_at_time[interval - 1] {
-            return Ok(0_f32);
-        }
-
-        let eth_basis = amount_of_token_to_purchase()?;
-
-        let total_cost = eth_basis * interval + self.tx_gas_cost;
-        let profit = if self.amounts_sold[interval - 1] >= total_cost {
-            let abs_profit = self.amounts_sold[interval - 1] - total_cost;
-            abs_profit.as_u128() as i128
-        } else {
-            let abs_profit = total_cost - self.amounts_sold[interval - 1];
-            -(abs_profit.as_u128() as i128)
-        };
-
-        let profit = profit as f64 / 1e18_f64;
-
-        Ok(profit as f32)
-    }
-
-    pub fn roi_at_volume_interval(&self, interval: usize) -> anyhow::Result<f32> {
-        if !self.is_sold_at_time[interval - 1] {
-            return Ok(0_f32);
-        }
-
-        let eth_basis = amount_of_token_to_purchase()?;
-
-        let eth_basis = eth_basis.as_u128() as f64 / 1e18_f64;
-
-        let profit = self.profit_at_volume_interval_(interval)?;
-        let roi = profit / eth_basis as f32;
-
-        Ok(roi as f32)
-    }
-
     pub fn profit_at_time_interval_(&self, interval: usize) -> anyhow::Result<f64> {
         if !self.is_sold_at_time[interval - 1] {
             return Ok(0_f64);
@@ -206,19 +143,6 @@ impl Erc20Token {
 
         return address_string.to_lowercase();
     }
-}
-
-pub async fn display_token_volume_stats() -> anyhow::Result<()> {
-    let tokens = get_tokens().await;
-
-    println!("----------------------------------------------");
-    println!("----------------TOKEN STATS------------------");
-    println!("----------------------------------------------");
-    for token in tokens.values() {
-        token.display_token_portfolio_volume_interval()?;
-    }
-
-    Ok(())
 }
 
 pub async fn display_token_time_stats() -> anyhow::Result<()> {
