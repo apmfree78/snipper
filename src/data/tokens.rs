@@ -1,13 +1,15 @@
 use derive_more::Display;
 use ethers::providers::{Provider, Ws};
 use ethers::types::{Address, U256};
+use log::{error, warn};
 use std::sync::Arc;
 
 use crate::abi::uniswap_pair::UNISWAP_PAIR;
 use crate::app_config::{
-    HIGH_LIQUIDITY_THRESHOLD, LIQUIDITY_PERCENTAGE_LOCKED, LOW_LIQUIDITY_THRESHOLD,
-    MEDIUM_LIQUIDITY_THRESHOLD, MIN_LIQUIDITY, MIN_RESERVE_ETH_FACTOR, MIN_TRADE_FACTOR,
-    TIME_ROUNDS, VERY_LOW_LIQUIDITY_THRESHOLD,
+    API_CHECK_LIMIT, CHECK_IF_HONEYPOT, CHECK_IF_LIQUIDITY_LOCKED, HIGH_LIQUIDITY_THRESHOLD,
+    LIQUIDITY_PERCENTAGE_LOCKED, LOW_LIQUIDITY_THRESHOLD, MEDIUM_LIQUIDITY_THRESHOLD,
+    MIN_LIQUIDITY, MIN_RESERVE_ETH_FACTOR, MIN_TRADE_FACTOR, TIME_ROUNDS,
+    VERY_LOW_LIQUIDITY_THRESHOLD,
 };
 use crate::data::token_state_update::remove_token;
 use crate::utils::tx::amount_of_token_to_purchase;
@@ -67,6 +69,10 @@ pub struct Erc20Token {
     pub honeypot_checks: u8,
     pub graphql_checks: u8,
 
+    // buy and sell attempts
+    pub purchase_attempts: u8,
+    pub sell_attempts: u8,
+
     // total gas cost for buy + sell of token
     pub tx_gas_cost: U256,
 
@@ -87,10 +93,16 @@ pub fn extract_liquidity_amount(liquidity: &TokenLiquidity) -> Option<u128> {
 }
 
 impl Erc20Token {
-    pub async fn validate_liquidity_is_locked(
+    pub async fn check_liquidity_is_locked_and_update_state(
         &self,
         client: &Arc<Provider<Ws>>,
     ) -> anyhow::Result<bool> {
+        //  SYSTEM OVERRIDE
+        if !CHECK_IF_LIQUIDITY_LOCKED {
+            self.set_state_to_(TokenState::Locked).await;
+            return Ok(true);
+        }
+
         match is_liquidity_locked(self, LIQUIDITY_PERCENTAGE_LOCKED, client).await? {
             Some(is_locked) => {
                 if is_locked {
@@ -112,17 +124,44 @@ impl Erc20Token {
         }
     }
 
-    pub async fn check_if_token_is_honeypot(&self) -> anyhow::Result<bool> {
-        let (summary, result) = self.is_honeypot().await?;
-        println!("{} token risk is {} ", self.name, summary.risk);
-        if result.is_honeypot {
+    pub async fn check_if_token_is_honeypot(&self) -> anyhow::Result<Option<bool>> {
+        //  SYSTEM OVERRIDE
+        if !CHECK_IF_HONEYPOT {
+            return Ok(Some(false));
+        }
+
+        let honeypot_check_count = self.honeypot_check_count().await;
+
+        if honeypot_check_count > API_CHECK_LIMIT {
+            warn!(
+                "{} exceed honeypot api check limit removing token!",
+                self.name
+            );
+            let _ = remove_token(self.address).await.unwrap();
+            return Ok(Some(true)); // if canot check assume its a honeypot and remove token
+        }
+
+        let (token_summary, honeypot_result) = match self.is_honeypot().await {
+            Ok((summary, result)) => (summary, result),
+            Err(error) => {
+                error!("could not get honeypot status => {}", error);
+                self.increment_honeypot_checks().await;
+                return Ok(None);
+            }
+        };
+
+        println!("{} token risk is {} ", self.name, token_summary.risk);
+        if honeypot_result.is_honeypot {
             println!("{} is a honeypot scam! Removing...", self.name);
             let _ = remove_token(self.address).await.unwrap();
         } else {
             println!("{} is NOT a honeypot! :)", self.name);
         }
 
-        Ok(result.is_honeypot)
+        // increment api call count
+        self.increment_honeypot_checks().await;
+
+        Ok(Some(honeypot_result.is_honeypot))
     }
 
     pub async fn get_total_supply(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<U256> {

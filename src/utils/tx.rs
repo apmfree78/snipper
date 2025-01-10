@@ -5,7 +5,7 @@ use crate::data::contracts::CONTRACT;
 use crate::data::tokens::Erc20Token;
 use anyhow::{anyhow, Result};
 use ethers::core::k256::ecdsa::SigningKey;
-use ethers::types::{Address, Block, BlockId, BlockNumber, Bytes, H256, U256, U64};
+use ethers::types::{Address, Block, BlockNumber, Bytes, H256, U256, U64};
 use ethers::utils::format_units;
 use ethers::{
     providers::{Middleware, Provider, Ws},
@@ -247,6 +247,15 @@ pub fn token_tx_profit_loss(sold_revenue: U256) -> anyhow::Result<String> {
 pub fn amount_of_token_to_purchase() -> anyhow::Result<U256> {
     let amount_to_buy =
         std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
+    let amount_in = ethers::utils::parse_ether(amount_to_buy)?;
+    // let purchase_amount = format_units(amount_in, "ether")?;
+    // println!("buying {} of token", purchase_amount);
+    Ok(amount_in)
+}
+
+pub fn test_amount_of_token_to_purchase() -> anyhow::Result<U256> {
+    let amount_to_buy = std::env::var("TOKEN_TO_BUY_FOR_ANVIL_TEST")
+        .expect("TOKEN_TO_BUY_FOR_ANVIL_TEST is not set in .env");
     let amount_in = ethers::utils::parse_ether(amount_to_buy)?;
     // let purchase_amount = format_units(amount_in, "ether")?;
     // println!("buying {} of token", purchase_amount);

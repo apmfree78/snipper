@@ -1,4 +1,5 @@
 use crate::abi::erc20::ERC20;
+use crate::app_config::BLACKLIST;
 use crate::events::PairCreatedEvent;
 use crate::utils::type_conversion::address_to_string;
 use anyhow::Result;
@@ -8,7 +9,7 @@ use log::{error, info, warn};
 use std::sync::Arc;
 
 use super::contracts::CONTRACT;
-use super::token_data::{get_token, TOKEN_HASH};
+use super::token_data::TOKEN_HASH;
 use super::tokens::{Erc20Token, TokenLiquidity, TokenState};
 
 impl Erc20Token {
@@ -188,6 +189,12 @@ pub async fn get_and_save_erc20_by_token_address(
     let symbol = token_contract.symbol().call().await?;
     let decimals = token_contract.decimals().call().await?;
     let name = token_contract.name().call().await?;
+
+    if BLACKLIST.contains(&symbol.as_str()) {
+        println!("blocked blacklisted token {}", name);
+        return Ok(None);
+    }
+
     info!("new token: {} ({}) detected!", name, symbol);
 
     let token = Erc20Token {

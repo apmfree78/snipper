@@ -5,7 +5,7 @@ use crate::data::contracts::CONTRACT;
 use crate::data::gas::update_tx_gas_cost_data;
 use crate::data::tokens::Erc20Token;
 use crate::swap::tx_trait::Txs;
-use crate::utils::tx::{amount_of_token_to_purchase, get_amount_out_uniswap_v2, TxSlippage};
+use crate::utils::tx::{get_amount_out_uniswap_v2, test_amount_of_token_to_purchase, TxSlippage};
 use crate::utils::type_conversion::convert_transaction_to_typed_transaction;
 use ethers::types::{Transaction, U256};
 use ethers::{providers::Middleware, types::Address};
@@ -59,7 +59,7 @@ impl AnvilSimulator {
 
         // println!("........................................................");
         self.get_wallet_eth_balance().await?;
-        let amount_in = amount_of_token_to_purchase()?;
+        let amount_in = test_amount_of_token_to_purchase()?;
         // println!("buying {}", token.name);
 
         // calculate amount amount out and gas used

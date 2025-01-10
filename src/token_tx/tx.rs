@@ -1,9 +1,8 @@
-use crate::app_config::{AppMode, APP_MODE};
+use crate::app_config::{AppMode, APP_MODE, PURCHASE_ATTEMPT_LIMIT, SELL_ATTEMPT_LIMIT};
 use crate::data::contracts::CONTRACT;
 use crate::data::token_data::get_tokens;
 use crate::data::token_state_update::remove_token;
 use crate::data::tokens::{Erc20Token, TokenState};
-use crate::swap::anvil::validation::{TokenLiquid, TokenStatus};
 use crate::swap::mainnet::setup::TxWallet;
 use crate::utils::tx::{
     amount_of_token_to_purchase, get_amount_out_uniswap_v2, token_tx_profit_loss, TxSlippage,
@@ -30,6 +29,7 @@ impl Erc20Token {
         current_time: u32,
     ) -> anyhow::Result<()> {
         self.set_state_to_(TokenState::Buying).await;
+        self.increment_purchase_attempts().await;
 
         let token_balance = if APP_MODE == AppMode::Production {
             tx_wallet.buy_tokens_for_eth(self).await?
@@ -41,8 +41,15 @@ impl Erc20Token {
         if token_balance > U256::from(0) {
             self.update_post_purchase(token_balance, current_time).await;
         } else {
-            warn!("{} token purchase failed, removing", self.name);
-            remove_token(self.address).await;
+            let purchase_attempts = self.purchase_attempt_count().await;
+
+            if purchase_attempts > PURCHASE_ATTEMPT_LIMIT {
+                warn!("{} token purchase failed, removing", self.name);
+                remove_token(self.address).await;
+            } else {
+                // set back to locked so will reattempt purchase
+                self.set_state_to_(TokenState::Locked).await;
+            }
         }
 
         Ok(())
@@ -50,6 +57,8 @@ impl Erc20Token {
 
     pub async fn sell(&self, tx_wallet: &Arc<TxWallet>) -> anyhow::Result<()> {
         self.set_state_to_(TokenState::Selling).await;
+        self.increment_sell_attempts().await;
+
         let eth_revenue_from_sale = if APP_MODE == AppMode::Production {
             tx_wallet.sell_token_for_eth(self).await?
         } else {
@@ -61,8 +70,19 @@ impl Erc20Token {
             self.update_post_sale(eth_revenue_from_sale).await;
             info!("token {} sold!", self.name);
         } else {
-            self.update_post_sale(U256::zero()).await;
-            warn!("failed to sell token, rug pull => {}", self.name);
+            let sell_attempts = self.sell_attempt_count().await;
+
+            if sell_attempts > SELL_ATTEMPT_LIMIT {
+                self.update_post_sale(U256::zero()).await;
+                warn!("failed to sell token, rug pull => {}", self.name);
+            } else {
+                // set back to bought so will reattempt sale
+                warn!(
+                    "tried selling {} {} times..will try again",
+                    self.name, sell_attempts
+                );
+                self.set_state_to_(TokenState::Bought).await;
+            }
         }
 
         Ok(())
@@ -106,18 +126,18 @@ impl Erc20Token {
         }
 
         // now validate token is not rugged
-        println!("re-validating token {}", self.name);
-        let token_status = self
-            .validate_with_simulated_buy_sell(TokenLiquid::HasEnough)
-            .await?;
-
-        if token_status != TokenStatus::Legit {
-            println!(".............RUG PULL.....................");
-            println!("{} failed re-validation", self.name);
-            return Ok(U256::zero());
-        }
-        println!("{} successfully re-validated", self.name);
-
+        // println!("re-validating token {}", self.name);
+        // let token_status = self
+        //     .validate_with_simulated_buy_sell(TokenLiquid::HasEnough)
+        //     .await?;
+        //
+        // if token_status != TokenStatus::Legit {
+        //     println!(".............RUG PULL.....................");
+        //     println!("{} failed re-validation", self.name);
+        //     return Ok(U256::zero());
+        // }
+        // println!("{} successfully re-validated", self.name);
+        //
         let weth_address: Address = CONTRACT.get_address().weth.parse()?;
 
         println!("........................................................");
@@ -185,12 +205,29 @@ pub async fn sell_eligible_tokens(
     for token in tokens.values() {
         let sell_time = time_to_sell + token.time_of_purchase;
 
-        if token.state == TokenState::Bought && current_time >= sell_time {
+        let sell_attempts = token.sell_attempt_count().await;
+
+        let try_again = sell_attempts > 0 && sell_attempts < SELL_ATTEMPT_LIMIT;
+
+        if token.state == TokenState::Bought && (current_time >= sell_time || try_again) {
             let spawn_token = token.clone();
             let spawn_tx_wallet = Arc::clone(tx_wallet);
             tokio::spawn(async move {
                 if let Err(error) = spawn_token.sell(&spawn_tx_wallet).await {
                     error!("could not sell token => {}", error);
+                    let sell_attempts = spawn_token.sell_attempt_count().await;
+
+                    if sell_attempts > SELL_ATTEMPT_LIMIT {
+                        spawn_token.update_post_sale(U256::zero()).await;
+                        warn!("failed to sell token, rug pull => {}", spawn_token.name);
+                    } else {
+                        // set back to bought so will reattempt sale
+                        warn!(
+                            "tried selling {} {} times..will try again",
+                            spawn_token.name, sell_attempts
+                        );
+                        spawn_token.set_state_to_(TokenState::Bought).await;
+                    }
                 }
             });
         }

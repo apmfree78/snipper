@@ -3,10 +3,9 @@ use ethers::prelude::*;
 use std::sync::Arc;
 
 use crate::{
-    app_config::{API_CHECK_LIMIT, TOKEN_LOCKERS},
+    app_config::{API_CHECK_LIMIT, CHAIN, TOKEN_LOCKERS_BASE, TOKEN_LOCKERS_MAINNET},
     data::tokens::Erc20Token,
-    utils::type_conversion::f64_to_u256,
-    verify::thegraph_api::fetch_uniswap_lp_holders,
+    verify::{etherscan_api::get_token_holder_list, thegraph_api::fetch_uniswap_lp_holders},
 };
 
 /// This function demonstrates how you might verify that >= 80% of the LP tokens
@@ -35,7 +34,7 @@ use crate::{
 #[derive(Debug, Default)]
 pub struct TokenHolders {
     pub holder: String,
-    pub quantity: f64,
+    pub quantity: U256,
 }
 
 pub async fn is_liquidity_locked(
@@ -54,7 +53,11 @@ pub async fn is_liquidity_locked(
     // Step 2) Retrieve top holder info. This is the part you'll have to implement
     //         with a subgraph or block explorer. For now, we assume a function:
     // fetch_top_lp_holders(pair_address) -> Vec<LpHolderInfo>
-    let top_holders: Vec<TokenHolders> = fetch_uniswap_lp_holders(token.pair_address).await?;
+    let top_holders: Vec<TokenHolders> = if CHAIN == Chain::Base {
+        get_token_holder_list(token.pair_address).await?
+    } else {
+        fetch_uniswap_lp_holders(token.pair_address).await?
+    };
 
     //increment api count
     token.increment_graphql_checks().await;
@@ -65,7 +68,7 @@ pub async fn is_liquidity_locked(
     }
 
     // Step 3) Sum up balances for addresses in known_lockers
-    let mut locked_balance = 0_f64;
+    let mut locked_balance = U256::zero();
 
     // We'll treat addresses in `known_lockers` as well as any "dead" or "burn" addresses as locked
     // For example, 0x000000000000000000000000000000000000dEaD
@@ -82,10 +85,21 @@ pub async fn is_liquidity_locked(
             };
         }
 
-        // sum up all locked holdings
-        if TOKEN_LOCKERS.contains(&info.holder.as_str()) {
-            locked_balance += info.quantity;
+        if CHAIN == Chain::Mainnet {
+            // sum up all locked holdings
+            if TOKEN_LOCKERS_MAINNET.contains(&info.holder.as_str()) {
+                locked_balance = locked_balance + info.quantity;
+            }
+        } else {
+            if TOKEN_LOCKERS_BASE.contains(&info.holder.as_str()) {
+                locked_balance = locked_balance + info.quantity;
+            }
         }
+    }
+
+    // require
+    if top_holder.quantity == U256::zero() {
+        return Ok(None);
     }
 
     println!(
@@ -93,11 +107,10 @@ pub async fn is_liquidity_locked(
         token.name, top_holder.holder, top_holder.quantity
     );
 
-    let locked_balance_u256 = f64_to_u256(locked_balance)?;
     // convert locked balance to U256
     // Step 4) check if locked_balance >= threshold% of total supply
     let required_locked = total_supply * U256::from(threshold_percent) / U256::from(100_u64);
-    let locked_enough = locked_balance_u256 >= required_locked;
+    let locked_enough = locked_balance >= required_locked;
 
     Ok(Some(locked_enough))
 }

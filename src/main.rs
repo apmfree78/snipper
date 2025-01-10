@@ -77,19 +77,6 @@ async fn main() -> Result<()> {
     info!("Subscribed to blocks");
 
     let combined_stream = stream::select_all(vec![log_stream, block_stream]);
-    // Merge the streams into a single stream.
-    // let combined_stream = if CHAIN == Chain::Mainnet {
-    //     let tx_stream: stream::BoxStream<'_, Result<Event>> = tx_wallet
-    //         .client
-    //         .subscribe_pending_txs()
-    //         .await?
-    //         .map(|tx| Ok(Event::PendingTransactions(tx)))
-    //         .boxed();
-    //     stream::select_all(vec![log_stream, block_stream, tx_stream])
-    // } else {
-    //     // for L2s that do not support access to mempool pending txs
-    //     stream::select_all(vec![log_stream, block_stream])
-    // };
 
     info!("Combined streams");
 
@@ -119,20 +106,6 @@ async fn main() -> Result<()> {
                     }
                     Err(error) => error!("error extracting pool created event => {}", error),
                 },
-                // Ok(Event::PendingTransactions(tx)) => {
-                //     let current_time = {
-                //         let last_time = last_timestamp.lock().await;
-                //         last_time.clone()
-                //     };
-                //     if let Err(error) =
-                //         detect_token_add_liquidity_and_validate(tx, &tx_wallet, current_time).await
-                //     {
-                //         error!(
-                //             "problem with detect_token_add_liquidity_and_validate => {}",
-                //             error
-                //         );
-                //     }
-                // }
                 Ok(Event::Block(block)) => {
                     // info!("NEW BLOCK ===> {}", block.timestamp);
                     let mut last_time = last_timestamp.lock().await;
@@ -145,12 +118,6 @@ async fn main() -> Result<()> {
                     if let Err(error) = check_all_tokens_are_tradable(&tx_wallet.client).await {
                         error!("could not check token tradability => {}", error);
                     }
-
-                    // validate tokens
-                    // info!("checking if tokens  are vaild...");
-                    // if let Err(error) = validate_tradable_tokens(&tx_wallet.client).await {
-                    //     error!("could not validate tradable tokens => {}", error);
-                    // }
 
                     // info!("buying eligible tokens...");
                     if let Err(error) =

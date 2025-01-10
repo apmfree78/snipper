@@ -1,9 +1,9 @@
 use anyhow::{anyhow, Result};
-use ethers::types::Address;
+use ethers::types::{Address, U256};
 use reqwest::Client;
 use serde::Deserialize;
 
-use crate::utils::type_conversion::address_to_string;
+use crate::{app_config::CHAIN, utils::type_conversion::address_to_string};
 
 use super::check_token_lock::TokenHolders;
 
@@ -36,6 +36,19 @@ struct EtherscanHolderEntry {
 /// # Returns
 /// `Vec<TokenHolders>` with the holder address and quantity in `U256`.
 ///
+// const chains = [42161, 8453, 10, 534352, 81457]
+//
+// for (const chain of chains) {
+//
+//   // endpoint accepts one chain at a time, loop for all your chains
+//   const balance = fetch(`https://api.etherscan.io/v2/api?
+//      chainid=${chain}
+//      &module=account
+//      &action=balance
+//      &address=0xb5d85cbf7cb3ee0d56b3bb207d5fc4b82f43f511
+//      &tag=latest&apikey=YourApiKeyToken`)
+//
+// }
 /// # Example
 /// ```ignore
 /// let holders = get_token_holder_list(
@@ -48,7 +61,7 @@ struct EtherscanHolderEntry {
 /// ```
 pub async fn get_token_holder_list(contract_address: Address) -> Result<Vec<TokenHolders>> {
     // Build Etherscan URL
-    // Example: https://api.etherscan.io/api
+    // Example: https://api.basescan.org/api
     //   ?module=token
     //   &action=tokenholderlist
     //   &contractaddress=...
@@ -59,9 +72,11 @@ pub async fn get_token_holder_list(contract_address: Address) -> Result<Vec<Toke
     let etherscan_api_key = get_etherscan_api_key()?;
     let contract_address_str = address_to_string(contract_address);
 
+    let chain_id = CHAIN as u64;
+
     let url = format!(
-        "https://api.etherscan.io/api?module=token&action=tokenholderlist&contractaddress={}&apikey={}",
-        contract_address_str, etherscan_api_key
+        "https://api.etherscan.io/v2/api?chainid={}&module=token&action=tokenholderlist&contractaddress={}&apikey={}",
+        chain_id,contract_address_str, etherscan_api_key
     );
 
     // Make HTTP GET request
@@ -87,11 +102,11 @@ pub async fn get_token_holder_list(contract_address: Address) -> Result<Vec<Toke
     // Convert to Vec<TokenHolders>
     let mut holders = Vec::with_capacity(parsed.result.len());
     for entry in parsed.result {
-        let qty: f64 = entry.token_holder_quantity.parse()?;
+        let tokens_held = U256::from_dec_str(&entry.token_holder_quantity)?;
 
         holders.push(TokenHolders {
             holder: entry.token_holder_address,
-            quantity: qty,
+            quantity: tokens_held,
         });
     }
 

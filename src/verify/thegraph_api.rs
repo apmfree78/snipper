@@ -1,5 +1,5 @@
 use super::check_token_lock::TokenHolders;
-use crate::utils::type_conversion::address_to_string;
+use crate::utils::type_conversion::{address_to_string, f64_to_u256};
 use anyhow::Result;
 use ethers::types::Address;
 use reqwest::Client;
@@ -72,11 +72,12 @@ pub async fn fetch_uniswap_lp_holders(pair_address: Address) -> Result<Vec<Token
     let mut result_vec = Vec::<TokenHolders>::new();
     for lp in parsed.data.liquidity_positions {
         let liquidity_balance = lp.liquidity_token_balance.parse::<f64>()?;
+        let liquidity_balance_u256 = f64_to_u256(liquidity_balance)?;
         // user.id is the address in lowercase
         // liquidityTokenBalance is a string decimal
         result_vec.push(TokenHolders {
             holder: lp.user.id,
-            quantity: liquidity_balance,
+            quantity: liquidity_balance_u256,
         });
     }
 

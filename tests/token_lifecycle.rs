@@ -18,7 +18,7 @@ use futures::lock::Mutex;
 use snipper::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
 use snipper::abi::uniswap_pair::UNISWAP_PAIR;
 use snipper::data::contracts::CONTRACT;
-use snipper::data::portfolio::{display_token_time_stats, display_token_volume_stats};
+use snipper::data::portfolio::display_token_time_stats;
 use snipper::data::token_data::{get_number_of_tokens, is_token_tradable};
 use snipper::data::token_state_update::get_and_save_erc20_by_token_address;
 use snipper::data::tokens::TokenState;
@@ -30,9 +30,6 @@ use snipper::token_tx::anvil::{buy_eligible_tokens_on_anvil, sell_eligible_token
 use snipper::token_tx::time_intervals::mock_sell_eligible_tokens_at_time_intervals;
 use snipper::token_tx::tx::buy_eligible_tokens;
 use snipper::token_tx::validate::check_all_tokens_are_tradable;
-use snipper::token_tx::volume_intervals::{
-    mock_buy_eligible_tokens_at_volume_interval, mock_sell_eligible_tokens_at_volume_interval,
-};
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -235,49 +232,6 @@ async fn test_anvil_token_buy_no_sell_test() -> anyhow::Result<()> {
         .get_wallet_token_balance_by_address(setup.token_address)
         .await?;
     assert_eq!(new_token_balance, token_balance);
-    assert_eq!(number_of_tokens, 1);
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore]
-async fn test_mock_token_buy_sell_test() -> anyhow::Result<()> {
-    let token_address: Address = CONTRACT.get_address().link.parse()?;
-    let mut setup = setup(token_address).await?;
-
-    let mut number_of_tokens = get_number_of_tokens().await;
-    assert_eq!(number_of_tokens, 1);
-
-    let token_tradable = is_token_tradable(setup.token_address).await;
-    assert!(token_tradable);
-
-    if let Err(error) = mock_buy_eligible_tokens_at_volume_interval(
-        &setup.tx_wallet.client,
-        setup.last_block_timestamp,
-    )
-    .await
-    {
-        println!("error running buy_eligible_tokens_on_anvil => {}", error);
-    }
-
-    setup.last_block_timestamp += setup.sell_after;
-
-    if let Err(error) = mock_sell_eligible_tokens_at_volume_interval(
-        &setup.tx_wallet.client,
-        setup.last_block_timestamp,
-    )
-    .await
-    {
-        println!("error running sell_eligible_tokens_on_anvil => {}", error);
-    }
-
-    if let Err(error) = display_token_volume_stats().await {
-        println!("error displaying stats => {}", error);
-    }
-
-    number_of_tokens = get_number_of_tokens().await;
-
     assert_eq!(number_of_tokens, 1);
 
     Ok(())
