@@ -1,4 +1,5 @@
 use super::simlator::AnvilSimulator;
+use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
 use crate::data::contracts::CONTRACT;
 use crate::data::tokens::Erc20Token;
@@ -6,7 +7,7 @@ use crate::swap::tx_trait::Txs;
 use crate::utils::type_conversion::address_to_string;
 use anyhow::Result;
 use ethers::types::{
-    CallFrame, GethDebugTracerType, GethDebugTracingOptions, GethTrace, GethTraceFrame, H256,
+    CallFrame, GethDebugTracerType, GethDebugTracingOptions, GethTrace, GethTraceFrame, H256, U256,
 };
 use ethers::{providers::Middleware, types::Address};
 use log::debug;
@@ -47,6 +48,30 @@ impl AnvilSimulator {
                 println!("Unexpected trace format");
             }
         }
+        Ok(())
+    }
+
+    pub async fn do_dummy_transfer(
+        &self,
+        token_address: Address,
+        amount: U256,
+    ) -> anyhow::Result<()> {
+        // 1) Use the ERC20::new(...) constructor
+        let token_contract_wallet_1 = ERC20::new(token_address, self.signed_client.clone());
+        let token_contract_wallet_2 = ERC20::new(token_address, self.second_signed_client.clone());
+
+        // 2) Transfer from wallet1 -> wallet2
+        token_contract_wallet_1
+            .transfer(self.second_signed_client.address(), amount)
+            .send()
+            .await?;
+
+        // 3) Transfer from wallet2 -> wallet1
+        token_contract_wallet_2
+            .transfer(self.signed_client.address(), amount)
+            .send()
+            .await?;
+
         Ok(())
     }
 

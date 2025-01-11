@@ -16,11 +16,11 @@ use super::simlator::AnvilSimulator;
 impl AnvilSimulator {
     // function to simulate mempool tx
     pub async fn add_liquidity_eth(&self, mempool_tx: &Transaction) -> anyhow::Result<()> {
-        let sender_address = mempool_tx.from;
-        self.signed_client
-            .provider()
-            .request::<_, ()>("anvil_impersonateAccount", [sender_address])
-            .await?;
+        // let sender_address = mempool_tx.from;
+        // self.signed_client
+        //     .provider()
+        //     .request::<_, ()>("anvil_impersonateAccount", [sender_address])
+        //     .await?;
 
         // Convert and send the first transaction
         let mempool_tx_typed = convert_transaction_to_typed_transaction(&mempool_tx);
@@ -36,11 +36,11 @@ impl AnvilSimulator {
         let _receipt = pending_tx.await?;
         // println!("add liquidity eth complete!");
 
-        // Stop impersonating the account
-        self.signed_client
-            .provider()
-            .request::<_, ()>("anvil_stopImpersonatingAccount", [sender_address])
-            .await?;
+        // // Stop impersonating the account
+        // self.signed_client
+        //     .provider()
+        //     .request::<_, ()>("anvil_stopImpersonatingAccount", [sender_address])
+        //     .await?;
 
         Ok(())
     }
@@ -51,11 +51,12 @@ impl AnvilSimulator {
 
         let mut new_token_balance = U256::from(0);
         let router = UNISWAP_V2_ROUTER::new(router_address, self.signed_client.clone());
+
         // Impersonate the account you want to send the transaction from
-        self.signed_client
-            .provider()
-            .request::<_, ()>("anvil_impersonateAccount", [self.sender])
-            .await?;
+        // self.signed_client
+        //     .provider()
+        //     .request::<_, ()>("anvil_impersonateAccount", [self.sender])
+        //     .await?;
 
         // println!("........................................................");
         self.get_wallet_eth_balance().await?;
@@ -138,10 +139,10 @@ impl AnvilSimulator {
         }
 
         // Stop impersonating the account after the transaction is complete
-        self.signed_client
-            .provider()
-            .request::<_, ()>("anvil_stopImpersonatingAccount", [self.sender])
-            .await?;
+        // self.signed_client
+        //     .provider()
+        //     .request::<_, ()>("anvil_stopImpersonatingAccount", [self.sender])
+        //     .await?;
         Ok(new_token_balance)
     }
 
@@ -157,10 +158,10 @@ impl AnvilSimulator {
         let router = UNISWAP_V2_ROUTER::new(router_address, self.signed_client.clone());
 
         // Impersonate the account you want to send the transaction from
-        self.signed_client
-            .provider()
-            .request::<_, ()>("anvil_impersonateAccount", [self.sender])
-            .await?;
+        // self.signed_client
+        //     .provider()
+        //     .request::<_, ()>("anvil_impersonateAccount", [self.sender])
+        //     .await?;
 
         // self.show_eth_uniswap_v2_pair(&token).await?;
 
@@ -253,10 +254,10 @@ impl AnvilSimulator {
         }
 
         // Stop impersonating the account after the transaction is complete
-        self.signed_client
-            .provider()
-            .request::<_, ()>("anvil_stopImpersonatingAccount", [self.sender])
-            .await?;
+        // self.signed_client
+        //     .provider()
+        //     .request::<_, ()>("anvil_stopImpersonatingAccount", [self.sender])
+        //     .await?;
         Ok(new_token_balance)
     }
 }

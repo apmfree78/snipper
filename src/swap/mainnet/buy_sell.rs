@@ -106,24 +106,31 @@ impl TxWallet {
             .get_wallet_token_balance_by_address(token.address)
             .await?;
 
-        //  Get nonce
-        let nonce = get_next_nonce().await;
-        println!("nonce for approval tx => {}", nonce);
-
-        println!("preparing approval tx...");
-        let approval_tx =
-            prepare_token_approval_tx(&token, amount_to_sell, &block, nonce, &self.client)?;
-
-        info!("sending approval transcation");
-        let pending_approval = self
-            .signed_client
-            .send_transaction(approval_tx, None)
+        // check if token is already approved
+        let allowance = token
+            .get_current_allowance_on_uniswap_v2_router(self.sender, &self.client)
             .await?;
 
-        let receipt = pending_approval.await?;
-        match receipt {
-            Some(_) => println!("approval successful!"),
-            None => panic!("could not approve token"),
+        if allowance < amount_to_sell {
+            //  Get nonce
+            let nonce = get_next_nonce().await;
+            println!("nonce for approval tx => {}", nonce);
+
+            println!("preparing approval tx...");
+            let approval_tx =
+                prepare_token_approval_tx(&token, amount_to_sell, &block, nonce, &self.client)?;
+
+            info!("sending approval transcation");
+            let pending_approval = self
+                .signed_client
+                .send_transaction(approval_tx, None)
+                .await?;
+
+            let receipt = pending_approval.await?;
+            match receipt {
+                Some(_) => println!("approval successful!"),
+                None => panic!("could not approve token"),
+            }
         }
 
         println!("iterate nonce for swap tx...");

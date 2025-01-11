@@ -9,12 +9,16 @@ use ethers::{
 };
 use std::sync::Arc;
 
-use crate::app_config::CHAIN;
+use crate::{
+    app_config::CHAIN,
+    utils::tx::{get_second_wallet, get_wallet},
+};
 
 pub const STARTING_BALANCE: f64 = 1000.0;
 
 pub struct AnvilSimulator {
     pub signed_client: Arc<SignerMiddleware<Provider<Ws>, Wallet<SigningKey>>>,
+    pub second_signed_client: Arc<SignerMiddleware<Provider<Ws>, Wallet<SigningKey>>>,
     pub client: Arc<Provider<Ws>>,
     pub anvil: AnvilInstance,
     pub sender: Address,
@@ -23,6 +27,7 @@ pub struct AnvilSimulator {
 impl AnvilSimulator {
     pub async fn new(rpc_url: &str) -> Result<Self> {
         // Main network provider   // Configure Anvil with forking
+        println!("creating forked anvil note");
         let anvil = Anvil::new()
             // .args(["--no-storage-caching", "--code-size-limit", "2048"])
             .fork(rpc_url) // URL of your Geth node
@@ -31,20 +36,26 @@ impl AnvilSimulator {
             .spawn();
 
         // setup mock sender
-        let from_address: Address = anvil.addresses()[0];
-        let private_keys = anvil.keys();
-        let from_private_key = private_keys[0].clone();
+        // let from_address: Address = anvil.addresses()[0];
+        // let private_keys = anvil.keys();
+        // let from_private_key = private_keys[0].clone();
 
         // Connect to Anvil
+        println!("connecting anvil");
         let anvil_ws_url = anvil.ws_endpoint();
         let provider = Provider::<Ws>::connect(anvil_ws_url).await?;
         let client = Arc::new(provider.clone());
 
         // Create a wallet with the private key
-        let wallet = Wallet::from(from_private_key).with_chain_id(CHAIN);
+        println!("getting wallets setup");
+        let wallet = get_wallet()?;
+        let second_wallet = get_second_wallet()?;
+        let from_address = wallet.address();
 
         // Create the SignerMiddleware
-        let signed_client = Arc::new(SignerMiddleware::new(provider, wallet));
+        println!("signing clients");
+        let signed_client = Arc::new(SignerMiddleware::new(provider.clone(), wallet));
+        let second_signed_client = Arc::new(SignerMiddleware::new(provider, second_wallet));
 
         signed_client
             .provider()
@@ -59,6 +70,7 @@ impl AnvilSimulator {
 
         let simulator = Self {
             signed_client,
+            second_signed_client,
             client,
             anvil,
             sender: from_address,

@@ -12,7 +12,7 @@ pub enum AppMode {
 //*****************************************
 //*****************************************
 // CHANGE THIS VALUE TO SET CHAIN AND MODE FOR APP
-pub const CHAIN: Chain = Chain::Mainnet;
+pub const CHAIN: Chain = Chain::Base;
 
 pub const APP_MODE: AppMode = AppMode::Production;
 
@@ -21,7 +21,7 @@ pub const CHECK_IF_HONEYPOT: bool = true;
 
 pub const MIN_LIQUIDITY: u128 = 10_000_000_000_000_000_000; // 10 ether
 pub const MIN_LIQUIDITY_THRESHOLD: u128 = 10_000_000_000_000_000_000; // 10 ether
-pub const VERY_LOW_LIQUIDITY_THRESHOLD: u128 = 5_000_000_000_000_000_000; // 1 ether
+pub const VERY_LOW_LIQUIDITY_THRESHOLD: u128 = 2_000_000_000_000_000_000; // 1 ether
 pub const LOW_LIQUIDITY_THRESHOLD: u128 = 10_000_000_000_000_000_000; // 5 ether
 pub const MEDIUM_LIQUIDITY_THRESHOLD: u128 = 15_000_000_000_000_000_000; // 10 ether
 pub const HIGH_LIQUIDITY_THRESHOLD: u128 = 20_000_000_000_000_000_000; // 20 ether

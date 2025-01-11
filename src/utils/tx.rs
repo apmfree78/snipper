@@ -36,6 +36,12 @@ pub fn get_wallet() -> anyhow::Result<Wallet<SigningKey>> {
     Ok(wallet)
 }
 
+pub fn get_second_wallet() -> anyhow::Result<Wallet<SigningKey>> {
+    let private_key = env::var("PRIVATE_KEY_2").expect("PRIVATE_KEY_2 not found in .env file");
+
+    let wallet = LocalWallet::from_str(&private_key)?.with_chain_id(CHAIN);
+    Ok(wallet)
+}
 // ************************** BLOCK ***************************************************
 pub async fn get_current_block(client: &Arc<Provider<Ws>>) -> anyhow::Result<(Block<H256>, U64)> {
     // get the latest block

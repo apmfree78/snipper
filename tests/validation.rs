@@ -6,10 +6,10 @@ use snipper::abi::uniswap_pair::UNISWAP_PAIR;
 use snipper::data::contracts::CONTRACT;
 use snipper::data::token_data::is_token_tradable;
 use snipper::data::token_state_update::get_and_save_erc20_by_token_address;
-use snipper::data::tokens::Erc20Token;
+use snipper::data::tokens::{extract_liquidity_amount, Erc20Token};
 use snipper::events::PairCreatedEvent;
 use snipper::swap::anvil::validation::{TokenLiquid, TokenStatus};
-use snipper::token_tx::validate::check_all_tokens_are_tradable;
+use snipper::token_tx::validate::{check_all_tokens_are_tradable, liquidity_is_not_zero_nor_micro};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -51,11 +51,20 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetupValidation> {
     // let anvil_simulator = Arc::new(anvil_simulator);
 
     let token = get_and_save_erc20_by_token_address(&pair_created_event, &client).await?;
-    let token = token.unwrap();
+    let mut token = token.unwrap();
 
-    // check token liquidity
-    if let Err(error) = check_all_tokens_are_tradable(&client).await {
-        println!("could not check token tradability => {}", error);
+    let liquidity = token.get_liquidity(&client).await?;
+    if liquidity_is_not_zero_nor_micro(&liquidity) {
+        token
+            .set_to_tradable_plus_update_liquidity(&liquidity)
+            .await;
+        let liquidity_amount = extract_liquidity_amount(&liquidity).unwrap();
+        println!(
+            "{} has {} liquidity ({}) and ready for trading",
+            liquidity_amount as f64 / 1e18_f64,
+            token.name,
+            liquidity
+        );
     }
 
     Ok(TestSetupValidation {
@@ -66,10 +75,9 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetupValidation> {
 
 #[tokio::test]
 async fn test_successful_token_validation() -> anyhow::Result<()> {
-    let _token_address: Address = "0xc5a07C9594C4d5138AA00feBbDEC048B6f0ad7D6".parse()?;
-    // let token_address: Address = "0x9d265f238634e6436360c96bd8940e3d77fe3630".parse()?;
-    const AIXBT: &str = "0x4f9fd6be4a90f2620860d680c0d4d5fb53d1a825";
-    let token_address: Address = AIXBT.parse()?;
+    const VIRTUALS: &str = "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b";
+
+    let token_address: Address = VIRTUALS.parse()?;
 
     let setup = setup(token_address).await?;
 
@@ -89,21 +97,21 @@ async fn test_successful_token_validation() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[tokio::test]
-#[ignore]
-async fn test_failed_token_validation() -> anyhow::Result<()> {
-    let token_address: Address = "0x616d4b42197cff456a80a8b93f6ebef2307dfb8c".parse()?;
-    let setup = setup(token_address).await?;
-
-    let token_tradable = is_token_tradable(setup.token.address).await;
-    assert!(token_tradable);
-
-    let token_status = setup
-        .token
-        .validate_with_simulated_buy_sell(TokenLiquid::HasEnough)
-        .await?;
-
-    assert_eq!(token_status, TokenStatus::CannotSell);
-
-    Ok(())
-}
+// #[tokio::test]
+// #[ignore]
+// async fn test_failed_token_validation() -> anyhow::Result<()> {
+//     let token_address: Address = "0x616d4b42197cff456a80a8b93f6ebef2307dfb8c".parse()?;
+//     let setup = setup(token_address).await?;
+//
+//     let token_tradable = is_token_tradable(setup.token.address).await;
+//     assert!(token_tradable);
+//
+//     let token_status = setup
+//         .token
+//         .validate_with_simulated_buy_sell(TokenLiquid::HasEnough)
+//         .await?;
+//
+//     assert_eq!(token_status, TokenStatus::CannotSell);
+//
+//     Ok(())
+// }

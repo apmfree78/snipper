@@ -1,3 +1,4 @@
+use crate::abi::erc20::ERC20;
 use crate::app_config::{AppMode, APP_MODE, PURCHASE_ATTEMPT_LIMIT, SELL_ATTEMPT_LIMIT};
 use crate::data::contracts::CONTRACT;
 use crate::data::token_data::get_tokens;
@@ -53,6 +54,20 @@ impl Erc20Token {
         }
 
         Ok(())
+    }
+
+    pub async fn get_current_allowance_on_uniswap_v2_router(
+        &self,
+        owner: Address,
+        client: &Arc<Provider<Ws>>,
+    ) -> anyhow::Result<U256> {
+        let token_contract = ERC20::new(self.address, client.clone());
+        let uniswap_v2_router_address: Address =
+            CONTRACT.get_address().uniswap_v2_router.parse()?;
+        let allowance = token_contract
+            .allowance(owner, uniswap_v2_router_address)
+            .await?;
+        Ok(allowance)
     }
 
     pub async fn sell(&self, tx_wallet: &Arc<TxWallet>) -> anyhow::Result<()> {
