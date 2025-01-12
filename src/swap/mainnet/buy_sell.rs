@@ -106,6 +106,11 @@ impl TxWallet {
             .get_wallet_token_balance_by_address(token.address)
             .await?;
 
+        if amount_to_sell == U256::zero() {
+            println!("{} is scam, no amount to sell detected", token.name);
+            return Ok(U256::zero());
+        }
+
         // check if token is already approved
         let allowance = token
             .get_current_allowance_on_uniswap_v2_router(self.sender, &self.client)

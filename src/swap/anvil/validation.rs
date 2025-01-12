@@ -63,12 +63,12 @@ impl Erc20Token {
         anvil
             .signed_client
             .provider()
-            .request::<_, u64>("evm_increaseTime", [300u64])
+            .request::<_, u64>("evm_increaseTime", [3000u64])
             .await?;
 
         // elapse time with blocks mine
         println!("simulating creating blocks");
-        for _ in 0..100 {
+        for _ in 0..250 {
             let _ = anvil
                 .signed_client
                 .provider()

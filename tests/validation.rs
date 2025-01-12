@@ -9,7 +9,7 @@ use snipper::data::token_state_update::get_and_save_erc20_by_token_address;
 use snipper::data::tokens::{extract_liquidity_amount, Erc20Token};
 use snipper::events::PairCreatedEvent;
 use snipper::swap::anvil::validation::{TokenLiquid, TokenStatus};
-use snipper::token_tx::validate::{check_all_tokens_are_tradable, liquidity_is_not_zero_nor_micro};
+use snipper::token_tx::validate::liquidity_is_not_zero_nor_micro;
 use std::sync::Arc;
 use std::time::Instant;
 
