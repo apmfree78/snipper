@@ -24,7 +24,7 @@ use snipper::data::token_state_update::get_and_save_erc20_by_token_address;
 use snipper::data::tokens::TokenState;
 use snipper::events::PairCreatedEvent;
 use snipper::swap::anvil::simlator::AnvilSimulator;
-use snipper::swap::mainnet::setup::TxWallet;
+use snipper::swap::mainnet::setup::{TxWallet, WalletType};
 use snipper::swap::tx_trait::Txs;
 use snipper::token_tx::anvil::{buy_eligible_tokens_on_anvil, sell_eligible_tokens_on_anvil};
 use snipper::token_tx::time_intervals::mock_sell_eligible_tokens_at_time_intervals;
@@ -45,7 +45,7 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
     dotenv().ok();
 
     let ws_url = CONTRACT.get_address().ws_url.clone();
-    let tx_wallet = TxWallet::new().await?;
+    let tx_wallet = TxWallet::new(WalletType::Test).await?;
     let tx_wallet = Arc::new(tx_wallet);
 
     let initial_block = tx_wallet
@@ -85,7 +85,7 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
     let token = get_and_save_erc20_by_token_address(&pair_created_event, &tx_wallet.client).await?;
     let token = token.unwrap();
     // check token liquidity
-    if let Err(error) = check_all_tokens_are_tradable(&tx_wallet.client).await {
+    if let Err(error) = check_all_tokens_are_tradable(&tx_wallet).await {
         println!("could not check token tradability => {}", error);
     }
 

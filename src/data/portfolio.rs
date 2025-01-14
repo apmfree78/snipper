@@ -8,6 +8,7 @@ use crate::{
         },
         tokens::{TokenLiquidity, TokenState},
     },
+    swap::mainnet::setup::TxType,
     utils::{
         tx::{amount_of_token_to_purchase, get_token_sell_interval},
         type_conversion::address_to_string,
@@ -71,7 +72,7 @@ impl Erc20Token {
             return Ok(0_f64);
         }
 
-        let eth_basis = amount_of_token_to_purchase()?;
+        let eth_basis = amount_of_token_to_purchase(TxType::Real)?;
 
         let total_cost = eth_basis + self.tx_gas_cost;
         let profit = if self.eth_recieved_at_sale >= total_cost {
@@ -92,7 +93,7 @@ impl Erc20Token {
             return Ok(0_f64);
         }
 
-        let eth_basis = amount_of_token_to_purchase()?;
+        let eth_basis = amount_of_token_to_purchase(TxType::Real)?;
 
         let eth_basis = eth_basis.as_u128() as f64 / 1e18_f64;
 
@@ -107,7 +108,7 @@ impl Erc20Token {
             return Ok(0_f64);
         }
 
-        let eth_basis = amount_of_token_to_purchase()?;
+        let eth_basis = amount_of_token_to_purchase(TxType::Real)?;
 
         let total_cost = eth_basis + self.tx_gas_cost;
         let profit = if self.amount_sold_at_time[interval - 1] >= total_cost {
@@ -128,7 +129,7 @@ impl Erc20Token {
             return Ok(0_f64);
         }
 
-        let eth_basis = amount_of_token_to_purchase()?;
+        let eth_basis = amount_of_token_to_purchase(TxType::Real)?;
 
         let eth_basis = eth_basis.as_u128() as f64 / 1e18_f64;
 

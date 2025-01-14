@@ -8,7 +8,7 @@ use snipper::data::nonce::intialize_nonce;
 use snipper::data::token_state_update::get_and_save_erc20_by_token_address;
 use snipper::data::tokens::{Erc20Token, TokenState};
 use snipper::events::PairCreatedEvent;
-use snipper::swap::mainnet::setup::TxWallet;
+use snipper::swap::mainnet::setup::{TxWallet, WalletType};
 use snipper::token_tx::validate::check_all_tokens_are_tradable;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -27,12 +27,14 @@ struct TestSetup {
 async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
     dotenv().ok();
 
-    let ws_url = CONTRACT.get_address().alchemy_url.clone();
-    println!("ws url => {}", ws_url);
-    let provider = Provider::<Ws>::connect(ws_url.clone()).await?;
-    let client = Arc::new(provider);
+    let tx_wallet = TxWallet::new(WalletType::Test).await?;
+    let tx_wallet = Arc::new(tx_wallet);
 
-    let initial_block = client.get_block(BlockNumber::Latest).await?.unwrap();
+    let initial_block = tx_wallet
+        .client
+        .get_block(BlockNumber::Latest)
+        .await?
+        .unwrap();
     let last_block_timestamp = initial_block.timestamp.as_u32();
     println!("initial block timestamp => {}", last_block_timestamp);
 
@@ -42,12 +44,12 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
 
     let factory_address: Address = CONTRACT.get_address().uniswap_v2_factory.parse()?;
     let weth_address: Address = CONTRACT.get_address().weth.parse()?;
-    let factory = UNISWAP_V2_FACTORY::new(factory_address, client.clone());
+    let factory = UNISWAP_V2_FACTORY::new(factory_address, tx_wallet.client.clone());
 
     let pair_address = factory.get_pair(token_address, weth_address).call().await?;
     println!("pair address for WETH-TOKEN: {:?}", pair_address);
 
-    let pair = UNISWAP_PAIR::new(pair_address, client.clone());
+    let pair = UNISWAP_PAIR::new(pair_address, tx_wallet.client.clone());
     let token_0 = pair.token_0().call().await?;
     let token_1 = pair.token_1().call().await?;
 
@@ -58,21 +60,18 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
         noname: U256::from(0),
     };
 
-    let token = get_and_save_erc20_by_token_address(&pair_created_event, &client).await?;
+    let token = get_and_save_erc20_by_token_address(&pair_created_event, &tx_wallet.client).await?;
     let token = token.unwrap();
 
     // check token liquidity
-    if let Err(error) = check_all_tokens_are_tradable(&client).await {
+    if let Err(error) = check_all_tokens_are_tradable(&tx_wallet).await {
         println!("could not check token tradability => {}", error);
     }
 
     // for testing purposes assure it svalided
     token.set_state_to_(TokenState::Validated).await;
 
-    let tx_wallet = TxWallet::new().await?;
-
-    // setup global nonce
-    intialize_nonce(&tx_wallet).await?;
+    let tx_wallet = TxWallet::new(WalletType::Test).await?;
 
     Ok(TestSetup {
         tx_wallet,

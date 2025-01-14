@@ -4,7 +4,7 @@ use crate::data::contracts::CONTRACT;
 use crate::data::token_data::get_tokens;
 use crate::data::token_state_update::remove_token;
 use crate::data::tokens::{Erc20Token, TokenState};
-use crate::swap::mainnet::setup::TxWallet;
+use crate::swap::mainnet::setup::{TxType, TxWallet, WalletType};
 use crate::utils::tx::{
     amount_of_token_to_purchase, get_amount_out_uniswap_v2, token_tx_profit_loss, TxSlippage,
 };
@@ -33,7 +33,9 @@ impl Erc20Token {
         self.increment_purchase_attempts().await;
 
         let token_balance = if APP_MODE == AppMode::Production {
-            tx_wallet.buy_tokens_for_eth(self).await?
+            tx_wallet
+                .buy_tokens_for_eth(self, WalletType::Main, TxType::Real)
+                .await?
         } else {
             // simulation mode
             self.mock_buy_with_eth(&tx_wallet.client).await?
@@ -42,6 +44,10 @@ impl Erc20Token {
         if token_balance > U256::from(0) {
             self.update_post_purchase(token_balance, current_time).await;
         } else {
+            info!(
+                "{} purchase failed...reattempting token purchase...",
+                self.name
+            );
             let purchase_attempts = self.purchase_attempt_count().await;
 
             if purchase_attempts > PURCHASE_ATTEMPT_LIMIT {
@@ -49,7 +55,7 @@ impl Erc20Token {
                 remove_token(self.address).await;
             } else {
                 // set back to locked so will reattempt purchase
-                self.set_state_to_(TokenState::Locked).await;
+                self.set_state_to_(TokenState::FullyValidated).await;
             }
         }
 
@@ -75,7 +81,8 @@ impl Erc20Token {
         self.increment_sell_attempts().await;
 
         let eth_revenue_from_sale = if APP_MODE == AppMode::Production {
-            tx_wallet.sell_token_for_eth(self).await?
+            info!("SELLING {}... ", self.name);
+            tx_wallet.sell_token_for_eth(self, WalletType::Main).await?
         } else {
             // simulation mode
             self.mock_sell_for_eth(&tx_wallet.client).await?
@@ -108,7 +115,7 @@ impl Erc20Token {
 
         println!("........................................................");
 
-        let amount_in = amount_of_token_to_purchase()?;
+        let amount_in = amount_of_token_to_purchase(TxType::Real)?;
 
         // calculate amount amount out and gas used
         println!("........................................................");
@@ -193,7 +200,7 @@ pub async fn buy_eligible_tokens(tx_wallet: &Arc<TxWallet>, timestamp: u32) -> a
 
     // println!("finding tokens to buy");
     for token in tokens.values() {
-        if token.is_tradable && token.state == TokenState::Locked {
+        if token.is_tradable && token.state == TokenState::FullyValidated {
             let spawn_token = token.clone();
             let spawn_tx_wallet = Arc::clone(tx_wallet);
             tokio::spawn(async move {

@@ -1,5 +1,5 @@
-use crate::data::gas::update_tx_gas_cost_data;
-use crate::data::nonce::get_next_nonce;
+use crate::data::gas::{update_tx_gas_cost_data, GasFeeType};
+use crate::data::nonce::{get_next_nonce, get_wallet_nonce};
 use crate::data::tokens::Erc20Token;
 use crate::events::parse_swap_receipt_logs_to_get_eth_amount_out;
 use crate::swap::prepare_tx::{prepare_token_approval_tx, prepare_uniswap_swap_tx};
@@ -15,10 +15,15 @@ use ethers::types::U256;
 use ethers::utils::format_units;
 use log::{error, info, warn};
 
-use super::setup::TxWallet;
+use super::setup::{TxType, TxWallet, WalletType};
 
 impl TxWallet {
-    pub async fn buy_tokens_for_eth(&self, token: &Erc20Token) -> anyhow::Result<U256> {
+    pub async fn buy_tokens_for_eth(
+        &self,
+        token: &Erc20Token,
+        wallet_type: WalletType,
+        tx_type: TxType,
+    ) -> anyhow::Result<U256> {
         let (block, _) = get_current_block(&self.client).await?;
         let mut new_token_balance = U256::from(0);
 
@@ -33,21 +38,26 @@ impl TxWallet {
             &token,
             self.wallet.address(),
             block.timestamp.as_u32(),
+            tx_type.clone(),
             &self.client,
         )
         .await?;
 
         println!("getting amount of token to purchase...");
         // FOR swap exact eth ONLY
-        let eth_to_send_with_tx = amount_of_token_to_purchase()?;
+        let eth_to_send_with_tx = amount_of_token_to_purchase(tx_type)?;
 
-        let nonce = get_next_nonce().await;
+        let correct_nonce = get_wallet_nonce(self.wallet.address(), &self.client).await?;
+        let nonce = get_next_nonce(wallet_type).await;
 
         println!("nonce for purchase tx => {}", nonce);
+        println!("correct nonce for purchase tx => {}", correct_nonce);
+
+        let gas_fee_type = token.get_gas_fee_type_for_purchase().await;
 
         println!("prepaparing tranasaction...");
         let (uniswap_swap_tx, _) =
-            prepare_uniswap_swap_tx(calldata, eth_to_send_with_tx, &block, nonce)?;
+            prepare_uniswap_swap_tx(calldata, eth_to_send_with_tx, &block, nonce, gas_fee_type)?;
 
         // sent transaction
         println!("sending swap transcation");
@@ -94,7 +104,11 @@ impl TxWallet {
         Ok(new_token_balance)
     }
 
-    pub async fn sell_token_for_eth(&self, token: &Erc20Token) -> anyhow::Result<U256> {
+    pub async fn sell_token_for_eth(
+        &self,
+        token: &Erc20Token,
+        wallet_type: WalletType,
+    ) -> anyhow::Result<U256> {
         let (block, _) = get_current_block(&self.client).await?;
 
         // check that token has liquidity
@@ -118,7 +132,7 @@ impl TxWallet {
 
         if allowance < amount_to_sell {
             //  Get nonce
-            let nonce = get_next_nonce().await;
+            let nonce = get_next_nonce(wallet_type.clone()).await;
             println!("nonce for approval tx => {}", nonce);
 
             println!("preparing approval tx...");
@@ -139,7 +153,7 @@ impl TxWallet {
         }
 
         println!("iterate nonce for swap tx...");
-        let nonce = get_next_nonce().await;
+        let nonce = get_next_nonce(wallet_type).await;
         println!("nonce for swap tx => {}", nonce);
 
         let token_swap_calldata = get_swap_exact_tokens_for_eth_calldata(
@@ -152,8 +166,15 @@ impl TxWallet {
         )
         .await?;
 
-        let (uniswap_swap_tx, _) =
-            prepare_uniswap_swap_tx(token_swap_calldata, U256::zero(), &block, nonce)?;
+        let gas_fee_type = token.get_gas_fee_type_for_sale().await;
+
+        let (uniswap_swap_tx, _) = prepare_uniswap_swap_tx(
+            token_swap_calldata,
+            U256::zero(),
+            &block,
+            nonce,
+            gas_fee_type,
+        )?;
 
         // get eth balane before token sale
 

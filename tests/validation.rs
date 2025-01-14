@@ -9,11 +9,13 @@ use snipper::data::token_state_update::get_and_save_erc20_by_token_address;
 use snipper::data::tokens::{extract_liquidity_amount, Erc20Token};
 use snipper::events::PairCreatedEvent;
 use snipper::swap::anvil::validation::{TokenLiquid, TokenStatus};
+use snipper::swap::mainnet::setup::{TxWallet, WalletType};
 use snipper::token_tx::validate::liquidity_is_not_zero_nor_micro;
 use std::sync::Arc;
 use std::time::Instant;
 
 struct TestSetupValidation {
+    tx_wallet: Arc<TxWallet>,
     token: Erc20Token,
 }
 
@@ -66,14 +68,18 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetupValidation> {
             liquidity
         );
     }
+    let tx_wallet = TxWallet::new(WalletType::Test).await?;
+    let tx_wallet = Arc::new(tx_wallet);
 
     Ok(TestSetupValidation {
         // anvil_simulator,
+        tx_wallet,
         token,
     })
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_successful_token_validation() -> anyhow::Result<()> {
     const VIRTUALS: &str = "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b";
 
@@ -97,6 +103,29 @@ async fn test_successful_token_validation() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test]
+async fn test_successful_token_live_validation() -> anyhow::Result<()> {
+    const VIRTUALS: &str = "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b";
+
+    let token_address: Address = VIRTUALS.parse()?;
+
+    let setup = setup(token_address).await?;
+
+    let token_tradable = is_token_tradable(setup.token.address).await;
+    assert!(token_tradable);
+
+    let start = Instant::now();
+    let is_fully_validated = setup
+        .token
+        .check_if_fully_validated_and_update_state(&setup.tx_wallet)
+        .await?;
+    let duration = start.elapsed();
+    println!("Time elapsed: {} seconds", duration.as_secs());
+
+    assert!(is_fully_validated);
+
+    Ok(())
+}
 // #[tokio::test]
 // #[ignore]
 // async fn test_failed_token_validation() -> anyhow::Result<()> {

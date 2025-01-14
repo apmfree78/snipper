@@ -1,5 +1,5 @@
-use crate::utils::tx::amount_of_token_to_purchase;
 use crate::utils::type_conversion::address_to_string;
+use crate::{swap::mainnet::setup::TxType, utils::tx::amount_of_token_to_purchase};
 use ethers::types::{Address, U256};
 use futures::lock::Mutex;
 use log::error;
@@ -31,7 +31,7 @@ pub async fn total_token_sales_revenue() -> U256 {
 }
 
 pub async fn total_token_spend() -> anyhow::Result<U256> {
-    let amount = amount_of_token_to_purchase()?;
+    let amount = amount_of_token_to_purchase(TxType::Real)?;
 
     let token_count = token_count_by_state(TokenState::Bought).await;
 

@@ -9,11 +9,8 @@ use futures::{lock::Mutex, stream, StreamExt};
 use log::{error, info, warn};
 use snipper::{
     app_config::{AppMode, APP_MODE, CHAIN},
-    data::{
-        nonce::intialize_nonce,
-        portfolio::{display_token_stats, display_token_time_stats},
-    },
-    swap::mainnet::setup::TxWallet,
+    data::portfolio::{display_token_stats, display_token_time_stats},
+    swap::mainnet::setup::{TxWallet, WalletType},
     token_tx::tx::sell_eligible_tokens,
 };
 use snipper::{
@@ -39,12 +36,11 @@ async fn main() -> Result<()> {
     setup_logger().expect("Failed to initialize logger.");
 
     // setup wallet for all rpc calls and txs
-    let tx_wallet = TxWallet::new().await?;
+    let tx_wallet = TxWallet::new(WalletType::Main).await?;
+    let tx_test_wallet = TxWallet::new(WalletType::Test).await?;
     let tx_wallet = Arc::new(tx_wallet);
+    let tx_test_wallet = Arc::new(tx_test_wallet);
     info!("Connected to {:#?}", CHAIN);
-
-    // setup global nonce
-    intialize_nonce(&tx_wallet).await?;
 
     // TRACT TIME
     let initial_block = tx_wallet
@@ -84,6 +80,7 @@ async fn main() -> Result<()> {
         .for_each(|event| async {
             let last_timestamp = Arc::clone(&last_block_timestamp);
             let tx_wallet = Arc::clone(&tx_wallet);
+            let tx_test_wallet = Arc::clone(&tx_test_wallet);
 
             match event {
                 Ok(Event::Log(log)) => match events::decode_pair_created_event(&log) {
@@ -96,7 +93,7 @@ async fn main() -> Result<()> {
 
                         if let Err(error) = add_validate_buy_new_token(
                             &pair_created_event,
-                            &tx_wallet,
+                            &tx_test_wallet,
                             current_time,
                         )
                         .await
@@ -115,7 +112,7 @@ async fn main() -> Result<()> {
 
                     // check token liquidty
                     // info!("checking if tokens have liquidity...");
-                    if let Err(error) = check_all_tokens_are_tradable(&tx_wallet.client).await {
+                    if let Err(error) = check_all_tokens_are_tradable(&tx_test_wallet).await {
                         error!("could not check token tradability => {}", error);
                     }
 

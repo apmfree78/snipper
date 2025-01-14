@@ -10,6 +10,7 @@ use snipper::events::PairCreatedEvent;
 use snipper::swap::flashbots::flashbot_main::{
     prepare_and_submit_flashbot_token_purchase_tx, prepare_and_submit_flashbot_token_sell_tx,
 };
+use snipper::swap::mainnet::setup::{TxType, TxWallet, WalletType};
 use snipper::token_tx::validate::check_all_tokens_are_tradable;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -59,8 +60,11 @@ async fn setup(token_address: Address) -> anyhow::Result<FlashbotTestSetup> {
     let token = get_and_save_erc20_by_token_address(&pair_created_event, &client).await?;
     let token = token.unwrap();
 
+    let tx_wallet = TxWallet::new(WalletType::Main).await?;
+    let tx_wallet = Arc::new(tx_wallet);
+
     // check token liquidity
-    if let Err(error) = check_all_tokens_are_tradable(&client).await {
+    if let Err(error) = check_all_tokens_are_tradable(&tx_wallet).await {
         println!("could not check token tradability => {}", error);
     }
 
@@ -81,7 +85,8 @@ async fn test_flashbot_purchase_tx() -> anyhow::Result<()> {
     let token_address: Address = CONTRACT.get_address().link.parse()?;
     let setup = setup(token_address).await?;
 
-    prepare_and_submit_flashbot_token_purchase_tx(&setup.token, &setup.client).await?;
+    prepare_and_submit_flashbot_token_purchase_tx(&setup.token, &setup.client, TxType::Real)
+        .await?;
 
     Ok(())
 }

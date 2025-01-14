@@ -58,6 +58,7 @@ pub mod swap {
     }
     pub mod mainnet {
         pub mod buy_sell;
+        pub mod live_validation;
         pub mod setup;
     }
     pub mod flashbots {

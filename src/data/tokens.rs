@@ -1,17 +1,16 @@
 use derive_more::Display;
 use ethers::providers::{Provider, Ws};
 use ethers::types::{Address, U256};
-use log::{error, warn};
 use std::sync::Arc;
 
 use crate::abi::uniswap_pair::UNISWAP_PAIR;
 use crate::app_config::{
-    API_CHECK_LIMIT, CHECK_IF_HONEYPOT, CHECK_IF_LIQUIDITY_LOCKED, HIGH_LIQUIDITY_THRESHOLD,
-    LIQUIDITY_PERCENTAGE_LOCKED, LOW_LIQUIDITY_THRESHOLD, MEDIUM_LIQUIDITY_THRESHOLD,
-    MIN_LIQUIDITY, MIN_RESERVE_ETH_FACTOR, MIN_TRADE_FACTOR, TIME_ROUNDS,
-    VERY_LOW_LIQUIDITY_THRESHOLD,
+    CHECK_IF_LIQUIDITY_LOCKED, HIGH_LIQUIDITY_THRESHOLD, LIQUIDITY_PERCENTAGE_LOCKED,
+    LOW_LIQUIDITY_THRESHOLD, MEDIUM_LIQUIDITY_THRESHOLD, MIN_LIQUIDITY, MIN_RESERVE_ETH_FACTOR,
+    MIN_TRADE_FACTOR, TIME_ROUNDS, VERY_LOW_LIQUIDITY_THRESHOLD,
 };
 use crate::data::token_state_update::remove_token;
+use crate::swap::mainnet::setup::TxType;
 use crate::utils::tx::amount_of_token_to_purchase;
 use crate::verify::check_token_lock::is_liquidity_locked;
 
@@ -21,8 +20,9 @@ pub enum TokenState {
     NotValidated,
     Validating,
     CannotBuy,
-    Locked,
     Validated,
+    Locked,
+    FullyValidated,
     Buying,
     Bought,
     Selling,
@@ -124,45 +124,45 @@ impl Erc20Token {
         }
     }
 
-    pub async fn check_if_token_is_honeypot(&self) -> anyhow::Result<Option<bool>> {
-        //  SYSTEM OVERRIDE
-        if !CHECK_IF_HONEYPOT {
-            return Ok(Some(false));
-        }
-
-        let honeypot_check_count = self.honeypot_check_count().await;
-
-        if honeypot_check_count > API_CHECK_LIMIT {
-            warn!(
-                "{} exceed honeypot api check limit removing token!",
-                self.name
-            );
-            let _ = remove_token(self.address).await.unwrap();
-            return Ok(Some(true)); // if canot check assume its a honeypot and remove token
-        }
-
-        let (token_summary, honeypot_result) = match self.is_honeypot().await {
-            Ok((summary, result)) => (summary, result),
-            Err(error) => {
-                error!("could not get honeypot status => {}", error);
-                self.increment_honeypot_checks().await;
-                return Ok(None);
-            }
-        };
-
-        println!("{} token risk is {} ", self.name, token_summary.risk);
-        if honeypot_result.is_honeypot {
-            println!("{} is a honeypot scam! Removing...", self.name);
-            let _ = remove_token(self.address).await.unwrap();
-        } else {
-            println!("{} is NOT a honeypot! :)", self.name);
-        }
-
-        // increment api call count
-        self.increment_honeypot_checks().await;
-
-        Ok(Some(honeypot_result.is_honeypot))
-    }
+    // pub async fn check_if_token_is_honeypot(&self) -> anyhow::Result<Option<bool>> {
+    //     //  SYSTEM OVERRIDE
+    //     if !CHECK_IF_HONEYPOT {
+    //         return Ok(Some(false));
+    //     }
+    //
+    //     let honeypot_check_count = self.honeypot_check_count().await;
+    //
+    //     if honeypot_check_count > API_CHECK_LIMIT {
+    //         warn!(
+    //             "{} exceed honeypot api check limit removing token!",
+    //             self.name
+    //         );
+    //         let _ = remove_token(self.address).await.unwrap();
+    //         return Ok(Some(true)); // if canot check assume its a honeypot and remove token
+    //     }
+    //
+    //     let (token_summary, honeypot_result) = match self.is_honeypot().await {
+    //         Ok((summary, result)) => (summary, result),
+    //         Err(error) => {
+    //             error!("could not get honeypot status => {}", error);
+    //             self.increment_honeypot_checks().await;
+    //             return Ok(None);
+    //         }
+    //     };
+    //
+    //     println!("{} token risk is {} ", self.name, token_summary.risk);
+    //     if honeypot_result.is_honeypot {
+    //         println!("{} is a honeypot scam! Removing...", self.name);
+    //         let _ = remove_token(self.address).await.unwrap();
+    //     } else {
+    //         println!("{} is NOT a honeypot! :)", self.name);
+    //     }
+    //
+    //     // increment api call count
+    //     self.increment_honeypot_checks().await;
+    //
+    //     Ok(Some(honeypot_result.is_honeypot))
+    // }
 
     pub async fn get_total_supply(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<U256> {
         let pool = UNISWAP_PAIR::new(self.pair_address, client.clone());
@@ -217,7 +217,7 @@ impl Erc20Token {
     ) -> anyhow::Result<bool> {
         let pool = UNISWAP_PAIR::new(self.pair_address, client.clone());
 
-        let eth_amount_used_for_purchase = amount_of_token_to_purchase()?;
+        let eth_amount_used_for_purchase = amount_of_token_to_purchase(TxType::Real)?;
 
         let (reserve0, reserve1, _) = pool.get_reserves().call().await?;
 

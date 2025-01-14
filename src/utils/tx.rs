@@ -3,6 +3,7 @@ use crate::abi::uniswap_router_v2::UNISWAP_V2_ROUTER;
 use crate::app_config::CHAIN;
 use crate::data::contracts::CONTRACT;
 use crate::data::tokens::Erc20Token;
+use crate::swap::mainnet::setup::TxType;
 use anyhow::{anyhow, Result};
 use ethers::core::k256::ecdsa::SigningKey;
 use ethers::types::{Address, Block, BlockNumber, Bytes, H256, U256, U64};
@@ -36,7 +37,7 @@ pub fn get_wallet() -> anyhow::Result<Wallet<SigningKey>> {
     Ok(wallet)
 }
 
-pub fn get_second_wallet() -> anyhow::Result<Wallet<SigningKey>> {
+pub fn get_test_wallet() -> anyhow::Result<Wallet<SigningKey>> {
     let private_key = env::var("PRIVATE_KEY_2").expect("PRIVATE_KEY_2 not found in .env file");
 
     let wallet = LocalWallet::from_str(&private_key)?.with_chain_id(CHAIN);
@@ -140,13 +141,14 @@ pub async fn get_swap_exact_eth_for_tokens_calldata(
     token: &Erc20Token,
     wallet_address: Address,
     current_time: u32,
+    tx_type: TxType,
     client: &Arc<Provider<Ws>>,
 ) -> anyhow::Result<Bytes> {
     let uniswap_v2_router_address: Address = CONTRACT.get_address().uniswap_v2_router.parse()?;
     let weth_address: Address = CONTRACT.get_address().weth.parse()?;
     let router = UNISWAP_V2_ROUTER::new(uniswap_v2_router_address, client.clone());
 
-    let amount_to_buy = amount_of_token_to_purchase()?;
+    let amount_to_buy = amount_of_token_to_purchase(tx_type)?;
 
     let deadline = U256::from(current_time + 50); // add 50 secs
 
@@ -236,7 +238,7 @@ pub fn get_approval_calldata(
 }
 
 pub fn token_tx_profit_loss(sold_revenue: U256) -> anyhow::Result<String> {
-    let bought_amount = amount_of_token_to_purchase()?;
+    let bought_amount = amount_of_token_to_purchase(TxType::Real)?;
 
     if sold_revenue > bought_amount {
         let profit = sold_revenue - bought_amount;
@@ -250,12 +252,16 @@ pub fn token_tx_profit_loss(sold_revenue: U256) -> anyhow::Result<String> {
     }
 }
 
-pub fn amount_of_token_to_purchase() -> anyhow::Result<U256> {
-    let amount_to_buy =
-        std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
-    let amount_in = ethers::utils::parse_ether(amount_to_buy)?;
-    // let purchase_amount = format_units(amount_in, "ether")?;
-    // println!("buying {} of token", purchase_amount);
+pub fn amount_of_token_to_purchase(tx_type: TxType) -> anyhow::Result<U256> {
+    let amount_in = if tx_type == TxType::Real {
+        let amount_to_buy =
+            std::env::var("TOKEN_TO_BUY_IN_ETH").expect("TOKEN_TO_BUY_IN_ETH is not set in .env");
+        ethers::utils::parse_ether(amount_to_buy)?
+    } else {
+        let amount_to_buy =
+            std::env::var("TEST_BUY_AMOUNT").expect("TEST_BUY_AMOUNT is not set in .env");
+        ethers::utils::parse_ether(amount_to_buy)?
+    };
     Ok(amount_in)
 }
 

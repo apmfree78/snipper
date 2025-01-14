@@ -9,7 +9,6 @@ use crate::events::PairCreatedEvent;
 use crate::swap::anvil::validation::TokenLiquid;
 use crate::swap::anvil::validation::TokenStatus;
 use crate::swap::mainnet::setup::TxWallet;
-use ethers::providers::{Provider, Ws};
 use log::info;
 use log::warn;
 use std::sync::Arc;
@@ -38,9 +37,9 @@ pub async fn add_validate_buy_new_token(
 
             // check that if its a honeypot
             // *********************************
-            let is_honepot = token.check_if_token_is_honeypot_and_update_state().await?;
+            let legit = token.check_if_token_is_legit_and_update_state().await?;
 
-            if !is_honepot {
+            if legit {
                 // *********************************
                 // check that liqudity is locked
                 let is_locked = token
@@ -48,7 +47,12 @@ pub async fn add_validate_buy_new_token(
                     .await?;
 
                 if is_locked {
-                    token.purchase(tx_wallet, current_time).await?;
+                    let token_fully_validated = token
+                        .check_if_fully_validated_and_update_state(&tx_wallet)
+                        .await?;
+                    if token_fully_validated {
+                        token.purchase(tx_wallet, current_time).await?;
+                    }
                 }
             }
             // *********************************
@@ -98,7 +102,7 @@ pub fn liquidity_is_high(liquidity: &TokenLiquidity) -> bool {
     }
 }
 
-pub async fn check_all_tokens_are_tradable(client: &Arc<Provider<Ws>>) -> anyhow::Result<()> {
+pub async fn check_all_tokens_are_tradable(tx_wallet: &Arc<TxWallet>) -> anyhow::Result<()> {
     let tokens = get_tokens().await;
 
     for mut token in tokens.into_values() {
@@ -107,13 +111,14 @@ pub async fn check_all_tokens_are_tradable(client: &Arc<Provider<Ws>>) -> anyhow
             || token.state == TokenState::Sold
             || token.state == TokenState::Buying
             || token.state == TokenState::Selling
+            || token.state == TokenState::FullyValidated
         {
             continue;
         }
 
         if !token.is_tradable {
             // check liquidity
-            let liquidity = token.get_liquidity(client).await?;
+            let liquidity = token.get_liquidity(&tx_wallet.client).await?;
             if liquidity_is_not_zero_nor_micro(&liquidity) {
                 token
                     .set_to_tradable_plus_update_liquidity(&liquidity)
@@ -129,14 +134,20 @@ pub async fn check_all_tokens_are_tradable(client: &Arc<Provider<Ws>>) -> anyhow
                 // *********************************
                 // check that if its a honeypot
                 // *********************************
-                let is_honepot = token.check_if_token_is_honeypot_and_update_state().await?;
+                let is_legit = token.check_if_token_is_legit_and_update_state().await?;
 
-                if !is_honepot {
+                if is_legit {
                     // *********************************
                     // check that liqudity is locked
-                    let _ = token
-                        .check_liquidity_is_locked_and_update_state(client)
+                    let is_locked = token
+                        .check_liquidity_is_locked_and_update_state(&tx_wallet.client)
                         .await?;
+
+                    if is_locked {
+                        token
+                            .check_if_fully_validated_and_update_state(tx_wallet)
+                            .await?;
+                    }
                 }
 
                 // *********************************
@@ -144,22 +155,16 @@ pub async fn check_all_tokens_are_tradable(client: &Arc<Provider<Ws>>) -> anyhow
                 let removed_token = remove_token(token.address).await.unwrap();
                 warn!("micro liquidity scam token {} removed", removed_token.name);
             }
-        } else if token.state != TokenState::Validated {
-            println!("checking if honeypot data is avaliable for {}", token.name);
-            let is_honepot = token.check_if_token_is_honeypot_and_update_state().await?;
-
-            if !is_honepot {
-                // *********************************
-                // check that liqudity is locked
-                let _ = token
-                    .check_liquidity_is_locked_and_update_state(client)
-                    .await?;
-            }
         } else if token.state != TokenState::Locked {
             println!("checking if liquidity data is avaliable for {}", token.name);
-            let _ = token
-                .check_liquidity_is_locked_and_update_state(client)
+            let is_locked = token
+                .check_liquidity_is_locked_and_update_state(&tx_wallet.client)
                 .await?;
+            if is_locked {
+                token
+                    .check_if_fully_validated_and_update_state(tx_wallet)
+                    .await?;
+            }
         }
     }
 
@@ -167,32 +172,38 @@ pub async fn check_all_tokens_are_tradable(client: &Arc<Provider<Ws>>) -> anyhow
 }
 
 impl Erc20Token {
-    pub async fn check_if_token_is_honeypot_and_update_state(&self) -> anyhow::Result<bool> {
-        let is_honeypot = self.check_if_token_is_honeypot().await?;
+    pub async fn check_if_token_is_legit_and_update_state(&self) -> anyhow::Result<bool> {
+        let token_status = self
+            .validate_with_simulated_buy_sell(TokenLiquid::HasEnough)
+            .await?;
 
-        match is_honeypot {
-            Some(honeypot) => {
-                if !honeypot {
-                    // do extra check with own simulated buy sell
-                    let token_status = self
-                        .validate_with_simulated_buy_sell(TokenLiquid::HasEnough)
-                        .await?;
-                    if token_status == TokenStatus::Legit {
-                        self.set_state_to_(TokenState::Validated).await;
-                        return Ok(false);
-                    }
-                }
-                warn!("{} is a honeypot...removing!", self.name);
-                remove_token(self.address).await;
-                Ok(true)
-            }
-            None => {
-                warn!(
-                    "waiting for honeypot to provide token status for {}",
-                    self.name
-                );
-                Ok(true)
-            }
+        if token_status == TokenStatus::Legit {
+            self.set_state_to_(TokenState::Validated).await;
+            return Ok(true);
+        } else {
+            println!("removing {}...", self.name);
+            remove_token(self.address).await;
+            return Ok(false);
+        }
+    }
+}
+
+impl Erc20Token {
+    pub async fn check_if_fully_validated_and_update_state(
+        &self,
+        tx_wallet: &Arc<TxWallet>,
+    ) -> anyhow::Result<bool> {
+        let token_status = tx_wallet
+            .validate_with_live_buy_sell(self, tx_wallet.type_of.clone())
+            .await?;
+
+        if token_status == TokenStatus::Legit {
+            self.set_state_to_(TokenState::FullyValidated).await;
+            return Ok(true);
+        } else {
+            println!("{} failed live purchase test...removing...", self.name);
+            remove_token(self.address).await;
+            return Ok(false);
         }
     }
 }

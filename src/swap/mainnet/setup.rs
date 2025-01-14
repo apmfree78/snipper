@@ -1,4 +1,7 @@
-use crate::{data::contracts::CONTRACT, utils::tx::get_wallet};
+use crate::{
+    data::{contracts::CONTRACT, nonce::intialize_nonce},
+    utils::tx::{get_test_wallet, get_wallet},
+};
 use anyhow::Result;
 use ethers::{
     core::k256::ecdsa::SigningKey,
@@ -9,15 +12,29 @@ use ethers::{
 };
 use std::sync::Arc;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WalletType {
+    Main,
+    Test,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TxType {
+    Real,
+    Test,
+}
+
+#[derive(Clone)]
 pub struct TxWallet {
     pub signed_client: Arc<SignerMiddleware<Provider<Ws>, Wallet<SigningKey>>>,
     pub client: Arc<Provider<Ws>>,
     pub wallet: Wallet<SigningKey>,
     pub sender: Address,
+    pub type_of: WalletType,
 }
 
 impl TxWallet {
-    pub async fn new() -> Result<Self> {
+    pub async fn new(wallet_type: WalletType) -> Result<Self> {
         // setup websocket connect to eth node
         // let ws_url = CONTRACT.get_address().ws_url.clone();
         // TODO - switch to ws_url once eth node up
@@ -26,7 +43,12 @@ impl TxWallet {
         let client = Arc::new(provider.clone());
 
         // wallet config and address
-        let wallet = get_wallet()?;
+        let wallet = if wallet_type == WalletType::Main {
+            get_wallet()?
+        } else {
+            get_test_wallet()?
+        };
+
         let sender = wallet.address();
 
         // setup signed client
@@ -34,13 +56,16 @@ impl TxWallet {
 
         let signed_client = Arc::new(signer_middleware);
 
-        let simulator = Self {
+        let transaction_wallet = Self {
             signed_client,
             client: client.clone(),
             wallet,
             sender,
-            // starting_eth_balance: U256::zero(),
+            type_of: wallet_type.clone(),
         };
+
+        // setup global nonce
+        intialize_nonce(&transaction_wallet, wallet_type).await?;
 
         // let starting_balance = simulator.get_wallet_eth_balance().await?;
         //
@@ -49,6 +74,6 @@ impl TxWallet {
         //     ..simulator
         // };
 
-        Ok(simulator)
+        Ok(transaction_wallet)
     }
 }

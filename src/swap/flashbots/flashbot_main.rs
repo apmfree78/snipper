@@ -1,10 +1,12 @@
 use crate::abi::erc20::ERC20;
+use crate::data::gas::GasFeeType;
 use crate::data::nonce::get_next_nonce;
 use crate::data::tokens::Erc20Token;
 use crate::swap::flashbots::submit_tx::{
     create_flashbot_bundle_with_tx, generate_flashbot_signed_client_with_builders,
     simulate_flashbot_tx_and_get_gas_used, submit_production_flashbot_tx,
 };
+use crate::swap::mainnet::setup::{TxType, WalletType};
 use crate::swap::prepare_tx::prepare_uniswap_swap_tx;
 use crate::utils::tx::{
     amount_of_token_to_purchase, get_current_block, get_swap_exact_eth_for_tokens_calldata,
@@ -46,7 +48,7 @@ pub async fn prepare_and_submit_flashbot_token_sell_tx(
     println!("getting calldata for approval...");
 
     // 4) Get nonce
-    let mut nonce = get_next_nonce().await;
+    let mut nonce = get_next_nonce(WalletType::Main).await;
     println!("nonce for approval tx => {}", nonce);
 
     println!("preparing approval tx...");
@@ -69,8 +71,13 @@ pub async fn prepare_and_submit_flashbot_token_sell_tx(
     println!("nonce for swap tx => {}", nonce);
 
     println!("preparing swap tx...");
-    let (uniswap_swap_tx, max_gas_fee) =
-        prepare_uniswap_swap_tx(token_swap_calldata, U256::zero(), &block, nonce)?;
+    let (uniswap_swap_tx, max_gas_fee) = prepare_uniswap_swap_tx(
+        token_swap_calldata,
+        U256::zero(),
+        &block,
+        nonce,
+        GasFeeType::HighDemand,
+    )?;
 
     // let txs = vec![approval_tx, uniswap_swap_tx];
     let txs = vec![approval_tx, uniswap_swap_tx];
@@ -92,6 +99,7 @@ pub async fn prepare_and_submit_flashbot_token_sell_tx(
 pub async fn prepare_and_submit_flashbot_token_purchase_tx(
     token: &Erc20Token,
     client: &Arc<Provider<Ws>>,
+    tx_type: TxType,
 ) -> Result<()> {
     // ============================================================
     // 1) PREPARE
@@ -110,20 +118,26 @@ pub async fn prepare_and_submit_flashbot_token_purchase_tx(
         &token,
         wallet.address(),
         block.timestamp.as_u32(),
+        tx_type.clone(),
         client,
     )
     .await?;
 
     println!("getting amount of token to purchase...");
     // FOR swap exact eth ONLY
-    let eth_to_send_with_tx = amount_of_token_to_purchase()?;
+    let eth_to_send_with_tx = amount_of_token_to_purchase(tx_type)?;
 
-    let nonce = get_next_nonce().await;
+    let nonce = get_next_nonce(WalletType::Main).await;
     println!("nonce for purchase tx => {}", nonce);
 
     println!("getting amount of token to purchase...");
-    let (uniswap_swap_tx, max_gas_fee) =
-        prepare_uniswap_swap_tx(calldata, eth_to_send_with_tx, &block, nonce)?;
+    let (uniswap_swap_tx, max_gas_fee) = prepare_uniswap_swap_tx(
+        calldata,
+        eth_to_send_with_tx,
+        &block,
+        nonce,
+        GasFeeType::HighDemand,
+    )?;
 
     let txs = vec![uniswap_swap_tx];
 

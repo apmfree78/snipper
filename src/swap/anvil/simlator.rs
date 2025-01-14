@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use crate::{
     app_config::CHAIN,
-    utils::tx::{get_second_wallet, get_wallet},
+    utils::tx::{get_test_wallet, get_wallet},
 };
 
 pub const STARTING_BALANCE: f64 = 1000.0;
@@ -49,7 +49,7 @@ impl AnvilSimulator {
         // Create a wallet with the private key
         println!("getting wallets setup");
         let wallet = get_wallet()?;
-        let second_wallet = get_second_wallet()?;
+        let second_wallet = get_test_wallet()?;
         let from_address = wallet.address();
 
         // Create the SignerMiddleware

@@ -6,6 +6,34 @@ use log::{error, warn};
 
 use super::token_data::get_token;
 
+#[derive(PartialEq, Eq)]
+pub enum GasFeeType {
+    Standard,
+    HighDemand,
+}
+
+impl Erc20Token {
+    pub async fn get_gas_fee_type_for_purchase(&self) -> GasFeeType {
+        // if this is not first attempt then bump base free
+        let buy_attempt = self.purchase_attempt_count().await;
+        if buy_attempt == 0 {
+            GasFeeType::Standard
+        } else {
+            GasFeeType::HighDemand
+        }
+    }
+
+    pub async fn get_gas_fee_type_for_sale(&self) -> GasFeeType {
+        // if this is not first attempt then bump base free
+        let buy_attempt = self.sell_attempt_count().await;
+        if buy_attempt == 0 {
+            GasFeeType::Standard
+        } else {
+            GasFeeType::HighDemand
+        }
+    }
+}
+
 pub async fn update_tx_gas_cost_data(
     receipt: &TransactionReceipt,
     token: &Erc20Token,
