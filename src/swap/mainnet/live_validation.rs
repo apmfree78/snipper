@@ -25,7 +25,7 @@ impl TxWallet {
         println!("simulate buying token for validation");
         // TODO - UPDATE TO SET TOKEN PURCHASE AMOUNT
         let token_balance = self
-            .buy_tokens_for_eth(token, wallet_type.clone(), TxType::Test)
+            .buy_tokens_for_eth(token, wallet_type.clone(), TxType::Real)
             .await?;
 
         println!("check token balance after purchase");
