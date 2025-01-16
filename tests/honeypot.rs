@@ -1,10 +1,9 @@
 use dotenv::dotenv;
-use ethers::providers::{Middleware, Provider, Ws};
+use ethers::providers::Middleware;
 use ethers::types::{Address, BlockNumber, U256};
 use snipper::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
 use snipper::abi::uniswap_pair::UNISWAP_PAIR;
 use snipper::data::contracts::CONTRACT;
-use snipper::data::nonce::intialize_nonce;
 use snipper::data::token_state_update::get_and_save_erc20_by_token_address;
 use snipper::data::tokens::{Erc20Token, TokenState};
 use snipper::events::PairCreatedEvent;

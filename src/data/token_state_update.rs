@@ -1,7 +1,9 @@
 use crate::abi::erc20::ERC20;
 use crate::app_config::BLACKLIST;
+use crate::data::contracts;
 use crate::events::PairCreatedEvent;
 use crate::utils::type_conversion::address_to_string;
+use crate::verify::etherscan_api::get_source_code;
 use anyhow::Result;
 use ethers::providers::{Provider, Ws};
 use ethers::types::{Address, U256};
@@ -176,6 +178,14 @@ pub async fn get_and_save_erc20_by_token_address(
 
     let token_address_string = address_to_string(token_address).to_lowercase();
 
+    // get solidity contract
+    let contract_code = get_source_code(&token_address_string).await?;
+
+    if contract_code.is_empty() {
+        warn!("source code not avaliable, skipping");
+        return Ok(None);
+    }
+
     // make sure token is not already in hashmap
     if tokens.contains_key(&token_address_string) {
         let token = tokens.get(&token_address_string).unwrap();
@@ -202,6 +212,7 @@ pub async fn get_and_save_erc20_by_token_address(
         symbol,
         decimals,
         address: token_address,
+        source_code: contract_code,
         pair_address: pair_created_event.pair,
         is_token_0,
         ..Default::default()

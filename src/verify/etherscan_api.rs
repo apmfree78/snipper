@@ -9,10 +9,52 @@ use super::check_token_lock::TokenHolders;
 
 /// Internal structs mirroring Etherscan's JSON structure
 #[derive(Debug, Deserialize)]
-struct EtherscanResponse {
+struct EtherscanResponse<T> {
     status: String,
     message: String,
-    result: Vec<EtherscanHolderEntry>,
+    result: Vec<T>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ContractSourceCode {
+    #[serde(rename = "SourceCode")]
+    source_code: String,
+
+    #[serde(rename = "ABI")]
+    _abi: String,
+
+    #[serde(rename = "ContractName")]
+    _contract_name: String,
+
+    #[serde(rename = "CompilerVersion")]
+    _compiler_version: String,
+
+    #[serde(rename = "OptimizationUsed")]
+    _optimization_used: String,
+
+    #[serde(rename = "Runs")]
+    _runs: String,
+
+    #[serde(rename = "ConstructorArguments")]
+    _constructor_arguments: String,
+
+    #[serde(rename = "EVMVersion")]
+    _evm_version: String,
+
+    #[serde(rename = "Library")]
+    _library: String,
+
+    #[serde(rename = "LicenseType")]
+    _license_type: String,
+
+    #[serde(rename = "Proxy")]
+    _proxy: String,
+
+    #[serde(rename = "Implementation")]
+    _implementation: String,
+
+    #[serde(rename = "SwarmSource")]
+    _swarm_source: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -49,16 +91,6 @@ struct EtherscanHolderEntry {
 //      &tag=latest&apikey=YourApiKeyToken`)
 //
 // }
-/// # Example
-/// ```ignore
-/// let holders = get_token_holder_list(
-///     "0xaaaebe6fe48e54f431b0c390cfaf0b017d09d42d",
-///     1,
-///     10,
-///     "YourApiKeyToken"
-/// ).await?;
-/// println!("{:?}", holders);
-/// ```
 pub async fn get_token_holder_list(contract_address: Address) -> Result<Vec<TokenHolders>> {
     // Build Etherscan URL
     // Example: https://api.basescan.org/api
@@ -73,10 +105,11 @@ pub async fn get_token_holder_list(contract_address: Address) -> Result<Vec<Toke
     let contract_address_str = address_to_string(contract_address);
 
     let chain_id = CHAIN as u64;
+    let etherscan_api = get_etherscan_api()?;
 
     let url = format!(
-        "https://api.etherscan.io/v2/api?chainid={}&module=token&action=tokenholderlist&contractaddress={}&apikey={}",
-        chain_id,contract_address_str, etherscan_api_key
+        "{}?chainid={}&module=token&action=tokenholderlist&contractaddress={}&apikey={}",
+        etherscan_api, chain_id, contract_address_str, etherscan_api_key
     );
 
     // Make HTTP GET request
@@ -88,7 +121,7 @@ pub async fn get_token_holder_list(contract_address: Address) -> Result<Vec<Toke
     }
 
     // Parse JSON response
-    let parsed: EtherscanResponse = resp.json().await?;
+    let parsed: EtherscanResponse<EtherscanHolderEntry> = resp.json().await?;
 
     // Check Etherscan response status
     if parsed.status != "1" {
@@ -113,9 +146,65 @@ pub async fn get_token_holder_list(contract_address: Address) -> Result<Vec<Toke
     Ok(holders)
 }
 
+pub async fn get_source_code(contract_address: &str) -> Result<String> {
+    // Build Etherscan URL
+    // Example: https://api.basescan.org/api
+    //   ?module=token
+    //   &action=tokenholderlist
+    //   &contractaddress=...
+    //   &page=...
+    //   &offset=...
+    //   &apikey=...
+    //
+    let etherscan_api_key = get_etherscan_api_key()?;
+
+    let chain_id = CHAIN as u64;
+    let etherscan_api = get_etherscan_api()?;
+
+    let url = format!(
+        "{}?chainid={}&module=contract&action=getsourcecode&
+address={}&apikey={}",
+        etherscan_api, chain_id, contract_address, etherscan_api_key
+    );
+
+    // Make HTTP GET request
+    let client = Client::new();
+    let resp = client.get(&url).send().await?;
+
+    if !resp.status().is_success() {
+        return Err(anyhow!("Request failed with status: {}", resp.status()));
+    }
+
+    // Parse JSON response
+    let parsed: EtherscanResponse<ContractSourceCode> = resp.json().await?;
+
+    // Check Etherscan response status
+    if parsed.status != "1" {
+        return Err(anyhow!(
+            "Etherscan returned status={}, message={}",
+            parsed.status,
+            parsed.message
+        ));
+    }
+
+    // Convert to Vec<TokenHolders>
+    let source_code = match parsed.result.first() {
+        Some(result) => result.source_code.clone(),
+        None => String::new(),
+    };
+
+    Ok(source_code)
+}
+
 fn get_etherscan_api_key() -> anyhow::Result<String> {
     let etherscan_key =
         std::env::var("ETHERSCAN_API_KEY").expect("ETHERSCAN_API_KEY is not set in .env");
+
+    Ok(etherscan_key)
+}
+
+fn get_etherscan_api() -> anyhow::Result<String> {
+    let etherscan_key = std::env::var("ETHERSCAN_API").expect("ETHERSCAN_API is not set in .env");
 
     Ok(etherscan_key)
 }

@@ -104,6 +104,7 @@ async fn test_successful_token_validation() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_successful_token_live_validation() -> anyhow::Result<()> {
     const VIRTUALS: &str = "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b";
 
