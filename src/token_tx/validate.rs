@@ -9,8 +9,8 @@ use crate::events::PairCreatedEvent;
 use crate::swap::anvil::validation::TokenLiquid;
 use crate::swap::anvil::validation::TokenStatus;
 use crate::swap::mainnet::setup::TxWallet;
-use log::info;
-use log::warn;
+use crate::verify::openai_api::audit_token_contract;
+use log::{error, info, warn};
 use std::sync::Arc;
 
 pub async fn add_validate_buy_new_token(
@@ -47,9 +47,8 @@ pub async fn add_validate_buy_new_token(
                     .await?;
 
                 if is_locked {
-                    let token_fully_validated = token
-                        .check_if_fully_validated_and_update_state(&tx_wallet)
-                        .await?;
+                    let token_fully_validated =
+                        token.check_if_fully_validated_and_update_state().await?;
                     if token_fully_validated {
                         token.purchase(tx_wallet, current_time).await?;
                     }
@@ -144,9 +143,7 @@ pub async fn check_all_tokens_are_tradable(tx_wallet: &Arc<TxWallet>) -> anyhow:
                         .await?;
 
                     if is_locked {
-                        token
-                            .check_if_fully_validated_and_update_state(tx_wallet)
-                            .await?;
+                        token.check_if_fully_validated_and_update_state().await?;
                     }
                 }
 
@@ -161,9 +158,7 @@ pub async fn check_all_tokens_are_tradable(tx_wallet: &Arc<TxWallet>) -> anyhow:
                 .check_liquidity_is_locked_and_update_state(&tx_wallet.client)
                 .await?;
             if is_locked {
-                token
-                    .check_if_fully_validated_and_update_state(tx_wallet)
-                    .await?;
+                token.check_if_fully_validated_and_update_state().await?;
             }
         }
     }
@@ -189,22 +184,53 @@ impl Erc20Token {
 }
 
 impl Erc20Token {
-    pub async fn check_if_fully_validated_and_update_state(
-        &self,
-        tx_wallet: &Arc<TxWallet>,
-    ) -> anyhow::Result<bool> {
-        let token_status = tx_wallet
-            .validate_with_live_buy_sell(self, tx_wallet.type_of.clone())
-            .await?;
-
-        if token_status == TokenStatus::Legit {
+    // OPENAI TOKEN AUDIT
+    pub async fn check_if_fully_validated_and_update_state(&self) -> anyhow::Result<bool> {
+        let token_audit = if !self.large_source_code {
+            match audit_token_contract(self.source_code.clone()).await {
+                Ok(audit) => audit,
+                Err(error) => {
+                    error!("could not audit contract => {}", error);
+                    remove_token(self.address).await;
+                    return Ok(false);
+                }
+            }
+        } else {
+            info!("since contract is large, fully validating");
             self.set_state_to_(TokenState::FullyValidated).await;
             return Ok(true);
-        } else {
-            println!("{} failed live purchase test...removing...", self.name);
-            remove_token(self.address).await;
-            return Ok(false);
+        };
+
+        match token_audit {
+            Some(audit) => {
+                if audit.possible_scam {
+                    warn!("SCAM TOKEN => {}", audit.reason);
+                    remove_token(self.address).await;
+                    Ok(false)
+                } else {
+                    info!("AI has determined token is legit => {}", audit.reason);
+                    self.set_state_to_(TokenState::FullyValidated).await;
+                    Ok(true)
+                }
+            }
+            None => {
+                remove_token(self.address).await;
+                Ok(false)
+            }
         }
+
+        // let token_status = tx_wallet
+        //     .validate_with_live_buy_sell(self, tx_wallet.type_of.clone())
+        //     .await?;
+
+        // if token_status == TokenStatus::Legit {
+        //     self.set_state_to_(TokenState::FullyValidated).await;
+        //     return Ok(true);
+        // } else {
+        //     println!("{} failed live purchase test...removing...", self.name);
+        //     remove_token(self.address).await;
+        //     return Ok(false);
+        // }
     }
 }
 

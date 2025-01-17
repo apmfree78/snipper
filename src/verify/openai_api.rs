@@ -223,8 +223,6 @@ FOLLOWED BY the solidity source code which will be in a String called \"source_c
             return Ok(None);
         }
     };
-    println!("possible_scam: {:?}", token_audit.possible_scam);
-    println!("reason: {}", token_audit.reason);
 
     Ok(Some(token_audit.clone()))
 }

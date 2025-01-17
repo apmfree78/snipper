@@ -118,7 +118,7 @@ async fn test_successful_token_live_validation() -> anyhow::Result<()> {
     let start = Instant::now();
     let is_fully_validated = setup
         .token
-        .check_if_fully_validated_and_update_state(&setup.tx_wallet)
+        .check_if_fully_validated_and_update_state()
         .await?;
     let duration = start.elapsed();
     println!("Time elapsed: {} seconds", duration.as_secs());
