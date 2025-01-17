@@ -14,7 +14,7 @@ pub enum AppMode {
 // CHANGE THIS VALUE TO SET CHAIN AND MODE FOR APP
 pub const CHAIN: Chain = Chain::Base;
 
-pub const APP_MODE: AppMode = AppMode::Production;
+pub const APP_MODE: AppMode = AppMode::Simulation;
 
 pub const CHECK_IF_LIQUIDITY_LOCKED: bool = true;
 pub const CHECK_IF_HONEYPOT: bool = true;
