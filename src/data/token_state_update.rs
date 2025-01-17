@@ -1,6 +1,5 @@
 use crate::abi::erc20::ERC20;
-use crate::app_config::BLACKLIST;
-use crate::data::contracts;
+use crate::app_config::{BLACKLIST, CONTRACT_TOKEN_SIZE_LIMIT};
 use crate::events::PairCreatedEvent;
 use crate::utils::type_conversion::address_to_string;
 use crate::verify::etherscan_api::get_source_code;
@@ -186,6 +185,8 @@ pub async fn get_and_save_erc20_by_token_address(
         return Ok(None);
     }
 
+    let is_source_code_large = does_contact_exceed_size_limit(&contract_code);
+
     // make sure token is not already in hashmap
     if tokens.contains_key(&token_address_string) {
         let token = tokens.get(&token_address_string).unwrap();
@@ -213,6 +214,7 @@ pub async fn get_and_save_erc20_by_token_address(
         decimals,
         address: token_address,
         source_code: contract_code,
+        large_source_code: is_source_code_large,
         pair_address: pair_created_event.pair,
         is_token_0,
         ..Default::default()
@@ -221,4 +223,10 @@ pub async fn get_and_save_erc20_by_token_address(
     tokens.insert(token_address_string, token.clone());
 
     Ok(Some(token))
+}
+
+pub fn does_contact_exceed_size_limit(solidity_contract: &str) -> bool {
+    let tokens: u32 = solidity_contract.len() as u32 / 4;
+
+    tokens > CONTRACT_TOKEN_SIZE_LIMIT
 }

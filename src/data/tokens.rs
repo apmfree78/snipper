@@ -59,6 +59,7 @@ pub struct Erc20Token {
     pub is_token_0: bool,
 
     // token state
+    pub large_source_code: bool,
     pub is_tradable: bool,
     pub state: TokenState,
     pub liquidity: TokenLiquidity,

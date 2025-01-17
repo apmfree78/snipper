@@ -18,6 +18,7 @@ pub mod verify {
     pub mod check_token_lock;
     pub mod detect_honeypot;
     pub mod etherscan_api;
+    pub mod openai_api;
     pub mod thegraph_api;
 }
 

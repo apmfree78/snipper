@@ -8,6 +8,7 @@ async fn test_etherscan_api() -> anyhow::Result<()> {
     const VIRTUALS: &str = "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b";
 
     let source_code = get_source_code(VIRTUALS).await?;
+    println!("source code => {}", source_code);
 
     assert!(!source_code.is_empty());
 

@@ -44,6 +44,8 @@ pub const TOKEN_LOCKERS_BASE: [&str; 3] = [
     "0x0000000000000000000000000000000000000000", // token burn
 ];
 
+pub const CONTRACT_TOKEN_SIZE_LIMIT: u32 = 15_000;
+
 pub const PURCHASE_ATTEMPT_LIMIT: u8 = 5;
 pub const SELL_ATTEMPT_LIMIT: u8 = 10;
 
