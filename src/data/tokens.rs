@@ -53,13 +53,14 @@ pub struct Erc20Token {
     pub symbol: String,
     pub decimals: u8,
     pub address: Address,
+
     pub source_code: String,
+    pub source_code_tokens: u32,
 
     pub pair_address: Address, // uniswap pair address
     pub is_token_0: bool,
 
     // token state
-    pub large_source_code: bool,
     pub is_tradable: bool,
     pub state: TokenState,
     pub liquidity: TokenLiquidity,

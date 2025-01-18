@@ -185,7 +185,7 @@ pub async fn get_and_save_erc20_by_token_address(
         return Ok(None);
     }
 
-    let is_source_code_large = does_contact_exceed_size_limit(&contract_code);
+    let token_count = get_openai_token_count(&contract_code);
 
     // make sure token is not already in hashmap
     if tokens.contains_key(&token_address_string) {
@@ -214,7 +214,7 @@ pub async fn get_and_save_erc20_by_token_address(
         decimals,
         address: token_address,
         source_code: contract_code,
-        large_source_code: is_source_code_large,
+        source_code_tokens: token_count,
         pair_address: pair_created_event.pair,
         is_token_0,
         ..Default::default()
@@ -225,8 +225,9 @@ pub async fn get_and_save_erc20_by_token_address(
     Ok(Some(token))
 }
 
-pub fn does_contact_exceed_size_limit(solidity_contract: &str) -> bool {
-    let tokens: u32 = solidity_contract.len() as u32 / 4;
+pub fn get_openai_token_count(solidity_contract: &str) -> u32 {
+    let tokens: u32 = solidity_contract.chars().count() as u32 / 4;
+    info!("token count for contract is {}", tokens);
 
-    tokens > CONTRACT_TOKEN_SIZE_LIMIT
+    tokens
 }

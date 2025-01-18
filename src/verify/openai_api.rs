@@ -3,7 +3,7 @@ use log::warn;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
-use crate::data::token_state_update::does_contact_exceed_size_limit;
+use crate::app_config::USER_PROMPT;
 
 /// ---------------------
 ///   Request Structures
@@ -123,7 +123,7 @@ struct OpenAiErrorDetail {
 
 pub async fn audit_token_contract(source_code: String) -> anyhow::Result<Option<TokenAudit>> {
     // check contract size
-    if source_code.is_empty() || does_contact_exceed_size_limit(&source_code) {
+    if source_code.is_empty() {
         warn!("contract is either empty or is too large");
         return Ok(None);
     }
@@ -132,30 +132,8 @@ pub async fn audit_token_contract(source_code: String) -> anyhow::Result<Option<
     let openai_api_key = get_openai_api_key()?;
     let client = Client::new();
 
-    // Typically: store your big user prompt in a separate variable
-    let user_prompt = r#"You are a expert Solidity security reviewer. I will provide you with an ERC‑20 contract source code. You need to check whether this contract has any signs of being a rug pull, honeypot, or other scam.
-
-Pay special attention to:
-1. The transfer function or `_transfer` logic (any hidden conditions or blacklists).
-2. Ownership methods (`Ownable`, `renounceOwnership`, etc.) and whether ownership is *actually* renounced—or if there is a hidden or alternate owner variable.
-3. Any ability for the owner or privileged account to mint additional tokens.
-4. Any external calls or “rescue tokens,” “withdraw,” or “removeLiquidity” methods that could drain user funds or liquidity.
-5. Unusually high or dynamically modifiable fees that could be set to extreme values.
-6. Proxy or upgradeable patterns that could hide malicious updates later.
-7. Any hidden or custom logic that prevents selling or imposes heavy taxes on sellers.
-8. Disregard any trust signals such as “renounced ownership” or “burned liquidity” unless it is clear there is *no* backdoor enabling the developer to regain control or drain liquidity.
-
-After analyzing these points, respond **strictly** in the following JSON format (no additional text). The `reason` should not exceed 2 to 3 sentences:
-
-{ "possible_scam": <true_or_false>, "reason": "<2_or_3_sentences_describing_rationale>" }
-
-
-Please only produce valid JSON—no code fencing or extra explanation. Provide a Boolean for `possible_scam`.
-
-FOLLOWED BY the solidity source code which will be in a String called \"source_code\"."#;
-
     // Combine prompt + source code in one user content
-    let user_content = format!("{}\n\nsource_code:\n{}", user_prompt, source_code);
+    let user_content = format!("{}\n\nsource_code:\n{}", USER_PROMPT, source_code);
 
     // Build the request body as a typed struct
     let request_body = ChatCompletionRequest {
@@ -171,7 +149,7 @@ FOLLOWED BY the solidity source code which will be in a String called \"source_c
             },
         ],
         temperature: 0.3,
-        max_tokens: 30_000,
+        max_tokens: 16_000,
         top_p: 1.0,
     };
 
@@ -196,7 +174,7 @@ FOLLOWED BY the solidity source code which will be in a String called \"source_c
 
     let resp: OpenAiChatCompletion = response.json().await?;
 
-    println!("response => {:#?}", resp);
+    // println!("response => {:#?}", resp);
 
     // Grab the first choice
     let first_choice = resp

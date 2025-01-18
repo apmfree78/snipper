@@ -12,9 +12,9 @@ pub enum AppMode {
 //*****************************************
 //*****************************************
 // CHANGE THIS VALUE TO SET CHAIN AND MODE FOR APP
-pub const CHAIN: Chain = Chain::Base;
+pub const CHAIN: Chain = Chain::Mainnet;
 
-pub const APP_MODE: AppMode = AppMode::Simulation;
+pub const APP_MODE: AppMode = AppMode::Production;
 
 pub const CHECK_IF_LIQUIDITY_LOCKED: bool = true;
 pub const CHECK_IF_HONEYPOT: bool = true;
@@ -52,6 +52,28 @@ pub const SELL_ATTEMPT_LIMIT: u8 = 10;
 pub const API_CHECK_LIMIT: u8 = 10;
 
 pub const BLACKLIST: [&str; 1] = ["CHILLI"];
+
+// Typically: store your big user prompt in a separate variable
+pub const USER_PROMPT: &str = r#"You are a expert Solidity security reviewer. I will provide you with an ERC‑21 contract source code. You need to check whether this contract has any signs of being a rug pull, honeypot, or other scam.
+
+Pay special attention to:
+1. The transfer function or `_transfer` logic (any hidden conditions or blacklists).
+2. Ownership methods (`Ownable`, `renounceOwnership`, etc.) and whether ownership is *actually* renounced—or if there is a hidden or alternate owner variable.
+3. Any ability for the owner or privileged account to mint additional tokens.
+4. Any external calls or “rescue tokens,” “withdraw,” or “removeLiquidity” methods that could drain user funds or liquidity.
+5. Unusually high or dynamically modifiable fees that could be set to extreme values.
+6. Proxy or upgradeable patterns that could hide malicious updates later.
+7. Any hidden or custom logic that prevents selling or imposes heavy taxes on sellers.
+8. Disregard any trust signals such as “renounced ownership” or “burned liquidity” unless it is clear there is *no* backdoor enabling the developer to regain control or drain liquidity.
+
+After analyzing these points, respond **strictly** in the following JSON format (no additional text). The `reason` should not exceed 2 to 3 sentences:
+
+{ "possible_scam": <true_or_false>, "reason": "<2_or_3_sentences_describing_rationale>" }
+
+
+Please only produce valid JSON—no code fencing or extra explanation. Provide a Boolean for `possible_scam`.
+
+FOLLOWED BY the solidity source code which will be in a String called \"source_code\"."#;
 
 //  const TOKEN_LOCKERS: [&str; 4] = [
 //     "0xE2fE530C047f2d85298b07D9333C05737f1435fB", // team finance

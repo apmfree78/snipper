@@ -32,7 +32,7 @@ impl Erc20Token {
         match liquidity_status {
             TokenLiquid::NeedToAdd(add_liquidity_tx) => {
                 // simulate adding liquidity
-                println!("simulate adding liquidity before buying");
+                // println!("simulate adding liquidity before buying");
                 anvil.add_liquidity_eth(&add_liquidity_tx).await?;
             }
             TokenLiquid::HasEnough => {}
@@ -40,7 +40,7 @@ impl Erc20Token {
 
         // Try to buy the token
         // let balance_before = anvil.get_token_balance(token).await?;
-        println!("simulate buying token for validation");
+        // println!("simulate buying token for validation");
         let buy_result = anvil.simulate_buying_token_for_weth(self).await;
 
         if let Err(err) = buy_result {
@@ -51,7 +51,7 @@ impl Erc20Token {
 
         let token_balance = buy_result?;
 
-        println!("check token balance after purchase");
+        // println!("check token balance after purchase");
         if token_balance == U256::from(0) {
             println!("No tokens received after buy, reverting...");
             // revert if something suspicious
@@ -67,14 +67,14 @@ impl Erc20Token {
         //     .await?;
 
         // elapse time with blocks mine
-        println!("simulating creating blocks");
+        // println!("simulating creating blocks");
         let _ = anvil
             .signed_client
             .provider()
             .request::<_, String>("evm_mine", None::<()>)
             .await?;
 
-        println!("check token balance after five minutes");
+        // println!("check token balance after five minutes");
         // check token balance did not drop after time elapse
         let balance_after_buy = anvil
             .get_wallet_token_balance_by_address(self.address)
@@ -90,7 +90,7 @@ impl Erc20Token {
             .do_dummy_transfer(self.address, balance_after_buy)
             .await?;
 
-        println!("check token balance after transfers");
+        // println!("check token balance after transfers");
         // check token balance did not drop after time elapse
         let balance_after_transfer = anvil
             .get_wallet_token_balance_by_address(self.address)
@@ -106,7 +106,7 @@ impl Erc20Token {
         let sell_result = anvil.simulate_selling_token_for_weth(self).await;
         match sell_result {
             Ok(_) => {
-                println!("check token balance after sale (should be zero)");
+                // println!("check token balance after sale (should be zero)");
                 let balance_after_sell = anvil
                     .get_wallet_token_balance_by_address(self.address)
                     .await?;

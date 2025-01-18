@@ -1,3 +1,4 @@
+use crate::app_config::CONTRACT_TOKEN_SIZE_LIMIT;
 use crate::data::token_data::get_tokens;
 use crate::data::token_state_update::get_and_save_erc20_by_token_address;
 use crate::data::token_state_update::remove_token;
@@ -9,6 +10,7 @@ use crate::events::PairCreatedEvent;
 use crate::swap::anvil::validation::TokenLiquid;
 use crate::swap::anvil::validation::TokenStatus;
 use crate::swap::mainnet::setup::TxWallet;
+use crate::utils::type_conversion::address_to_string;
 use crate::verify::openai_api::audit_token_contract;
 use log::{error, info, warn};
 use std::sync::Arc;
@@ -76,7 +78,7 @@ pub async fn validate_token(token: &Erc20Token) -> anyhow::Result<TokenStatus> {
         .await?;
 
     if token_status == TokenStatus::Legit {
-        info!("{} is legit!", token.name);
+        info!("{} has passed simluted buy/sell", token.name);
         token.set_state_to_(TokenState::Validated).await;
     } else {
         // cannot buy or sell token remove it
@@ -186,7 +188,7 @@ impl Erc20Token {
 impl Erc20Token {
     // OPENAI TOKEN AUDIT
     pub async fn check_if_fully_validated_and_update_state(&self) -> anyhow::Result<bool> {
-        let token_audit = if !self.large_source_code {
+        let token_audit = if self.source_code_tokens <= CONTRACT_TOKEN_SIZE_LIMIT {
             match audit_token_contract(self.source_code.clone()).await {
                 Ok(audit) => audit,
                 Err(error) => {
@@ -204,7 +206,11 @@ impl Erc20Token {
         match token_audit {
             Some(audit) => {
                 if audit.possible_scam {
-                    warn!("SCAM TOKEN => {}", audit.reason);
+                    let token_address = address_to_string(self.address);
+                    warn!(
+                        "{} ({}) is a SCAM TOKEN => {}",
+                        self.name, token_address, audit.reason
+                    );
                     remove_token(self.address).await;
                     Ok(false)
                 } else {
