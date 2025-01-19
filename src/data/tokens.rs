@@ -13,6 +13,7 @@ use crate::data::token_state_update::remove_token;
 use crate::swap::mainnet::setup::TxType;
 use crate::utils::tx::amount_of_token_to_purchase;
 use crate::verify::check_token_lock::is_liquidity_locked;
+use crate::verify::etherscan_api::TokenWebData;
 
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub enum TokenState {
@@ -56,6 +57,8 @@ pub struct Erc20Token {
 
     pub source_code: String,
     pub source_code_tokens: u32,
+
+    pub token_web_data: TokenWebData,
 
     pub pair_address: Address, // uniswap pair address
     pub is_token_0: bool,

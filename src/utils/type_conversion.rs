@@ -125,6 +125,14 @@ pub fn address_to_string(address: Address) -> String {
     format!("{:?}", address)
 }
 
+pub fn string_to_bool(s: &str) -> anyhow::Result<bool> {
+    match s.to_lowercase().as_str() {
+        "true" => Ok(true),
+        "false" => Ok(false),
+        _ => Err(anyhow!("Invalid boolean string")),
+    }
+}
+
 pub fn f64_to_u256(value: f64) -> Result<U256> {
     if value.is_nan() || value.is_infinite() {
         return Err(anyhow!("Invalid f64 value: NaN or Infinity"));

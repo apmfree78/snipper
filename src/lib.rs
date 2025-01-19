@@ -26,6 +26,7 @@ pub mod utils {
     pub mod logging;
     pub mod tx;
     pub mod type_conversion;
+    pub mod web_scrapper;
 }
 
 pub mod data {

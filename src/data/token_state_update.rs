@@ -2,12 +2,14 @@ use crate::abi::erc20::ERC20;
 use crate::app_config::{BLACKLIST, CONTRACT_TOKEN_SIZE_LIMIT};
 use crate::events::PairCreatedEvent;
 use crate::utils::type_conversion::address_to_string;
-use crate::verify::etherscan_api::get_source_code;
+use crate::verify::etherscan_api::{get_source_code, get_token_info};
 use anyhow::Result;
 use ethers::providers::{Provider, Ws};
 use ethers::types::{Address, U256};
 use log::{error, info, warn};
 use std::sync::Arc;
+use std::time::Duration;
+use tokio::time::sleep;
 
 use super::contracts::CONTRACT;
 use super::token_data::TOKEN_HASH;
@@ -177,15 +179,34 @@ pub async fn get_and_save_erc20_by_token_address(
 
     let token_address_string = address_to_string(token_address).to_lowercase();
 
+    // check token info
+    let token_web_data = get_token_info(&token_address_string).await?;
+
+    let token_web_data = match token_web_data {
+        Some(data) => {
+            if data.website.is_empty() && data.twitter.is_empty() {
+                warn!("no website or twitter handle");
+                return Ok(None);
+            } else {
+                data
+            }
+        }
+        None => return Ok(None),
+    };
+
     // get solidity contract
+    sleep(Duration::from_millis(250)).await;
     let contract_code = get_source_code(&token_address_string).await?;
+    sleep(Duration::from_millis(250)).await;
 
     if contract_code.is_empty() {
         warn!("source code not avaliable, skipping");
         return Ok(None);
     }
 
+    sleep(Duration::from_millis(250)).await;
     let token_count = get_openai_token_count(&contract_code);
+    sleep(Duration::from_millis(250)).await;
 
     // make sure token is not already in hashmap
     if tokens.contains_key(&token_address_string) {
@@ -214,6 +235,7 @@ pub async fn get_and_save_erc20_by_token_address(
         decimals,
         address: token_address,
         source_code: contract_code,
+        token_web_data,
         source_code_tokens: token_count,
         pair_address: pair_created_event.pair,
         is_token_0,

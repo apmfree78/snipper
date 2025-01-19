@@ -1,9 +1,16 @@
+use std::{panic, time::Duration};
+
 use anyhow::{anyhow, Result};
 use ethers::types::{Address, U256};
+use log::{info, warn};
 use reqwest::Client;
 use serde::Deserialize;
+use tokio::time::sleep;
 
-use crate::{app_config::CHAIN, utils::type_conversion::address_to_string};
+use crate::{
+    app_config::CHAIN,
+    utils::type_conversion::{address_to_string, string_to_bool},
+};
 
 use super::check_token_lock::TokenHolders;
 
@@ -57,6 +64,82 @@ struct ContractSourceCode {
     _swarm_source: String,
 }
 
+/// Struct mirroring the fields returned by the "tokeninfo" action
+#[derive(Debug, Deserialize)]
+pub struct TokenInfo {
+    #[serde(rename = "contractAddress")]
+    _contract_address: String,
+
+    #[serde(rename = "tokenName")]
+    _token_name: String,
+
+    #[serde(rename = "symbol")]
+    _symbol: String,
+
+    #[serde(rename = "divisor")]
+    _divisor: String,
+
+    #[serde(rename = "tokenType")]
+    _token_type: String,
+
+    #[serde(rename = "totalSupply")]
+    _total_supply: String,
+
+    #[serde(rename = "blueCheckmark")]
+    pub blue_checkmark: String,
+
+    #[serde(rename = "description")]
+    _description: String,
+
+    #[serde(rename = "website")]
+    pub website: String,
+
+    #[serde(rename = "email")]
+    _email: String,
+
+    #[serde(rename = "blog")]
+    _blog: String,
+
+    #[serde(rename = "reddit")]
+    _reddit: String,
+
+    #[serde(rename = "slack")]
+    _slack: String,
+
+    #[serde(rename = "facebook")]
+    _facebook: String,
+
+    #[serde(rename = "twitter")]
+    pub twitter: String,
+
+    #[serde(rename = "bitcointalk")]
+    _bitcointalk: String,
+
+    #[serde(rename = "github")]
+    _github: String,
+
+    #[serde(rename = "telegram")]
+    _telegram: String,
+
+    #[serde(rename = "wechat")]
+    _wechat: String,
+
+    #[serde(rename = "linkedin")]
+    _linkedin: String,
+
+    #[serde(rename = "discord")]
+    pub discord: String,
+
+    #[serde(rename = "whitepaper")]
+    pub whitepaper: String,
+
+    #[serde(rename = "tokenPriceUSD")]
+    _token_price_usd: String,
+
+    #[serde(rename = "image")]
+    _image: String,
+}
+
 #[derive(Debug, Deserialize)]
 struct EtherscanHolderEntry {
     #[serde(rename = "TokenHolderAddress")]
@@ -64,6 +147,15 @@ struct EtherscanHolderEntry {
 
     #[serde(rename = "TokenHolderQuantity")]
     token_holder_quantity: String,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct TokenWebData {
+    pub blue_checkmark: bool,
+    pub website: String,
+    pub twitter: String,
+    pub discord: String,
+    pub whitepaper: String,
 }
 
 /// Example function to call Etherscan’s “tokenholderlist” endpoint.
@@ -194,6 +286,70 @@ address={}&apikey={}",
     };
 
     Ok(source_code)
+}
+
+pub async fn get_token_info(contract_address: &str) -> Result<Option<TokenWebData>> {
+    let etherscan_api_key = get_etherscan_api_key()?;
+
+    let chain_id = CHAIN as u64;
+    let etherscan_api = get_etherscan_api()?;
+
+    let url = format!(
+        "{}?chainid={}&module=token&action=tokeninfo&
+contractaddress={}&apikey={}",
+        etherscan_api, chain_id, contract_address, etherscan_api_key
+    );
+
+    // Make HTTP GET request
+    let client = Client::new();
+    let response = client.get(&url).send().await?;
+
+    if !response.status().is_success() {
+        return Err(anyhow!("Request failed with status: {}", response.status()));
+    }
+
+    // println!("response_text => {}", response_text);
+    // Parse JSON response
+    let parsed: EtherscanResponse<TokenInfo> = match response.json().await {
+        Ok(parsed) => {
+            println!("parsed => {:#?}", parsed);
+            parsed
+        }
+        Err(error) => {
+            warn!("could not decode => {}", error);
+
+            // TESTING >>>>>>>>>>>>>>>>
+            sleep(Duration::from_millis(1000)).await;
+            let response = client.get(&url).send().await?;
+            let response_text = response.text().await?;
+            println!("response_text => {}", response_text);
+            panic!("shutting down...");
+            // TESTING >>>>>>>>>>>>>>>>
+
+            return Ok(None);
+        }
+    };
+
+    // Check Etherscan response status
+    if parsed.status != "1" {
+        return Err(anyhow!(
+            "Etherscan returned status={}, message={}",
+            parsed.status,
+            parsed.message
+        ));
+    }
+
+    // Convert to Vec<TokenHolders>
+    match parsed.result.first() {
+        Some(result) => Ok(Some(TokenWebData {
+            website: result.website.clone(),
+            blue_checkmark: string_to_bool(&result.blue_checkmark)?,
+            twitter: result.twitter.clone(),
+            discord: result.discord.clone(),
+            whitepaper: result.whitepaper.clone(),
+        })),
+        None => Ok(None),
+    }
 }
 
 fn get_etherscan_api_key() -> anyhow::Result<String> {

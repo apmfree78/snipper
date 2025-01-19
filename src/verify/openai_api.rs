@@ -37,25 +37,25 @@ struct MessageToSend {
 /// This struct mirrors the entire JSON response OpenAI sends back.
 #[derive(Deserialize, Debug)]
 struct OpenAiChatCompletion {
-    pub id: String,
-    pub object: String,
-    pub created: i64,
-    pub model: String,
+    id: String,
+    object: String,
+    created: i64,
+    model: String,
     pub choices: Vec<Choice>,
     #[serde(default)]
-    pub usage: Usage,
+    usage: Usage,
     #[serde(default)]
-    pub system_fingerprint: Option<String>,
+    system_fingerprint: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
 struct Choice {
-    pub index: i64,
+    index: i64,
     pub message: AssistantMessage,
     #[serde(default)]
-    pub logprobs: Option<()>,
+    logprobs: Option<()>,
     #[serde(default)]
-    pub finish_reason: Option<String>,
+    finish_reason: Option<String>,
 }
 
 /// We assume the assistant's message content is strictly valid JSON
