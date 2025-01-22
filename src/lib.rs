@@ -15,10 +15,13 @@ pub mod mempool {
 }
 
 pub mod verify {
+    pub mod openai {
+        pub mod ai_submission;
+        pub mod structs;
+    }
     pub mod check_token_lock;
     pub mod detect_honeypot;
     pub mod etherscan_api;
-    pub mod openai_api;
     pub mod thegraph_api;
 }
 

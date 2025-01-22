@@ -3,6 +3,8 @@ use std::collections::HashSet;
 use reqwest;
 use scraper::{Html, Selector};
 
+use crate::app_config::WEBSITE_MAX_CHARACTER_LENGTH;
+
 pub async fn scrape_site_and_get_text(website_url: &str) -> anyhow::Result<String> {
     // URL to scrape
 
@@ -59,6 +61,11 @@ pub async fn scrape_site_and_get_text(website_url: &str) -> anyhow::Result<Strin
                 || line.contains("[i]")
                 || line.ends_with(";")
                 || line.contains("// ")
+                || line.contains("/*")
+                || line.contains("*/")
+                || line.contains("-wrapper")
+                || line.contains("webkit")
+                || line.contains(":hover")
                 || line.contains("const ")
                 || line.contains("+ i")
                 || line.contains("console.")
@@ -77,8 +84,8 @@ pub async fn scrape_site_and_get_text(website_url: &str) -> anyhow::Result<Strin
 
     let final_text = dedup_text(final_text);
 
-    // 5) Print or store the text
-    println!("Scraped text:\n\n{}", final_text);
+    let final_text = first_n_chars(&final_text, WEBSITE_MAX_CHARACTER_LENGTH as usize);
+    println!("{}", final_text);
 
     Ok(final_text)
 }
@@ -95,6 +102,10 @@ fn dedup_text(text: String) -> String {
     }
 
     let final_text = deduped.join("\n");
-
     final_text
+}
+
+// grap first N charcters
+pub fn first_n_chars(s: &str, n: usize) -> String {
+    s.chars().take(n).collect::<String>()
 }

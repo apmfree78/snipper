@@ -2,6 +2,7 @@ use dotenv::dotenv;
 use ethers::types::Address;
 use snipper::{
     abi::erc20::ERC20,
+    data::token_state_update::get_openai_token_count,
     swap::mainnet::setup::{TxWallet, WalletType},
     utils::web_scrapper::scrape_site_and_get_text,
     verify::{
@@ -50,6 +51,8 @@ async fn test_scrapper() -> anyhow::Result<()> {
         let token_info = get_token_info(token).await?.unwrap();
         println!("website content for {} ....", name);
         let website_text = scrape_site_and_get_text(&token_info.website).await?;
+        let tokens = get_openai_token_count(&website_text);
+        println!("token count => {}", tokens);
         assert!(!website_text.is_empty());
     }
 

@@ -1,11 +1,8 @@
-use std::{panic, time::Duration};
-
 use anyhow::{anyhow, Result};
 use ethers::types::{Address, U256};
-use log::{info, warn};
+use log::warn;
 use reqwest::Client;
 use serde::Deserialize;
-use tokio::time::sleep;
 
 use crate::{
     app_config::CHAIN,
@@ -16,7 +13,7 @@ use super::check_token_lock::TokenHolders;
 
 /// Internal structs mirroring Etherscan's JSON structure
 #[derive(Debug, Deserialize)]
-struct EtherscanResponse<T> {
+pub struct EtherscanResponse<T> {
     status: String,
     message: String,
     result: Vec<T>,
@@ -153,6 +150,7 @@ struct EtherscanHolderEntry {
 pub struct TokenWebData {
     pub blue_checkmark: bool,
     pub website: String,
+    pub scraped_web_content: String,
     pub twitter: String,
     pub discord: String,
     pub whitepaper: String,
@@ -312,19 +310,17 @@ contractaddress={}&apikey={}",
     // Parse JSON response
     let parsed: EtherscanResponse<TokenInfo> = match response.json().await {
         Ok(parsed) => {
-            println!("parsed => {:#?}", parsed);
+            // println!("parsed => {:#?}", parsed);
             parsed
         }
         Err(error) => {
             warn!("could not decode => {}", error);
 
-            // TESTING >>>>>>>>>>>>>>>>
-            sleep(Duration::from_millis(1000)).await;
+            // // TESTING >>>>>>>>>>>>>>>>
+            // sleep(Duration::from_millis(1000)).await;
             let response = client.get(&url).send().await?;
             let response_text = response.text().await?;
             println!("response_text => {}", response_text);
-            panic!("shutting down...");
-            // TESTING >>>>>>>>>>>>>>>>
 
             return Ok(None);
         }
@@ -347,6 +343,7 @@ contractaddress={}&apikey={}",
             twitter: result.twitter.clone(),
             discord: result.discord.clone(),
             whitepaper: result.whitepaper.clone(),
+            ..Default::default()
         })),
         None => Ok(None),
     }

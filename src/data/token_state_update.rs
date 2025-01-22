@@ -2,7 +2,8 @@ use crate::abi::erc20::ERC20;
 use crate::app_config::{BLACKLIST, CONTRACT_TOKEN_SIZE_LIMIT};
 use crate::events::PairCreatedEvent;
 use crate::utils::type_conversion::address_to_string;
-use crate::verify::etherscan_api::{get_source_code, get_token_info};
+use crate::utils::web_scrapper::scrape_site_and_get_text;
+use crate::verify::etherscan_api::{get_source_code, get_token_info, TokenWebData};
 use anyhow::Result;
 use ethers::providers::{Provider, Ws};
 use ethers::types::{Address, U256};
@@ -179,10 +180,18 @@ pub async fn get_and_save_erc20_by_token_address(
 
     let token_address_string = address_to_string(token_address).to_lowercase();
 
+    // get solidity contract
+    let contract_code = get_source_code(&token_address_string).await?;
+
+    if contract_code.is_empty() {
+        warn!("source code not avaliable, skipping");
+        return Ok(None);
+    }
+
     // check token info
     let token_web_data = get_token_info(&token_address_string).await?;
 
-    let token_web_data = match token_web_data {
+    let mut token_web_data = match token_web_data {
         Some(data) => {
             if data.website.is_empty() && data.twitter.is_empty() {
                 warn!("no website or twitter handle");
@@ -194,19 +203,14 @@ pub async fn get_and_save_erc20_by_token_address(
         None => return Ok(None),
     };
 
-    // get solidity contract
-    sleep(Duration::from_millis(250)).await;
-    let contract_code = get_source_code(&token_address_string).await?;
-    sleep(Duration::from_millis(250)).await;
+    let scraped_web_data = scrape_site_and_get_text(&token_web_data.website).await?;
 
-    if contract_code.is_empty() {
-        warn!("source code not avaliable, skipping");
-        return Ok(None);
-    }
+    token_web_data = TokenWebData {
+        scraped_web_content: scraped_web_data,
+        ..token_web_data
+    };
 
-    sleep(Duration::from_millis(250)).await;
     let token_count = get_openai_token_count(&contract_code);
-    sleep(Duration::from_millis(250)).await;
 
     // make sure token is not already in hashmap
     if tokens.contains_key(&token_address_string) {

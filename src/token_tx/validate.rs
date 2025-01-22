@@ -11,7 +11,7 @@ use crate::swap::anvil::validation::TokenLiquid;
 use crate::swap::anvil::validation::TokenStatus;
 use crate::swap::mainnet::setup::TxWallet;
 use crate::utils::type_conversion::address_to_string;
-use crate::verify::openai_api::audit_token_contract;
+use crate::verify::openai::ai_submission::check_code_with_ai;
 use log::{error, info, warn};
 use std::sync::Arc;
 
@@ -189,7 +189,7 @@ impl Erc20Token {
     // OPENAI TOKEN AUDIT
     pub async fn check_if_fully_validated_and_update_state(&self) -> anyhow::Result<bool> {
         let token_audit = if self.source_code_tokens <= CONTRACT_TOKEN_SIZE_LIMIT {
-            match audit_token_contract(self.source_code.clone()).await {
+            match check_code_with_ai(self.source_code.clone()).await {
                 Ok(audit) => audit,
                 Err(error) => {
                     error!("could not audit contract => {}", error);
