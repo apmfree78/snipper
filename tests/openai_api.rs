@@ -5,7 +5,7 @@ use snipper::{
     swap::mainnet::setup::{TxWallet, WalletType},
     verify::{
         etherscan_api::{get_source_code, get_token_info},
-        openai_api::audit_token_contract,
+        openai::ai_submission::check_website_with_ai,
     },
 };
 use std::{sync::Arc, time::Duration};
@@ -26,7 +26,7 @@ async fn test_audit_token_contract() -> anyhow::Result<()> {
     const VIRTUALS: &str = "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b";
     let source_code = get_source_code(VIRTUALS).await?;
 
-    let audit = audit_token_contract(source_code).await?.unwrap();
+    let audit = check_website_with_ai(source_code).await?.unwrap();
     println!("{:#?}", audit);
 
     // assert!(!source_code.is_empty());
@@ -42,7 +42,7 @@ async fn test_audit_token_contract_2() -> anyhow::Result<()> {
     const SCAM_TOKEN: &str = "0x1f035d740FD128E3818a08D613bC4C2D8f8Fccee";
     let source_code = get_source_code(SCAM_TOKEN).await?;
 
-    let audit = audit_token_contract(source_code).await?.unwrap();
+    let audit = check_website_with_ai(source_code).await?.unwrap();
 
     Ok(())
 }
@@ -60,7 +60,7 @@ async fn test_whitelist_contracts() -> anyhow::Result<()> {
         let name = contract.name().call().await?;
         let source_code = get_source_code(token).await?;
 
-        let audit = audit_token_contract(source_code).await?.unwrap();
+        let audit = check_website_with_ai(source_code).await?.unwrap();
         println!("{} AUDIT => {:#?}", name, audit);
     }
     // assert!(!source_code.is_empty());

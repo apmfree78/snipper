@@ -84,6 +84,7 @@ async fn setup(token_address: Address) -> anyhow::Result<TestSetup> {
 
     let token = get_and_save_erc20_by_token_address(&pair_created_event, &tx_wallet.client).await?;
     let token = token.unwrap();
+
     // check token liquidity
     if let Err(error) = check_all_tokens_are_tradable(&tx_wallet).await {
         println!("could not check token tradability => {}", error);
@@ -150,7 +151,6 @@ async fn test_anvil_meme_token_buy_sell_test() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-#[ignore]
 async fn test_anvil_token_buy_sell_test() -> anyhow::Result<()> {
     let token_address: Address = CONTRACT.get_address().link.parse()?;
     let mut setup = setup(token_address).await?;
@@ -238,7 +238,7 @@ async fn test_anvil_token_buy_no_sell_test() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-// #[ignore]
+#[ignore]
 async fn test_mock_token_buy_sell_time_intervals_test() -> anyhow::Result<()> {
     let token_address: Address = CONTRACT.get_address().link.parse()?;
     let setup = setup(token_address).await?;

@@ -1,3 +1,4 @@
+use crate::app_config::AI_MODEL;
 use crate::app_config::CONTRACT_TOKEN_SIZE_LIMIT;
 use crate::data::token_data::get_tokens;
 use crate::data::token_state_update::get_and_save_erc20_by_token_address;
@@ -11,7 +12,6 @@ use crate::swap::anvil::validation::TokenLiquid;
 use crate::swap::anvil::validation::TokenStatus;
 use crate::swap::mainnet::setup::TxWallet;
 use crate::utils::type_conversion::address_to_string;
-use crate::verify::openai::ai_submission::check_code_with_ai;
 use log::{error, info, warn};
 use std::sync::Arc;
 
@@ -24,11 +24,14 @@ pub async fn add_validate_buy_new_token(
     if let Some(mut token) =
         get_and_save_erc20_by_token_address(&pair_created_event, &tx_wallet.client).await?
     {
+        info!("getting token liquidity");
         let liquidity = token.get_liquidity(&tx_wallet.client).await?;
         if liquidity_is_not_zero_nor_micro(&liquidity) {
+            info!("set token to tradable");
             token
                 .set_to_tradable_plus_update_liquidity(&liquidity)
                 .await;
+            info!("extract token liquidity");
             let liquidity_amount = extract_liquidity_amount(&liquidity).unwrap();
             info!(
                 "{} has {} ETH liquidity ({}) and ready for trading",
@@ -189,7 +192,7 @@ impl Erc20Token {
     // OPENAI TOKEN AUDIT
     pub async fn check_if_fully_validated_and_update_state(&self) -> anyhow::Result<bool> {
         let token_audit = if self.source_code_tokens <= CONTRACT_TOKEN_SIZE_LIMIT {
-            match check_code_with_ai(self.source_code.clone()).await {
+            match self.ai_analysis(&AI_MODEL).await {
                 Ok(audit) => audit,
                 Err(error) => {
                     error!("could not audit contract => {}", error);
@@ -205,7 +208,7 @@ impl Erc20Token {
 
         match token_audit {
             Some(audit) => {
-                if audit.possible_scam {
+                if audit.final_scam_assessment {
                     let token_address = address_to_string(self.address);
                     warn!(
                         "{} ({}) is a SCAM TOKEN => {}",

@@ -1,5 +1,7 @@
 use ethers::types::Chain;
 
+use crate::verify::ai_submission::AIModel;
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum AppMode {
     Production,
@@ -15,6 +17,8 @@ pub enum AppMode {
 pub const CHAIN: Chain = Chain::Mainnet;
 
 pub const APP_MODE: AppMode = AppMode::Production;
+
+pub const AI_MODEL: AIModel = AIModel::OpenAi;
 
 pub const CHECK_IF_LIQUIDITY_LOCKED: bool = true;
 pub const CHECK_IF_HONEYPOT: bool = true;

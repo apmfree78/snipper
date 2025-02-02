@@ -38,7 +38,7 @@ impl TxWallet {
         // setup websocket connect to eth node
         // let ws_url = CONTRACT.get_address().ws_url.clone();
         // TODO - switch to ws_url once eth node up
-        let ws_url = CONTRACT.get_address().alchemy_url.clone();
+        let ws_url = CONTRACT.get_address().ws_url.clone();
         let provider = Provider::<Ws>::connect(ws_url.clone()).await?;
         let client = Arc::new(provider.clone());
 

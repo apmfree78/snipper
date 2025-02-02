@@ -76,7 +76,7 @@ pub async fn scrape_site_and_get_text(website_url: &str) -> anyhow::Result<Strin
         .join("\n");
 
     let final_text = body_text
-        .lines() // split by '\n'
+        .lines() // split by ''
         .map(str::trim) // trim each line
         .filter(|line| !line.is_empty())
         .collect::<Vec<_>>()
@@ -85,7 +85,7 @@ pub async fn scrape_site_and_get_text(website_url: &str) -> anyhow::Result<Strin
     let final_text = dedup_text(final_text);
 
     let final_text = first_n_chars(&final_text, WEBSITE_MAX_CHARACTER_LENGTH as usize);
-    println!("{}", final_text);
+    // println!("{}", final_text);
 
     Ok(final_text)
 }

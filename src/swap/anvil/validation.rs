@@ -24,7 +24,7 @@ impl Erc20Token {
         liquidity_status: TokenLiquid,
     ) -> anyhow::Result<TokenStatus> {
         // launch new anvil node for validation
-        let ws_url = CONTRACT.get_address().alchemy_url.clone();
+        let ws_url = CONTRACT.get_address().ws_url.clone();
         let anvil = AnvilSimulator::new(&ws_url).await?;
 
         println!("validating token...");
@@ -51,7 +51,7 @@ impl Erc20Token {
 
         let token_balance = buy_result?;
 
-        // println!("check token balance after purchase");
+        println!("check token balance after purchase");
         if token_balance == U256::from(0) {
             println!("No tokens received after buy, reverting...");
             // revert if something suspicious
@@ -67,14 +67,14 @@ impl Erc20Token {
         //     .await?;
 
         // elapse time with blocks mine
-        // println!("simulating creating blocks");
+        println!("simulating creating blocks");
         let _ = anvil
             .signed_client
             .provider()
             .request::<_, String>("evm_mine", None::<()>)
             .await?;
 
-        // println!("check token balance after five minutes");
+        println!("check token balance after five minutes");
         // check token balance did not drop after time elapse
         let balance_after_buy = anvil
             .get_wallet_token_balance_by_address(self.address)
@@ -86,11 +86,12 @@ impl Erc20Token {
         }
 
         // simulate transfer between wallets
+        println!("do dummy transfer");
         anvil
             .do_dummy_transfer(self.address, balance_after_buy)
             .await?;
 
-        // println!("check token balance after transfers");
+        println!("check token balance after transfers");
         // check token balance did not drop after time elapse
         let balance_after_transfer = anvil
             .get_wallet_token_balance_by_address(self.address)
@@ -102,7 +103,7 @@ impl Erc20Token {
         }
 
         // Now attempt to sell
-        // info!("simulate selling token for validation");
+        println!("simulate selling token for validation");
         let sell_result = anvil.simulate_selling_token_for_weth(self).await;
         match sell_result {
             Ok(_) => {

@@ -1,5 +1,5 @@
 use crate::abi::erc20::ERC20;
-use crate::app_config::{BLACKLIST, CONTRACT_TOKEN_SIZE_LIMIT};
+use crate::app_config::BLACKLIST;
 use crate::events::PairCreatedEvent;
 use crate::utils::type_conversion::address_to_string;
 use crate::utils::web_scrapper::scrape_site_and_get_text;
@@ -9,8 +9,6 @@ use ethers::providers::{Provider, Ws};
 use ethers::types::{Address, U256};
 use log::{error, info, warn};
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::time::sleep;
 
 use super::contracts::CONTRACT;
 use super::token_data::TOKEN_HASH;
@@ -181,6 +179,7 @@ pub async fn get_and_save_erc20_by_token_address(
     let token_address_string = address_to_string(token_address).to_lowercase();
 
     // get solidity contract
+    println!("get source code...");
     let contract_code = get_source_code(&token_address_string).await?;
 
     if contract_code.is_empty() {
@@ -189,21 +188,35 @@ pub async fn get_and_save_erc20_by_token_address(
     }
 
     // check token info
+    println!("get token web data...");
     let token_web_data = get_token_info(&token_address_string).await?;
 
     let mut token_web_data = match token_web_data {
         Some(data) => {
             if data.website.is_empty() && data.twitter.is_empty() {
                 warn!("no website or twitter handle");
-                return Ok(None);
+                data
+                // return Ok(None);
             } else {
                 data
             }
         }
-        None => return Ok(None),
+        None => {
+            TokenWebData::default()
+            // return Ok(None)
+        }
     };
 
-    let scraped_web_data = scrape_site_and_get_text(&token_web_data.website).await?;
+    println!("scrape website...");
+
+    let scraped_web_data = if !token_web_data.website.is_empty() {
+        match scrape_site_and_get_text(&token_web_data.website).await {
+            Ok(data) => data,
+            Err(_) => "".to_string(),
+        }
+    } else {
+        "".to_string()
+    };
 
     token_web_data = TokenWebData {
         scraped_web_content: scraped_web_data,
@@ -218,10 +231,11 @@ pub async fn get_and_save_erc20_by_token_address(
         return Ok(Some(token.clone()));
     }
 
+    info!("setup token contract...");
     let token_contract = ERC20::new(token_address, client.clone());
 
     // get basic toke data
-    // info!("getting basic token info...");
+    info!("getting basic token info...");
     let symbol = token_contract.symbol().call().await?;
     let decimals = token_contract.decimals().call().await?;
     let name = token_contract.name().call().await?;

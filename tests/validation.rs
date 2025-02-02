@@ -104,6 +104,28 @@ async fn test_successful_token_validation() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+// #[ignore]
+async fn test_successful_eth_token_validation() -> anyhow::Result<()> {
+    let token_address: Address = CONTRACT.get_address().link.parse()?;
+    let setup = setup(token_address).await?;
+
+    let token_tradable = is_token_tradable(setup.token.address).await;
+    assert!(token_tradable);
+
+    let start = Instant::now();
+    let token_status = setup
+        .token
+        .validate_with_simulated_buy_sell(TokenLiquid::HasEnough)
+        .await?;
+    let duration = start.elapsed();
+    println!("Time elapsed: {} seconds", duration.as_secs());
+
+    assert_eq!(token_status, TokenStatus::Legit);
+
+    Ok(())
+}
+
+#[tokio::test]
 #[ignore]
 async fn test_successful_token_live_validation() -> anyhow::Result<()> {
     const VIRTUALS: &str = "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b";

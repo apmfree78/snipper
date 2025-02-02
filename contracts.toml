@@ -8,7 +8,7 @@ uniswap_swap_router = "0x2626664c2603336E57B271c5C0b26F421741e481"
 uniswap_v2_router = "0x4752ba5dbc23f44d87826276bf6fd6b1c372ad24"
 uniswap_quoter = "0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a"
 ws_url = "wss://base-mainnet.g.alchemy.com/v2/ea5WW5H1wx60RuKPYgGkWoLpyDrk7e90"
-http_url = "http://base-mainnet.g.alchemy.com/v2/ea5WW5H1wx60RuKPYgGkWoLpyDrk7e90"
+http_url = "http://localhost:18545"
 alchemy_url = "wss://base-mainnet.g.alchemy.com/v2/ea5WW5H1wx60RuKPYgGkWoLpyDrk7e90"
 
 [mainnet]
