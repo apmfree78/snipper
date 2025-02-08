@@ -2,12 +2,12 @@ use serde::{Deserialize, Serialize};
 /// ---------------------
 ///   Response Structures
 /// ---------------------
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct AssistantMessageDeepSeek {
     pub role: String,
     pub content: Option<String>,
     pub reasoning_content: Option<String>,
-    pub tool_calls: Vec<()>,
+    // pub tool_calls: Vec<()>,
 }
 
 /// Usage object, as returned by OpenAI for cost analysis.

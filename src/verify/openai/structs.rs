@@ -5,7 +5,7 @@ use serde::Deserialize;
 ///// This struct mirrors the entire JSON response OpenAI sends back.
 /// We assume the assistant's message content is strictly valid JSON
 /// matching our ScamCheck schema.
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct AssistantMessage {
     pub role: String,
     pub content: Option<String>,

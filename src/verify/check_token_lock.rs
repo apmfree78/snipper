@@ -49,7 +49,7 @@ pub async fn is_liquidity_locked(
         return Ok(Some(false));
     }
 
-    let total_supply = token.get_total_supply(client).await?;
+    let total_supply = token.get_total_liquidity_token_supply(client).await?;
     // Step 2) Retrieve top holder info. This is the part you'll have to implement
     //         with a subgraph or block explorer. For now, we assume a function:
     // fetch_top_lp_holders(pair_address) -> Vec<LpHolderInfo>

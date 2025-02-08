@@ -52,7 +52,7 @@ pub struct MessageToSend {
 ///   Response Structures
 /// ---------------------
 /// This struct mirrors the entire JSON response OpenAI sends back.
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct AiChatCompletion<T, K> {
     id: String,
     object: String,
@@ -65,7 +65,7 @@ pub struct AiChatCompletion<T, K> {
     system_fingerprint: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Choice<T> {
     index: i64,
     pub message: T, // AssistantMessageDeepSeek
@@ -81,6 +81,8 @@ pub struct Choice<T> {
 pub struct TokenCodeCheck {
     pub possible_scam: bool,
     pub reason: String,
+    pub could_legitimately_justify_suspicious_code: bool,
+    pub reason_could_be_legitimate_or_not: String,
 }
 
 #[derive(Deserialize, Clone, Debug, Default)]

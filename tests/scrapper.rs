@@ -2,12 +2,13 @@ use dotenv::dotenv;
 use ethers::types::Address;
 use snipper::{
     abi::erc20::ERC20,
+    app_config::AI_MODEL,
     data::token_state_update::get_openai_token_count,
     swap::mainnet::setup::{TxWallet, WalletType},
     utils::web_scrapper::scrape_site_and_get_text,
     verify::{
+        ai_submission::{check_code_with_ai, AIModel},
         etherscan_api::{get_source_code, get_token_info},
-        openai::ai_submission::check_website_with_ai,
     },
 };
 use std::{sync::Arc, time::Duration};
@@ -28,7 +29,7 @@ async fn test_audit_token_contract() -> anyhow::Result<()> {
     const VIRTUALS: &str = "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b";
     let source_code = get_source_code(VIRTUALS).await?;
 
-    let audit = check_website_with_ai(source_code).await?.unwrap();
+    let audit = check_code_with_ai(source_code, &AI_MODEL).await?.unwrap();
     println!("{:#?}", audit);
 
     // assert!(!source_code.is_empty());

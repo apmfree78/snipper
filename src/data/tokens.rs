@@ -3,6 +3,7 @@ use ethers::providers::{Provider, Ws};
 use ethers::types::{Address, U256};
 use std::sync::Arc;
 
+use crate::abi::erc20::ERC20;
 use crate::abi::uniswap_pair::UNISWAP_PAIR;
 use crate::app_config::{
     CHECK_IF_LIQUIDITY_LOCKED, HIGH_LIQUIDITY_THRESHOLD, LIQUIDITY_PERCENTAGE_LOCKED,
@@ -170,11 +171,23 @@ impl Erc20Token {
     //     Ok(Some(honeypot_result.is_honeypot))
     // }
 
-    pub async fn get_total_supply(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<U256> {
+    pub async fn get_total_liquidity_token_supply(
+        &self,
+        client: &Arc<Provider<Ws>>,
+    ) -> anyhow::Result<U256> {
         let pool = UNISWAP_PAIR::new(self.pair_address, client.clone());
 
         // info!("getting total liquidity");
         let supply = pool.total_supply().call().await?;
+
+        Ok(supply)
+    }
+
+    pub async fn get_total_token_supply(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<U256> {
+        let token_contract = ERC20::new(self.address, client.clone());
+
+        // info!("getting total liquidity");
+        let supply = token_contract.total_supply().call().await?;
 
         Ok(supply)
     }

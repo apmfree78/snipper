@@ -112,7 +112,7 @@ impl TxWallet {
         let (block, _) = get_current_block(&self.client).await?;
 
         // check that token has liquidity
-        let supply = token.get_total_supply(&self.client).await?;
+        let supply = token.get_total_liquidity_token_supply(&self.client).await?;
         println!("token has liquidity of {}", supply);
         println!("........................................................");
         self.get_wallet_eth_balance().await?;

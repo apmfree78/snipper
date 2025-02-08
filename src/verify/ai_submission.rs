@@ -1,4 +1,4 @@
-use std::any;
+use std::fmt::Debug;
 
 use anyhow::anyhow;
 use log::warn;
@@ -54,7 +54,7 @@ pub async fn full_token_review_with_ai(
         prompt_type: PromptType::FullReview,
     };
 
-    println!("final prompt => {}", format!("{:#?}", website_openai_chat));
+    // println!("final prompt => {}", format!("{:#?}", website_openai_chat));
 
     let code_check = chat_submission::<TokenFinalAssessment>(website_openai_chat, ai_model).await?;
 
@@ -120,10 +120,10 @@ where
     let (model, url, max_tokens) = match ai_model {
         AIModel::DeepSeek => (
             "deepseek-reasoner".to_string(),
-            "https://api.openai.com/v1",
+            "https://api.deepseek.com",
             8_000,
         ),
-        AIModel::OpenAi => ("gpt-4o".to_string(), "https://api.deepseek.com", 16_000),
+        AIModel::OpenAi => ("gpt-4o".to_string(), "https://api.openai.com/v1", 16_000),
     };
 
     // Build the request body as a typed struct
@@ -175,12 +175,10 @@ where
 async fn process_response<T, K, M>(response: Response) -> anyhow::Result<Option<T>>
 where
     T: DeserializeOwned,
-    K: DeserializeOwned + HasContent,
-    M: DeserializeOwned + Default,
+    K: DeserializeOwned + HasContent + Debug,
+    M: DeserializeOwned + Default + Debug,
 {
     let resp: AiChatCompletion<K, M> = response.json().await?;
-
-    // println!("response => {:#?}", resp);
 
     // Grab the first choice
     let first_choice = resp

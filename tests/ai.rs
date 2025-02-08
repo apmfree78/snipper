@@ -167,7 +167,7 @@ async fn test_whitelist_ai_analysis() -> anyhow::Result<()> {
         let contract = ERC20::new(token_address, tx_wallet.client.clone());
         let name = contract.name().call().await?;
 
-        sleep(Duration::from_secs(1)).await;
+        sleep(Duration::from_secs(7)).await;
         let ai_analysis = token.ai_analysis(&AI_MODEL).await?;
 
         match ai_analysis {

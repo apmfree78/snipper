@@ -24,6 +24,7 @@ pub mod verify {
     pub mod ai_structs;
     pub mod ai_submission;
     pub mod ai_token_analysis;
+    pub mod check_token_holders;
     pub mod check_token_lock;
     pub mod detect_honeypot;
     pub mod etherscan_api;

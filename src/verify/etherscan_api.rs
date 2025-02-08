@@ -20,6 +20,30 @@ pub struct EtherscanResponse<T> {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct ContractOwner {
+    #[serde(rename = "contractAddress")]
+    _contract_address: String,
+
+    #[serde(rename = "contractCreator")]
+    contract_creator: String,
+
+    #[serde(rename = "txHash")]
+    _tx_hash: String,
+
+    #[serde(rename = "blockNumber")]
+    _block_number: String,
+
+    #[serde(rename = "timestamp")]
+    _timestamp: String,
+
+    #[serde(rename = "contractFactory")]
+    _contract_factory: String,
+
+    #[serde(rename = "creationBytecode")]
+    _creation_byte_code: String,
+}
+
+#[derive(Debug, Deserialize)]
 struct ContractSourceCode {
     #[serde(rename = "SourceCode")]
     source_code: String,
@@ -160,7 +184,7 @@ pub struct TokenWebData {
 ///
 /// # Arguments
 ///
-/// - `contract_address`: The ERC-20 contract address (LP token address).
+/// - `contract_address`: The ERC-20 contract address (token address).
 /// - `page`: The page number (starting from 1).
 /// - `offset`: The number of holders per page (e.g. 10, 50, etc.).
 /// - `api_key`: Your Etherscan API key.
@@ -284,6 +308,61 @@ address={}&apikey={}",
     };
 
     Ok(source_code)
+}
+
+pub async fn get_contract_owner(contract_address: &str) -> Result<Option<String>> {
+    let etherscan_api_key = get_etherscan_api_key()?;
+
+    let chain_id = CHAIN as u64;
+    let etherscan_api = get_etherscan_api()?;
+
+    let url = format!(
+        "{}?chainid={}&module=contract&action=getcontractcreation&
+contractaddresses={}&apikey={}",
+        etherscan_api, chain_id, contract_address, etherscan_api_key
+    );
+
+    // Make HTTP GET request
+    let client = Client::new();
+    let response = client.get(&url).send().await?;
+
+    if !response.status().is_success() {
+        return Err(anyhow!("Request failed with status: {}", response.status()));
+    }
+
+    // Parse JSON response
+    let parsed: EtherscanResponse<ContractOwner> = match response.json().await {
+        Ok(parsed) => {
+            // println!("parsed => {:#?}", parsed);
+            parsed
+        }
+        Err(error) => {
+            warn!("could not decode => {}", error);
+
+            // // TESTING >>>>>>>>>>>>>>>>
+            // sleep(Duration::from_millis(1000)).await;
+            let response = client.get(&url).send().await?;
+            let response_text = response.text().await?;
+            println!("response_text => {}", response_text);
+
+            return Ok(None);
+        }
+    };
+
+    // Check Etherscan response status
+    if parsed.status != "1" {
+        return Err(anyhow!(
+            "Etherscan returned status={}, message={}",
+            parsed.status,
+            parsed.message
+        ));
+    }
+
+    // Convert to Vec<TokenHolders>
+    match parsed.result.first() {
+        Some(result) => Ok(Some(result.contract_creator.clone())),
+        None => Ok(None),
+    }
 }
 
 pub async fn get_token_info(contract_address: &str) -> Result<Option<TokenWebData>> {
