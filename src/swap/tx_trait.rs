@@ -1,6 +1,7 @@
 use crate::abi::erc20::ERC20;
 use crate::data::tokens::Erc20Token;
 use crate::utils::tx::{calculate_next_block_base_fee, get_current_block};
+use crate::verify::token_check::anvil::simlator::AnvilTestSimulator;
 use async_trait::async_trait;
 use ethers::types::{Address, U256};
 use ethers::utils::format_units;
@@ -85,6 +86,18 @@ pub trait Txs {
 }
 
 impl Txs for AnvilSimulator {
+    fn signed_client(&self) -> Arc<SignerMiddleware<Provider<Ws>, Wallet<SigningKey>>> {
+        self.signed_client.clone()
+    }
+    fn client(&self) -> Arc<Provider<Ws>> {
+        self.client.clone()
+    }
+    fn sender(&self) -> Address {
+        self.sender
+    }
+}
+
+impl Txs for AnvilTestSimulator {
     fn signed_client(&self) -> Arc<SignerMiddleware<Provider<Ws>, Wallet<SigningKey>>> {
         self.signed_client.clone()
     }

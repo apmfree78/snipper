@@ -21,6 +21,20 @@ pub mod verify {
     pub mod deepseek {
         pub mod structs;
     }
+    pub mod token_check {
+        pub mod token_checklist;
+        pub mod token_data;
+        pub mod token_holder_check;
+        pub mod token_liquidity_check;
+        pub mod token_methods;
+        pub mod token_score;
+        pub mod anvil {
+            pub mod buy_sell;
+            pub mod simlator;
+            pub mod supporting_methods;
+            pub mod validation;
+        }
+    }
     pub mod ai_structs;
     pub mod ai_submission;
     pub mod ai_token_analysis;
