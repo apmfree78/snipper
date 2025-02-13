@@ -39,7 +39,7 @@ pub struct TokenHolders {
 
 pub async fn is_liquidity_locked(
     token: &Erc20Token,
-    threshold_percent: u64,
+    threshold_percent: f64,
     client: &Arc<Provider<Ws>>,
 ) -> Result<Option<bool>> {
     // check api limit for this token is not reached
@@ -109,7 +109,7 @@ pub async fn is_liquidity_locked(
 
     // convert locked balance to U256
     // Step 4) check if locked_balance >= threshold% of total supply
-    let required_locked = total_supply * U256::from(threshold_percent) / U256::from(100_u64);
+    let required_locked = total_supply * U256::from(threshold_percent as u64) / U256::from(100_u64);
     let locked_enough = locked_balance >= required_locked;
 
     Ok(Some(locked_enough))

@@ -1,9 +1,11 @@
 use super::anvil::validation::{TokenLiquid, TokenStatus};
+use super::external_api::moralis;
 use super::token_data::ERC20Token;
 use super::token_holder_check::get_token_holder_check;
 use super::token_liquidity_check::get_percentage_liquidity_locked_or_burned;
+use crate::app_config::AI_MODEL;
 use crate::utils::type_conversion::address_to_string;
-use crate::verify::ai_submission::check_code_with_ai;
+use crate::verify::ai_submission::{check_code_with_ai, AIModel};
 use crate::verify::etherscan_api::{
     get_contract_owner, get_source_code, get_token_info, TokenWebData,
 };
@@ -38,7 +40,7 @@ pub struct TokenCheckList {
 
     // get data from etherscan / moralis api and calculate
     // how much liquidity (in ETH) does token have on major exchange (uniswap, etc)
-    pub liquidity_in_eth: f64,
+    pub liquidity_in_eth: u128,
 
     // get data from etherscan or moralis api
     // does token have a website?
@@ -59,10 +61,7 @@ pub async fn generate_token_checklist(
     let token_code = get_source_code(&token_address).await?;
 
     // get if token is `possible_scam` and `could_legitimately_justify_suspicious_code`
-    let token_code_check =
-        check_code_with_ai(token_code, &crate::verify::ai_submission::AIModel::OpenAi)
-            .await?
-            .unwrap();
+    let token_code_check = check_code_with_ai(token_code, &AI_MODEL).await?.unwrap();
 
     let token_contract_creator = get_contract_owner(&token_address).await?.unwrap();
 
@@ -74,7 +73,7 @@ pub async fn generate_token_checklist(
 
     let liquidity_in_eth = token.get_liquidity(client).await?;
 
-    let token_online_presense = match get_token_info(&token_address).await? {
+    let token_online_presense = match moralis::get_token_info(&token_address).await? {
         Some(online_presense) => online_presense,
         None => TokenWebData::default(),
     };

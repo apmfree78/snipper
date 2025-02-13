@@ -20,16 +20,6 @@ pub struct ERC20Token {
     pub is_token_0: bool,      // if true token is token_0, otherwise its token_1
 }
 
-// token will get a score based on TokenCheckList
-#[derive(Debug)]
-pub enum TokenScore {
-    Legit = 4,
-    LikelyLegit = 3,
-    Iffy = 2,
-    LikelyScam = 1,
-    Scam = 0,
-}
-
 /// get ERC20Token - struct that contains all data we need - from token address
 pub async fn get_erc20_by_token_address(
     token_address: &str,

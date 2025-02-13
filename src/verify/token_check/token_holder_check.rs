@@ -4,8 +4,11 @@ use std::sync::Arc;
 
 use crate::{
     app_config::TOKEN_HOLDER_THRESHOLD_PERCENTAGE,
-    utils::type_conversion::u256_to_f64,
-    verify::{check_token_lock::TokenHolders, etherscan_api::get_token_holder_list},
+    utils::type_conversion::{address_to_string, u256_to_f64},
+    verify::{
+        check_token_lock::TokenHolders, etherscan_api::get_token_holder_list,
+        token_check::external_api::moralis,
+    },
 };
 
 use super::token_data::ERC20Token;
@@ -27,7 +30,8 @@ pub async fn get_token_holder_check(
     // Step 2) Retrieve top holder info. This is the part you'll have to implement
     //         with a subgraph or block explorer. For now, we assume a function:
     // fetch_top_lp_holders(pair_address) -> Vec<LpHolderInfo>
-    let top_holders: Vec<TokenHolders> = get_token_holder_list(token.address).await?;
+    let token_address = address_to_string(token.address);
+    let top_holders: Vec<TokenHolders> = moralis::get_token_holder_list(&token_address).await?;
 
     if top_holders.is_empty() {
         // no token holders found yet!
@@ -66,7 +70,7 @@ pub async fn get_token_holder_check(
     );
 
     let max_token_threshold =
-        total_supply * U256::from(TOKEN_HOLDER_THRESHOLD_PERCENTAGE) / U256::from(100_u64);
+        total_supply * U256::from(TOKEN_HOLDER_THRESHOLD_PERCENTAGE as u64) / U256::from(100_u64);
 
     let token_holder_check = TokenHolderCheck {
         creator_holder_percentage: 100_f64

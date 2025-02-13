@@ -16,3 +16,4 @@ Cargo.lock
 # log files
 *.log
 .env
+moralis.sh

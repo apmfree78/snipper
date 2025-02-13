@@ -46,14 +46,12 @@ impl ERC20Token {
         Ok(eth_supply >= MIN_LIQUIDITY)
     }
 
-    pub async fn get_liquidity(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<f64> {
+    pub async fn get_liquidity(&self, client: &Arc<Provider<Ws>>) -> anyhow::Result<u128> {
         let pool = UNISWAP_PAIR::new(self.pair_address, client.clone());
 
         let (reserve0, reserve1, _) = pool.get_reserves().call().await?;
 
         let eth_supply = if self.is_token_0 { reserve1 } else { reserve0 };
-
-        let eth_supply = eth_supply as f64 / 1e18_f64;
 
         Ok(eth_supply)
     }

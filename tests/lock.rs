@@ -4,7 +4,6 @@ use ethers::types::{Address, BlockNumber, U256};
 use snipper::abi::uniswap_factory_v2::UNISWAP_V2_FACTORY;
 use snipper::abi::uniswap_pair::UNISWAP_PAIR;
 use snipper::data::contracts::CONTRACT;
-use snipper::data::nonce::intialize_nonce;
 use snipper::data::token_state_update::get_and_save_erc20_by_token_address;
 use snipper::data::tokens::{Erc20Token, TokenState};
 use snipper::events::PairCreatedEvent;
@@ -89,7 +88,7 @@ async fn test_that_liquidity_is_locked() -> anyhow::Result<()> {
     let cpai_address: Address = CPAI.parse()?;
     let setup = setup(cpai_address).await?;
 
-    let is_locked = is_liquidity_locked(&setup.token, 90u64, &setup.tx_wallet.client)
+    let is_locked = is_liquidity_locked(&setup.token, 90f64, &setup.tx_wallet.client)
         .await?
         .unwrap();
 
@@ -103,7 +102,7 @@ async fn test_that_liquidity_is_locked_2() -> anyhow::Result<()> {
     let spx_address: Address = SPX.parse()?;
     let setup = setup(spx_address).await?;
 
-    let is_locked = is_liquidity_locked(&setup.token, 90u64, &setup.tx_wallet.client)
+    let is_locked = is_liquidity_locked(&setup.token, 90f64, &setup.tx_wallet.client)
         .await?
         .unwrap();
 
@@ -119,7 +118,7 @@ async fn test_that_liquidity_is_locked_base() -> anyhow::Result<()> {
     let aixbt_address: Address = AIXBT.parse()?;
     let setup = setup(aixbt_address).await?;
 
-    let is_locked = is_liquidity_locked(&setup.token, 90u64, &setup.tx_wallet.client)
+    let is_locked = is_liquidity_locked(&setup.token, 90f64, &setup.tx_wallet.client)
         .await?
         .unwrap();
 
@@ -135,7 +134,7 @@ async fn test_that_liquidity_is_locked_base_1() -> anyhow::Result<()> {
     let pippin_address: Address = PIPPIN.parse()?;
     let setup = setup(pippin_address).await?;
 
-    let is_locked = is_liquidity_locked(&setup.token, 90u64, &setup.tx_wallet.client)
+    let is_locked = is_liquidity_locked(&setup.token, 90f64, &setup.tx_wallet.client)
         .await?
         .unwrap();
 
@@ -151,7 +150,7 @@ async fn test_that_liquidity_is_locked_base_2() -> anyhow::Result<()> {
     let defai_address: Address = DEFAI.parse()?;
     let setup = setup(defai_address).await?;
 
-    let is_locked = is_liquidity_locked(&setup.token, 90u64, &setup.tx_wallet.client)
+    let is_locked = is_liquidity_locked(&setup.token, 90f64, &setup.tx_wallet.client)
         .await?
         .unwrap();
 

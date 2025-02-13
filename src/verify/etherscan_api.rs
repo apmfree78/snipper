@@ -385,7 +385,6 @@ contractaddress={}&apikey={}",
         return Err(anyhow!("Request failed with status: {}", response.status()));
     }
 
-    // println!("response_text => {}", response_text);
     // Parse JSON response
     let parsed: EtherscanResponse<TokenInfo> = match response.json().await {
         Ok(parsed) => {

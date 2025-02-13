@@ -14,7 +14,7 @@ pub enum AppMode {
 //*****************************************
 //*****************************************
 // CHANGE THIS VALUE TO SET CHAIN AND MODE FOR APP
-pub const CHAIN: Chain = Chain::Base;
+pub const CHAIN: Chain = Chain::Mainnet;
 
 pub const APP_MODE: AppMode = AppMode::Production;
 
@@ -25,7 +25,7 @@ pub const CHECK_IF_HONEYPOT: bool = true;
 
 pub const MIN_LIQUIDITY: u128 = 10_000_000_000_000_000_000; // 10 ether
 pub const MIN_LIQUIDITY_THRESHOLD: u128 = 10_000_000_000_000_000_000; // 10 ether
-pub const VERY_LOW_LIQUIDITY_THRESHOLD: u128 = 2_000_000_000_000_000_000; // 3 ether
+pub const VERY_LOW_LIQUIDITY_THRESHOLD: u128 = 1_000_000_000_000_000_000; // 3 ether
 pub const LOW_LIQUIDITY_THRESHOLD: u128 = 10_000_000_000_000_000_000; // 5 ether
 pub const MEDIUM_LIQUIDITY_THRESHOLD: u128 = 15_000_000_000_000_000_000; // 10 ether
 pub const HIGH_LIQUIDITY_THRESHOLD: u128 = 20_000_000_000_000_000_000; // 20 ether
@@ -35,8 +35,8 @@ pub const MIN_RESERVE_ETH_FACTOR: u64 = 10;
 
 pub const TIME_ROUNDS: usize = 10;
 
-pub const LIQUIDITY_PERCENTAGE_LOCKED: u64 = 90;
-pub const TOKEN_HOLDER_THRESHOLD_PERCENTAGE: u64 = 10;
+pub const LIQUIDITY_PERCENTAGE_LOCKED: f64 = 90.0;
+pub const TOKEN_HOLDER_THRESHOLD_PERCENTAGE: f64 = 10.0;
 pub const TOKEN_LOCKERS_MAINNET: [&str; 4] = [
     "0xe2fe530c047f2d85298b07d9333c05737f1435fb", // team finance (lowercased)
     "0x663a5c229c09b049e36dcc11a9b0d4a8eb9db214", // UNCX (lowercased)

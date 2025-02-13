@@ -10,6 +10,7 @@ use snipper::events::PairCreatedEvent;
 use snipper::swap::mainnet::setup::{TxWallet, WalletType};
 use snipper::swap::tx_trait::Txs;
 use snipper::verify::check_token_holders::get_token_holder_analysis;
+use snipper::verify::token_check::external_api::moralis;
 use snipper::{
     abi::erc20::ERC20,
     app_config::AI_MODEL,
@@ -22,8 +23,8 @@ use std::{sync::Arc, time::Duration};
 use tokio::time::sleep;
 
 pub const WHITELIST_TOKENS: [&str; 4] = [
-    "0x6982508145454Ce325dDbE47a25d4ec3d2311933",
     "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE",
+    "0x6982508145454Ce325dDbE47a25d4ec3d2311933",
     "0x1151CB3d861920e07a38e03eEAd12C32178567F6",
     "0xcf0C122c6b73ff809C693DB761e7BaeBe62b6a2E",
 ];
@@ -76,6 +77,7 @@ async fn test_contract_creation() -> anyhow::Result<()> {
 
 // TEST ON BASE
 #[tokio::test]
+#[ignore]
 async fn get_holder_analysis() -> anyhow::Result<()> {
     dotenv().ok();
 
@@ -175,6 +177,32 @@ async fn test_whitelist_get_info() -> anyhow::Result<()> {
 
         sleep(Duration::from_secs(1)).await;
         let token_info = get_token_info(token).await?;
+
+        match token_info {
+            Some(info) => {
+                println!("INFO FOR {}, => {:#?}", name, info);
+                assert!(!info.website.is_empty() || !info.twitter.is_empty());
+            }
+            None => println!("no token info avaliable!"),
+        }
+    }
+    // assert!(!source_code.is_empty());
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_whitelist_get_info_using_moralis() -> anyhow::Result<()> {
+    dotenv().ok();
+    let tx_wallet = TxWallet::new(WalletType::Test).await?;
+    let tx_wallet = Arc::new(tx_wallet);
+
+    for token in WHITELIST_TOKENS {
+        let token_address: Address = token.parse()?;
+        let contract = ERC20::new(token_address, tx_wallet.client.clone());
+        let name = contract.name().call().await?;
+
+        let token_info = moralis::get_token_info(token).await?;
 
         match token_info {
             Some(info) => {

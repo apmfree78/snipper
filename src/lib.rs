@@ -28,6 +28,9 @@ pub mod verify {
         pub mod token_liquidity_check;
         pub mod token_methods;
         pub mod token_score;
+        pub mod external_api {
+            pub mod moralis;
+        }
         pub mod anvil {
             pub mod buy_sell;
             pub mod simlator;

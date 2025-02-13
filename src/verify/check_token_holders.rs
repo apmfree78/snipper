@@ -8,10 +8,10 @@ use crate::{
         TOKEN_LOCKERS_MAINNET,
     },
     data::tokens::Erc20Token,
-    utils::type_conversion::{u256_to_f64, u256_to_f64_with_decimals},
+    utils::type_conversion::{address_to_string, u256_to_f64, u256_to_f64_with_decimals},
     verify::{
         check_token_lock::TokenHolders, etherscan_api::get_token_holder_list,
-        thegraph_api::fetch_uniswap_lp_holders,
+        thegraph_api::fetch_uniswap_lp_holders, token_check::external_api::moralis,
     },
 };
 
@@ -82,7 +82,7 @@ pub async fn get_token_holder_analysis(
     );
 
     let max_token_threshold =
-        total_supply * U256::from(TOKEN_HOLDER_THRESHOLD_PERCENTAGE) / U256::from(100_u64);
+        total_supply * U256::from(TOKEN_HOLDER_THRESHOLD_PERCENTAGE as u64) / U256::from(100_u64);
 
     let token_holder_analysis = TokenHolderAnalysis {
         creator_holder_percentage: u256_div_u256_to_f64(creator_holdings.quantity, total_supply),
