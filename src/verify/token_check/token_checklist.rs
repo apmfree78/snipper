@@ -32,7 +32,7 @@ pub struct TokenCheckList {
     // get below 3 fields from etherscan / moralis api and calculate
 
     // percentage of minted tokens owned by creator (deployer) of token contract
-    pub creator_percentage_tokens_held: f64,
+    // pub creator_percentage_tokens_held: f64,
     // what percentage of tokens does top token holder own?
     pub top_holder_percentage_tokens_held: f64,
     // what percentage of LP (liquidity tokens) is locked (in 3rd party locker) or burned (pointing to zero/dead address)
@@ -63,13 +63,12 @@ pub async fn generate_token_checklist(
     // get if token is `possible_scam` and `could_legitimately_justify_suspicious_code`
     let token_code_check = check_code_with_ai(token_code, &AI_MODEL).await?.unwrap();
 
-    let token_contract_creator = get_contract_owner(&token_address).await?.unwrap();
+    // let token_contract_creator = get_contract_owner(&token_address).await?.unwrap();
 
-    let token_holder_check =
-        match get_token_holder_check(&token, &token_contract_creator, client).await? {
-            Some(check) => check,
-            None => panic!("could not get token holder data"),
-        };
+    let token_holder_check = match get_token_holder_check(&token, client).await? {
+        Some(check) => check,
+        None => panic!("could not get token holder data"),
+    };
 
     let liquidity_in_eth = token.get_liquidity(client).await?;
 
@@ -98,7 +97,7 @@ pub async fn generate_token_checklist(
             .could_legitimately_justify_suspicious_code,
         reason_could_or_couldnt_justify_suspicious: token_code_check
             .reason_could_be_legitimate_or_not,
-        creator_percentage_tokens_held: token_holder_check.creator_holder_percentage,
+        // creator_percentage_tokens_held: token_holder_check.creator_holder_percentage,
         top_holder_percentage_tokens_held: token_holder_check.top_holder_percentage,
         percentage_liquidity_locked_or_burned,
         liquidity_in_eth,

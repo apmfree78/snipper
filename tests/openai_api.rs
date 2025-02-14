@@ -77,7 +77,6 @@ async fn test_contract_creation() -> anyhow::Result<()> {
 
 // TEST ON BASE
 #[tokio::test]
-#[ignore]
 async fn get_holder_analysis() -> anyhow::Result<()> {
     dotenv().ok();
 
@@ -86,17 +85,16 @@ async fn get_holder_analysis() -> anyhow::Result<()> {
 
     let info = setup(token_address).await?;
 
-    let token_owner = get_contract_owner(VIRTUALS).await?;
+    // let token_owner = get_contract_owner(VIRTUALS).await?;
+    //
+    // let owner = match token_owner {
+    //     Some(data) => data,
+    //     None => panic!("Opps..could not unwrap!"),
+    // };
 
-    let owner = match token_owner {
-        Some(data) => data,
-        None => panic!("Opps..could not unwrap!"),
-    };
-
-    let token_holder_analysis =
-        get_token_holder_analysis(&info.token, &owner, &info.tx_wallet.client)
-            .await?
-            .unwrap();
+    let token_holder_analysis = get_token_holder_analysis(&info.token, &info.tx_wallet.client)
+        .await?
+        .unwrap();
 
     println!("analysis => {:#?}", token_holder_analysis);
 
@@ -192,6 +190,7 @@ async fn test_whitelist_get_info() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_whitelist_get_info_using_moralis() -> anyhow::Result<()> {
     dotenv().ok();
     let tx_wallet = TxWallet::new(WalletType::Test).await?;

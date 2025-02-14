@@ -63,7 +63,7 @@ pub async fn is_liquidity_locked(
     token.increment_graphql_checks().await;
 
     if top_holders.is_empty() {
-        // no token holders found yet!
+        // no token holders found yet
         return Ok(None);
     }
 

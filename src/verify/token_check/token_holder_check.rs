@@ -15,15 +15,15 @@ use super::token_data::ERC20Token;
 
 #[derive(Debug, Default)]
 pub struct TokenHolderCheck {
-    pub creator_holder_percentage: f64,
+    // pub creator_holder_percentage: f64,
     pub top_holder_percentage: f64,
-    pub creator_owns_more_than_10_percent_of_tokens: bool,
+    // pub creator_owns_more_than_10_percent_of_tokens: bool,
     pub top_holder_more_than_10_percent_of_tokens: bool,
 }
 
 pub async fn get_token_holder_check(
     token: &ERC20Token,
-    creator_address: &str,
+    // creator_address: &str,
     client: &Arc<Provider<Ws>>,
 ) -> Result<Option<TokenHolderCheck>> {
     let total_supply = token.get_total_token_supply(client).await?;
@@ -39,7 +39,7 @@ pub async fn get_token_holder_check(
     }
 
     let mut top_holder = TokenHolders::default();
-    let mut creator_holdings = TokenHolders::default();
+    // let mut creator_holdings = TokenHolders::default();
 
     for info in top_holders.iter() {
         // find top holder
@@ -50,13 +50,13 @@ pub async fn get_token_holder_check(
             };
         }
 
-        // check creator holdings
-        if info.holder.to_lowercase() == creator_address.to_lowercase() {
-            creator_holdings = TokenHolders {
-                holder: info.holder.clone(),
-                quantity: info.quantity,
-            };
-        }
+        // // check creator holdings
+        // if info.holder.to_lowercase() == creator_address.to_lowercase() {
+        //     creator_holdings = TokenHolders {
+        //         holder: info.holder.clone(),
+        //         quantity: info.quantity,
+        //     };
+        // }
     }
 
     // require
@@ -73,11 +73,11 @@ pub async fn get_token_holder_check(
         total_supply * U256::from(TOKEN_HOLDER_THRESHOLD_PERCENTAGE as u64) / U256::from(100_u64);
 
     let token_holder_check = TokenHolderCheck {
-        creator_holder_percentage: 100_f64
-            * u256_div_u256_to_f64(creator_holdings.quantity, total_supply),
+        // creator_holder_percentage: 100_f64
+        //     * u256_div_u256_to_f64(creator_holdings.quantity, total_supply),
         top_holder_percentage: 100_f64 * u256_div_u256_to_f64(top_holder.quantity, total_supply),
-        creator_owns_more_than_10_percent_of_tokens: creator_holdings.quantity
-            > max_token_threshold,
+        // creator_owns_more_than_10_percent_of_tokens: creator_holdings.quantity
+        //     > max_token_threshold,
         top_holder_more_than_10_percent_of_tokens: top_holder.quantity > max_token_threshold,
     };
 

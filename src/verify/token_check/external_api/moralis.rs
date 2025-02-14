@@ -18,8 +18,8 @@ pub enum MoralisApiCallType {
 
 #[derive(Debug, Deserialize)]
 struct MoralisResponse<T> {
-    page: String,
-    page_size: String,
+    page: u32,
+    page_size: u32,
     cursor: String,
     result: Vec<T>,
 }
@@ -27,14 +27,14 @@ struct MoralisResponse<T> {
 #[derive(Debug, Deserialize)]
 struct MoralisTokenHolder {
     owner_address: String,
-    owner_address_label: String,
-    entity: String,
-    entity_logo: String,
+    owner_address_label: Option<String>,
+    entity: Option<String>,
+    entity_logo: Option<String>,
     balance: String,
     balance_formatted: String,
-    usd_value: String,
-    is_contract: String,
-    percentage_relative_to_total_supply: String,
+    usd_value: Option<String>,
+    is_contract: bool,
+    percentage_relative_to_total_supply: f64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -43,7 +43,7 @@ pub struct MoralisTokenMetadata {
     pub address_label: Option<String>,
     pub name: String,
     pub symbol: String,
-    pub decimals: String,
+    pub decimals: Option<String>,
     pub logo: Option<String>,
     pub logo_hash: Option<String>,
     pub thumbnail: Option<String>,
@@ -153,8 +153,11 @@ where
         .send()
         .await?;
 
+    // let response_text = response.text().await?;
+    // println!("response => {}", response_text);
     if !response.status().is_success() {
-        return Err(anyhow!("Request failed with status: {}", response.status()));
+        let response_text = response.text().await?;
+        return Err(anyhow!("Request failed with: {}", response_text));
     }
 
     // Parse JSON response
@@ -171,11 +174,6 @@ where
             let moralis_response: MoralisResponse<T> = response.json().await.map_err(|e| {
                 anyhow::anyhow!("Failed parsing token holders as MoralisResponse<T>: {}", e)
             })?;
-
-            // Optionally parse or check page_size if needed
-            if let Err(error) = moralis_response.page_size.parse::<u32>() {
-                return Err(anyhow::anyhow!("Could not parse page_size => {}", error));
-            }
 
             moralis_response.result
         }

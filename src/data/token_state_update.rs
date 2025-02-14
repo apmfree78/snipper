@@ -4,6 +4,7 @@ use crate::events::PairCreatedEvent;
 use crate::utils::type_conversion::address_to_string;
 use crate::utils::web_scrapper::scrape_site_and_get_text;
 use crate::verify::etherscan_api::{get_source_code, get_token_info, TokenWebData};
+use crate::verify::token_check::external_api::moralis;
 use anyhow::Result;
 use ethers::providers::{Provider, Ws};
 use ethers::types::{Address, U256};
@@ -189,39 +190,39 @@ pub async fn get_and_save_erc20_by_token_address(
 
     // check token info
     println!("get token web data...");
-    let token_web_data = get_token_info(&token_address_string).await?;
+    // let token_web_data = moralis::get_token_info(&token_address_string).await?;
 
-    let mut token_web_data = match token_web_data {
-        Some(data) => {
-            if data.website.is_empty() && data.twitter.is_empty() {
-                warn!("no website or twitter handle");
-                data
-                // return Ok(None);
-            } else {
-                data
-            }
-        }
-        None => {
-            TokenWebData::default()
-            // return Ok(None)
-        }
-    };
+    // let mut token_web_data = match token_web_data {
+    //     Some(data) => {
+    //         if data.website.is_empty() && data.twitter.is_empty() {
+    //             warn!("no website or twitter handle");
+    //             data
+    //             // return Ok(None);
+    //         } else {
+    //             data
+    //         }
+    //     }
+    //     None => {
+    //         TokenWebData::default()
+    //         // return Ok(None)
+    //     }
+    // };
 
-    println!("scrape website...");
-
-    let scraped_web_data = if !token_web_data.website.is_empty() {
-        match scrape_site_and_get_text(&token_web_data.website).await {
-            Ok(data) => data,
-            Err(_) => "".to_string(),
-        }
-    } else {
-        "".to_string()
-    };
-
-    token_web_data = TokenWebData {
-        scraped_web_content: scraped_web_data,
-        ..token_web_data
-    };
+    // println!("scrape website...");
+    //
+    // let scraped_web_data = if !token_web_data.website.is_empty() {
+    //     match scrape_site_and_get_text(&token_web_data.website).await {
+    //         Ok(data) => data,
+    //         Err(_) => "".to_string(),
+    //     }
+    // } else {
+    //     "".to_string()
+    // };
+    //
+    // token_web_data = TokenWebData {
+    //     scraped_web_content: scraped_web_data,
+    //     ..token_web_data
+    // };
 
     let token_count = get_openai_token_count(&contract_code);
 
@@ -253,7 +254,7 @@ pub async fn get_and_save_erc20_by_token_address(
         decimals,
         address: token_address,
         source_code: contract_code,
-        token_web_data,
+        token_web_data: TokenWebData::default(),
         source_code_tokens: token_count,
         pair_address: pair_created_event.pair,
         is_token_0,

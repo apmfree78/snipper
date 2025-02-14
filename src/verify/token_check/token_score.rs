@@ -46,14 +46,13 @@ pub fn get_token_score_with_rules_based_approch(token_checklist: TokenCheckList)
         token_checklist.top_holder_percentage_tokens_held < TOKEN_HOLDER_THRESHOLD_PERCENTAGE;
 
     // check contract creator wallet only holdes small percentage of tokens
-    let creator_token_holdings_check =
-        token_checklist.creator_percentage_tokens_held < TOKEN_HOLDER_THRESHOLD_PERCENTAGE;
+    // let creator_token_holdings_check =
+    //     token_checklist.creator_percentage_tokens_held < TOKEN_HOLDER_THRESHOLD_PERCENTAGE;
 
     // if token is solidity code is clean
     if !token_checklist.possible_scam {
-        if enough_liquidity_is_locked_or_burned
-            && top_token_holder_check
-            && creator_token_holdings_check
+        if enough_liquidity_is_locked_or_burned && top_token_holder_check
+        // && creator_token_holdings_check
         {
             if enough_liquidity {
                 return TokenScore::Legit;
@@ -77,9 +76,8 @@ pub fn get_token_score_with_rules_based_approch(token_checklist: TokenCheckList)
 
     if token_checklist.possible_scam && token_checklist.could_legitimately_justify_suspicious_code {
         if enough_liquidity {
-            if enough_liquidity_is_locked_or_burned
-                && top_token_holder_check
-                && creator_token_holdings_check
+            if enough_liquidity_is_locked_or_burned && top_token_holder_check
+            // && creator_token_holdings_check
             {
                 if token_checklist.has_website && token_checklist.has_twitter_or_discord {
                     return TokenScore::LikelyLegit;

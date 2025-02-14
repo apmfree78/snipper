@@ -17,15 +17,15 @@ use crate::{
 
 #[derive(Debug, Default)]
 pub struct TokenHolderAnalysis {
-    pub creator_holder_percentage: f64,
+    // pub creator_holder_percentage: f64,
     pub top_holder_percentage: f64,
-    pub creator_owns_more_than_10_percent_of_tokens: bool,
+    // pub creator_owns_more_than_10_percent_of_tokens: bool,
     pub top_holder_more_than_10_percent_of_tokens: bool,
 }
 
 pub async fn get_token_holder_analysis(
     token: &Erc20Token,
-    creator_address: &str,
+    // creator_address: &str,
     client: &Arc<Provider<Ws>>,
 ) -> Result<Option<TokenHolderAnalysis>> {
     // check api limit for this token is not reached
@@ -37,10 +37,9 @@ pub async fn get_token_holder_analysis(
     }
 
     let total_supply = token.get_total_token_supply(client).await?;
-    // Step 2) Retrieve top holder info. This is the part you'll have to implement
-    //         with a subgraph or block explorer. For now, we assume a function:
-    // fetch_top_lp_holders(pair_address) -> Vec<LpHolderInfo>
-    let top_holders: Vec<TokenHolders> = get_token_holder_list(token.address).await?;
+
+    let token_address = address_to_string(token.address);
+    let top_holders: Vec<TokenHolders> = moralis::get_token_holder_list(&token_address).await?;
 
     //increment api count
     token.increment_graphql_checks().await;
@@ -63,12 +62,12 @@ pub async fn get_token_holder_analysis(
         }
 
         // check creator holdings
-        if info.holder.to_lowercase() == creator_address.to_lowercase() {
-            creator_holdings = TokenHolders {
-                holder: info.holder.clone(),
-                quantity: info.quantity,
-            };
-        }
+        // if info.holder.to_lowercase() == creator_address.to_lowercase() {
+        //     creator_holdings = TokenHolders {
+        //         holder: info.holder.clone(),
+        //         quantity: info.quantity,
+        //     };
+        // }
     }
 
     // require
@@ -85,10 +84,10 @@ pub async fn get_token_holder_analysis(
         total_supply * U256::from(TOKEN_HOLDER_THRESHOLD_PERCENTAGE as u64) / U256::from(100_u64);
 
     let token_holder_analysis = TokenHolderAnalysis {
-        creator_holder_percentage: u256_div_u256_to_f64(creator_holdings.quantity, total_supply),
-        top_holder_percentage: u256_div_u256_to_f64(top_holder.quantity, total_supply),
-        creator_owns_more_than_10_percent_of_tokens: creator_holdings.quantity
-            > max_token_threshold,
+        // creator_holder_percentage: u256_div_u256_to_f64(creator_holdings.quantity, total_supply),
+        top_holder_percentage: 100_f64 * u256_div_u256_to_f64(top_holder.quantity, total_supply),
+        // creator_owns_more_than_10_percent_of_tokens: creator_holdings.quantity
+        //     > max_token_threshold,
         top_holder_more_than_10_percent_of_tokens: top_holder.quantity > max_token_threshold,
     };
 
