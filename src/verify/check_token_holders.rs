@@ -50,7 +50,7 @@ pub async fn get_token_holder_analysis(
     }
 
     let mut top_holder = TokenHolders::default();
-    let mut creator_holdings = TokenHolders::default();
+    // let mut creator_holdings = TokenHolders::default();
 
     for info in top_holders.iter() {
         // find top holder

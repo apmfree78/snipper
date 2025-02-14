@@ -8,6 +8,7 @@ use serde::de::DeserializeOwned;
 use crate::{
     app_config::{CODE_CHECK_PROMPT, FINAL_DETERMINATION_PROMPT, WEBSITE_CHECK_PROMPT},
     data::tokens::Erc20Token,
+    utils::type_conversion::truncate_code_unicode,
 };
 
 use super::{
@@ -65,10 +66,12 @@ pub async fn check_code_with_ai(
     code: String,
     ai_model: &AIModel,
 ) -> anyhow::Result<Option<TokenCodeCheck>> {
+    let truncated_code = truncate_code_unicode(&code, 115_000);
+
     let website_openai_chat = AIChat {
         prompt_instructions: CODE_CHECK_PROMPT.to_string(),
         ai_persona: "You are a solidity security expert and token analyst.".to_string(),
-        prompt_content_to_review: code,
+        prompt_content_to_review: truncated_code,
         prompt_type: PromptType::Code,
     };
 

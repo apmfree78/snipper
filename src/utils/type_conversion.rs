@@ -11,6 +11,18 @@ use std::str::FromStr;
 
 use crate::app_config::TIME_ROUNDS;
 
+/// Truncates `text` to at most `max_len` *characters* (Unicode-aware).
+/// This avoids cutting in the middle of a multibyte character.
+pub fn truncate_code_unicode(text: &str, max_len: usize) -> String {
+    let mut chars = text.chars();
+    if text.chars().count() > max_len {
+        // Take the first `max_len` chars and collect into a new String
+        chars.by_ref().take(max_len).collect()
+    } else {
+        text.to_string()
+    }
+}
+
 pub fn get_function_selector(function_signature: &str) -> Bytes {
     let hash = H256::from(keccak256(function_signature.as_bytes()));
     Bytes::from(&hash[0..4])

@@ -4,10 +4,12 @@ use std::sync::Arc;
 
 use crate::{
     app_config::{API_CHECK_LIMIT, CHAIN, TOKEN_LOCKERS_BASE, TOKEN_LOCKERS_MAINNET},
+    utils::type_conversion::address_to_string,
     verify::{
-        check_token_lock::TokenHolders, etherscan_api::get_token_holder_list,
+        check_token_lock::TokenHolders,
+        etherscan_api::get_token_holder_list,
         thegraph_api::fetch_uniswap_lp_holders,
-        token_check::token_holder_check::u256_div_u256_to_f64,
+        token_check::{external_api::moralis, token_holder_check::u256_div_u256_to_f64},
     },
 };
 
@@ -43,7 +45,8 @@ pub async fn get_percentage_liquidity_locked_or_burned(
     //         with a subgraph or etherscan block explorer api. For now, we assume a function:
     // fetch_top_lp_holders(pair_address) -> Vec<TokenHolders>
     let top_holders: Vec<TokenHolders> = if CHAIN == Chain::Base {
-        get_token_holder_list(token.pair_address).await?
+        let pair_address = address_to_string(token.pair_address);
+        moralis::get_token_holder_list(&pair_address).await?
     } else {
         fetch_uniswap_lp_holders(token.pair_address).await?
     };

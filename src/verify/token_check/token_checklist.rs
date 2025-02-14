@@ -9,6 +9,7 @@ use crate::verify::ai_submission::{check_code_with_ai, AIModel};
 use crate::verify::etherscan_api::{
     get_contract_owner, get_source_code, get_token_info, TokenWebData,
 };
+use crate::verify::token_check::token_holder_check::TokenHolderCheck;
 use ethers::providers::{Provider, Ws};
 use std::sync::Arc;
 
@@ -39,8 +40,8 @@ pub struct TokenCheckList {
     pub percentage_liquidity_locked_or_burned: Option<f64>,
 
     // get data from etherscan / moralis api and calculate
-    // how much liquidity (in ETH) does token have on major exchange (uniswap, etc)
-    pub liquidity_in_eth: u128,
+    // how much liquidity (in wei) does token have on major exchange (uniswap, etc)
+    pub liquidity_in_wei: u128,
 
     // get data from etherscan or moralis api
     // does token have a website?
@@ -58,28 +59,36 @@ pub async fn generate_token_checklist(
     client: &Arc<Provider<Ws>>,
 ) -> anyhow::Result<TokenCheckList> {
     let token_address = address_to_string(token.address);
+
+    println!("1. grabbing source code..");
     let token_code = get_source_code(&token_address).await?;
 
     // get if token is `possible_scam` and `could_legitimately_justify_suspicious_code`
+    println!("2. checking source code..");
     let token_code_check = check_code_with_ai(token_code, &AI_MODEL).await?.unwrap();
 
     // let token_contract_creator = get_contract_owner(&token_address).await?.unwrap();
 
+    println!("3. token holder check...");
     let token_holder_check = match get_token_holder_check(&token, client).await? {
         Some(check) => check,
-        None => panic!("could not get token holder data"),
+        None => TokenHolderCheck::default(),
     };
 
+    println!("4. getting liquidity...");
     let liquidity_in_eth = token.get_liquidity(client).await?;
 
+    println!("5. getting online presence...");
     let token_online_presense = match moralis::get_token_info(&token_address).await? {
         Some(online_presense) => online_presense,
         None => TokenWebData::default(),
     };
 
+    println!("6. getting % liquidity burned or locked...");
     let percentage_liquidity_locked_or_burned =
         get_percentage_liquidity_locked_or_burned(&token, client).await?;
 
+    println!("7. running buy / sell simulation with anvil...");
     let token_status_from_simulated_buy_sell = token
         .validate_with_simulated_buy_sell(TokenLiquid::HasEnough)
         .await?;
@@ -100,7 +109,7 @@ pub async fn generate_token_checklist(
         // creator_percentage_tokens_held: token_holder_check.creator_holder_percentage,
         top_holder_percentage_tokens_held: token_holder_check.top_holder_percentage,
         percentage_liquidity_locked_or_burned,
-        liquidity_in_eth,
+        liquidity_in_wei: liquidity_in_eth,
         has_website: !token_online_presense.website.is_empty(),
         has_twitter_or_discord: !token_online_presense.twitter.is_empty()
             || !token_online_presense.discord.is_empty(),

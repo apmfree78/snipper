@@ -86,11 +86,11 @@ pub async fn get_token_holder_check(
 
 // CAREFULLY USING - make sure numerator < denominator to be safe
 pub fn u256_div_u256_to_f64(numerator: U256, denominator: U256) -> f64 {
-    let scale = U256::exp10(18);
+    let scale = U256::exp10(6);
 
     let scaled_value = numerator * scale / denominator;
 
-    let value = u256_to_f64(scaled_value).unwrap() / 1e18_f64;
+    let value = u256_to_f64(scaled_value).unwrap() / 1e6_f64;
 
     value
 }

@@ -24,7 +24,7 @@ struct MoralisResponse<T> {
     result: Vec<T>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 struct MoralisTokenHolder {
     owner_address: String,
     owner_address_label: Option<String>,
@@ -164,16 +164,39 @@ where
     // Match on the api_call_type to parse the shape we expect:
     let vec_t: Vec<T> = match api_call_type {
         // Metadata endpoint -> directly a JSON array => parse as Vec<T>
-        MoralisApiCallType::GetTokenMetaData => response
-            .json::<Vec<T>>()
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed parsing token metadata as Vec<T>: {}", e))?,
+        MoralisApiCallType::GetTokenMetaData => match response.json::<Vec<T>>().await {
+            Ok(metadata) => metadata,
+            Err(error) => {
+                let response = client
+                    .get(&url)
+                    .header("accept", "application/json")
+                    .header("X-API-Key", api_key.clone())
+                    .send()
+                    .await?;
+
+                let response_text = response.text().await?;
+                println!("response_text => {}", response_text);
+                panic!("Failed parsing token metadata as Vec<T>: {}", error);
+            }
+        },
 
         // Holders endpoint -> JSON object with "result" => parse into MoralisResponse<T>, then get .result
         MoralisApiCallType::GetTokenHolders => {
-            let moralis_response: MoralisResponse<T> = response.json().await.map_err(|e| {
-                anyhow::anyhow!("Failed parsing token holders as MoralisResponse<T>: {}", e)
-            })?;
+            let moralis_response: MoralisResponse<T> = match response.json().await {
+                Ok(token_holders) => token_holders,
+                Err(_) => {
+                    let response = client
+                        .get(&url)
+                        .header("accept", "application/json")
+                        .header("X-API-Key", api_key.clone())
+                        .send()
+                        .await?;
+
+                    let response_text = response.text().await?;
+                    println!("response_text => {}", response_text);
+                    return Ok(Vec::new());
+                }
+            };
 
             moralis_response.result
         }

@@ -59,7 +59,7 @@ pub async fn get_token_uniswap_v2_pair_address(
     client: &Arc<Provider<Ws>>,
 ) -> anyhow::Result<(Address, bool)> {
     // get required addresses from contracts.toml
-    let uniswap_v2_factory_address: Address = CONTRACT.get_address().uniswap_factory.parse()?;
+    let uniswap_v2_factory_address: Address = CONTRACT.get_address().uniswap_v2_factory.parse()?;
     let weth_address: Address = CONTRACT.get_address().weth.parse()?;
 
     // determine pair addresses for RPC calls to eth node
