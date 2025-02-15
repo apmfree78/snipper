@@ -9,15 +9,19 @@ use crate::verify::ai_submission::{check_code_with_ai, AIModel};
 use crate::verify::etherscan_api::{
     get_contract_owner, get_source_code, get_token_info, TokenWebData,
 };
-use crate::verify::token_check::token_holder_check::TokenHolderCheck;
+use crate::verify::token_check::token_holder_check::{self, TokenHolderCheck};
 use ethers::providers::{Provider, Ws};
 use std::sync::Arc;
 
 // This is the check list of 11 creteria to evaluate when checking
 // if a toke is legitimate or not
 // based on this check list a score will determined i.e. TokenScore
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct TokenCheckList {
+    pub token_name: String,
+    pub token_address: String,
+    pub token_symbol: String,
+
     // below 4 fields are determined by submitting `CODE_CHECK_PROMPT` to
     // LLM (gpt-4o , deepseek-reasoner, etc)
 
@@ -28,7 +32,7 @@ pub struct TokenCheckList {
     // could suspicious code be justified as legitimate to counter bots and snippers?
     pub could_legitimately_justify_suspicious_code: bool,
     // 2 to 3 sentences as to why (or why not) suspicious could be justified
-    pub reason_could_or_couldnt_justify_suspicious: String,
+    pub reason_could_or_couldnt_justify_suspicious_code: String,
 
     // get below 3 fields from etherscan / moralis api and calculate
 
@@ -36,6 +40,10 @@ pub struct TokenCheckList {
     // pub creator_percentage_tokens_held: f64,
     // what percentage of tokens does top token holder own?
     pub top_holder_percentage_tokens_held: f64,
+
+    // percentage of total tokens minted that are locked or burned (ie not avaliable for circulation)
+    pub percentage_of_tokens_locked_or_burned: f64,
+
     // what percentage of LP (liquidity tokens) is locked (in 3rd party locker) or burned (pointing to zero/dead address)
     pub percentage_liquidity_locked_or_burned: Option<f64>,
 
@@ -100,14 +108,19 @@ pub async fn generate_token_checklist(
     };
 
     let token_holder_check = TokenCheckList {
+        token_name: token.name,
+        token_address,
+        token_symbol: token.symbol,
         possible_scam: token_code_check.possible_scam,
         reason_possible_scam: token_code_check.reason,
         could_legitimately_justify_suspicious_code: token_code_check
             .could_legitimately_justify_suspicious_code,
-        reason_could_or_couldnt_justify_suspicious: token_code_check
+        reason_could_or_couldnt_justify_suspicious_code: token_code_check
             .reason_could_be_legitimate_or_not,
         // creator_percentage_tokens_held: token_holder_check.creator_holder_percentage,
         top_holder_percentage_tokens_held: token_holder_check.top_holder_percentage,
+        percentage_of_tokens_locked_or_burned: token_holder_check
+            .percentage_tokens_burned_or_locked,
         percentage_liquidity_locked_or_burned,
         liquidity_in_wei: liquidity_in_eth,
         has_website: !token_online_presense.website.is_empty(),

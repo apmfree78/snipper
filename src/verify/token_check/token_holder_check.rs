@@ -3,12 +3,11 @@ use ethers::prelude::*;
 use std::sync::Arc;
 
 use crate::{
-    app_config::TOKEN_HOLDER_THRESHOLD_PERCENTAGE,
-    utils::type_conversion::{address_to_string, u256_to_f64},
-    verify::{
-        check_token_lock::TokenHolders, etherscan_api::get_token_holder_list,
-        token_check::external_api::moralis,
+    app_config::{
+        CHAIN, TOKEN_HOLDER_THRESHOLD_PERCENTAGE, TOKEN_LOCKERS_BASE, TOKEN_LOCKERS_MAINNET,
     },
+    utils::type_conversion::{address_to_string, u256_to_f64},
+    verify::{check_token_lock::TokenHolders, token_check::external_api::moralis},
 };
 
 use super::token_data::ERC20Token;
@@ -17,6 +16,7 @@ use super::token_data::ERC20Token;
 pub struct TokenHolderCheck {
     // pub creator_holder_percentage: f64,
     pub top_holder_percentage: f64,
+    pub percentage_tokens_burned_or_locked: f64,
     // pub creator_owns_more_than_10_percent_of_tokens: bool,
     pub top_holder_more_than_10_percent_of_tokens: bool,
 }
@@ -41,15 +41,10 @@ pub async fn get_token_holder_check(
     let mut top_holder = TokenHolders::default();
     // let mut creator_holdings = TokenHolders::default();
 
-    for info in top_holders.iter() {
-        // find top holder
-        if top_holder.quantity < info.quantity {
-            top_holder = TokenHolders {
-                holder: info.holder.clone(),
-                quantity: info.quantity,
-            };
-        }
+    // Step 3) Sum up balances for addresses in known_lockers
+    let mut burnt_or_locked_balance = U256::zero();
 
+    for info in top_holders.iter() {
         // // check creator holdings
         // if info.holder.to_lowercase() == creator_address.to_lowercase() {
         //     creator_holdings = TokenHolders {
@@ -57,6 +52,32 @@ pub async fn get_token_holder_check(
         //         quantity: info.quantity,
         //     };
         // }
+
+        let mut is_burned_or_locked = false;
+
+        if CHAIN == Chain::Mainnet {
+            // sum up all locked holdings
+            if TOKEN_LOCKERS_MAINNET.contains(&info.holder.as_str()) {
+                burnt_or_locked_balance += info.quantity;
+                is_burned_or_locked = true;
+            }
+        } else {
+            if TOKEN_LOCKERS_BASE.contains(&info.holder.as_str()) {
+                burnt_or_locked_balance += info.quantity;
+                is_burned_or_locked = true;
+            }
+        }
+
+        // only check holders that are not burned or locked
+        if !is_burned_or_locked {
+            // find top holder
+            if top_holder.quantity < info.quantity {
+                top_holder = TokenHolders {
+                    holder: info.holder.clone(),
+                    quantity: info.quantity,
+                };
+            }
+        }
     }
 
     // require
@@ -78,8 +99,15 @@ pub async fn get_token_holder_check(
         top_holder_percentage: 100_f64 * u256_div_u256_to_f64(top_holder.quantity, total_supply),
         // creator_owns_more_than_10_percent_of_tokens: creator_holdings.quantity
         //     > max_token_threshold,
+        percentage_tokens_burned_or_locked: 100_f64
+            * u256_div_u256_to_f64(burnt_or_locked_balance, total_supply),
         top_holder_more_than_10_percent_of_tokens: top_holder.quantity > max_token_threshold,
     };
+
+    println!(
+        "top holder more than 10% ? => {}",
+        token_holder_check.top_holder_more_than_10_percent_of_tokens
+    );
 
     Ok(Some(token_holder_check))
 }

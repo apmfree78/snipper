@@ -1,5 +1,14 @@
-use crate::app_config::{
-    LIQUIDITY_PERCENTAGE_LOCKED, TOKEN_HOLDER_THRESHOLD_PERCENTAGE, VERY_LOW_LIQUIDITY_THRESHOLD,
+use serde::Deserialize;
+
+use crate::{
+    app_config::{
+        FINAL_DETERMINATION_PROMPT_UPDATED, LIQUIDITY_PERCENTAGE_LOCKED,
+        TOKEN_HOLDER_THRESHOLD_PERCENTAGE, VERY_LOW_LIQUIDITY_THRESHOLD,
+    },
+    verify::{
+        ai_structs::{PromptType, TokenFinalAssessment},
+        ai_submission::{chat_submission, AIChat, AIModel},
+    },
 };
 
 use super::token_checklist::TokenCheckList;
@@ -12,6 +21,31 @@ pub enum TokenScore {
     Iffy = 2,
     LikelyScam = 1,
     Scam = 0,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct TokenScoreAssessment {
+    pub token_score: String,
+    pub reason: String,
+}
+
+/// Return token reputation score based on LLM evaluation
+pub async fn get_token_score_with_ai(
+    token_checklist: TokenCheckList,
+    ai_model: &AIModel,
+) -> anyhow::Result<Option<TokenScoreAssessment>> {
+    let token_checklist = format!("{:#?}", token_checklist);
+
+    let openai_chat = AIChat {
+        prompt_instructions: FINAL_DETERMINATION_PROMPT_UPDATED.to_string(),
+        ai_persona: "You are a solidity security expert and expert token investigator.".to_string(),
+        prompt_content_to_review: token_checklist,
+        prompt_type: PromptType::FullReview,
+    };
+
+    let token_final_score = chat_submission::<TokenScoreAssessment>(openai_chat, ai_model).await?;
+
+    Ok(token_final_score)
 }
 
 /// Return token reputation score based on rules based approach

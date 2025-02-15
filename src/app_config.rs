@@ -14,7 +14,7 @@ pub enum AppMode {
 //*****************************************
 //*****************************************
 // CHANGE THIS VALUE TO SET CHAIN AND MODE FOR APP
-pub const CHAIN: Chain = Chain::Base;
+pub const CHAIN: Chain = Chain::Mainnet;
 
 pub const APP_MODE: AppMode = AppMode::Production;
 
@@ -58,6 +58,72 @@ pub const SELL_ATTEMPT_LIMIT: u8 = 10;
 pub const API_CHECK_LIMIT: u8 = 10;
 
 pub const BLACKLIST: [&str; 1] = ["CHILLI"];
+
+pub const FINAL_DETERMINATION_PROMPT_UPDATED: &str = r#"You are a senior crypto investigator. I will provide the following JSON assessment:
+
+The result of analyzing an ERC-20 contract’s source code for potential scams or malicious features, including stats on tokens holders, liquidity, and online presence.
+
+This provided assessment will have the following field: 
+
+    - token_name
+    - token_address
+    - token_symbol
+
+    - possible_scam (boolean)
+
+    // 2 to 3 sentences as to why (or why not) its a scam
+    - reason_possible_scam 
+
+    // could suspicious code be justified as legitimate to counter bots and snippers?
+    - could_legitimately_justify_suspicious_code (boolean)
+
+    // 2 to 3 sentences as to why (or why not) suspicious could be justified
+    - reason_could_or_couldnt_justify_suspicious_code
+
+    // what percentage of tokens does top token holder own?
+    - top_holder_percentage_tokens_held (0.0 to 100.0)
+
+    // percentage of total tokens minted that are locked or burned (ie not avaliable for circulation)
+    - percentage_of_tokens_locked_or_burned (0.0 to 100.0)
+
+    // what percentage of LP (liquidity tokens) is locked (in 3rd party locker) or burned (pointing to zero/dead address)
+    - percentage_liquidity_locked_or_burned Some(0.0 to 100.0) // wraped in some because its Option<f64> (rust), if value is None than could not determine value
+
+    // the amount of liquidity (in wei) the token has on major exchange (uniswap, etc)
+    - liquidity_in_wei
+
+    // does token have a website?
+    - has_website (boolean)
+
+    // does token have a twitter profile or discord channel
+    - has_twitter_or_discord (boolean)
+
+    // Is token sellable or transferable when simulating swap with foundry anvil?
+    - is_token_sellable: Some(true or false), if None then could not run simulation, and result is indetermined
+
+Based on these inputs, please make a wholistic determination on the legitimacy of the token and return one the following scores:
+
+4 - Legit,
+3 - Likely Legit,
+2 - Iffy,
+1 - Likely Scam,
+0 - Scam,
+
+*Note: if token is well known token with an established high reputation and history, then score the token as "4 - Legit"
+
+Your **output must be strictly valid JSON** (no extra text or code fencing), in this format:
+
+{
+  "token_score": "4 - Legit" | "3 - Likely Legit" | "2 - Iffy" | "1 - Likely Scam" | "0 - Scam",
+  "reason": "<5_to_7_sentences_explaining_in_detail_why_token_recieved_specified_score>",
+}
+
+Where:
+- `token_score` is a token reputation score that must be one of the following values: "4 - Legit", "3 - Likely Legit", "2 - Iffy", "1 - Likely Scam", or "0 - Scam",
+- `reason` is a 5 to 7 sentence justification of token score.
+
+Return **only** valid JSON. Do NOT include triple backticks or any other formatting around the JSON.
+"#;
 
 pub const FINAL_DETERMINATION_PROMPT: &str = r#"You are a senior crypto investigator. I will provide two JSON assessments:
 
