@@ -1,6 +1,6 @@
 use crate::abi::erc20::ERC20;
-use crate::events::PoolCreatedEvent;
 use crate::swap::token_price::get_token_weth_liquidity;
+use crate::uniswap_v3_events::PoolCreatedEvent;
 use crate::utils::type_conversion::address_to_string;
 use anyhow::Result;
 use ethers::providers::{Provider, Ws};

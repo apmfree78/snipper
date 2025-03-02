@@ -20,7 +20,7 @@ pub mod data {
     pub mod tokens;
 }
 
-pub mod events;
+pub mod uniswap_v3_events;
 
 pub mod swap {
     pub mod anvil_simlator;

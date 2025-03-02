@@ -9,8 +9,8 @@ use snipper::data::token_data::{
     get_number_of_tokens, is_token_tradable,
 };
 use snipper::data::tokens::{buy_eligible_tokens_on_anvil, sell_eligible_tokens_on_anvil};
-use snipper::events::PoolCreatedEvent;
 use snipper::swap::anvil_simlator::AnvilSimulator;
+use snipper::uniswap_v3_events::PoolCreatedEvent;
 use std::str::FromStr;
 use std::sync::Arc;
 

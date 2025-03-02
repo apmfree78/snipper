@@ -18,7 +18,7 @@ use snipper::{
 };
 use snipper::{
     data::{contracts::CONTRACT, tokens::buy_eligible_tokens_on_anvil},
-    events,
+    uniswap_v3_events,
 };
 use std::sync::Arc;
 
@@ -52,7 +52,7 @@ async fn main() -> Result<()> {
     info!("initial block timestamp => {}", last_block_timestamp);
     let last_block_timestamp = Arc::new(Mutex::new(last_block_timestamp));
 
-    let event_filter = events::set_signature_filter()?;
+    let event_filter = uniswap_v3_events::set_signature_filter()?;
     // Create multiple subscription streams.
     let log_stream: stream::BoxStream<'_, Result<Event>> = client
         .subscribe_logs(&event_filter)
@@ -88,7 +88,7 @@ async fn main() -> Result<()> {
             let last_timestamp = Arc::clone(&last_block_timestamp);
 
             match event {
-                Ok(Event::Log(log)) => match events::decode_poolcreated_event(&log) {
+                Ok(Event::Log(log)) => match uniswap_v3_events::decode_poolcreated_event(&log) {
                     Ok(pool_created_event) => {
                         info!("pool created event {:#?}", pool_created_event);
                         let last_time = last_timestamp.lock().await;

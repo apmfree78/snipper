@@ -1,7 +1,7 @@
 use super::token_data::{get_and_save_erc20_by_token_address, get_tokens, update_token};
-use crate::data::token_data::remove_token;
+use crate::swap::anvil_simlator::AnvilSimulator;
 use crate::swap::token_price::get_token_weth_liquidity;
-use crate::{events::PoolCreatedEvent, swap::anvil_simlator::AnvilSimulator};
+use crate::{data::token_data::remove_token, uniswap_v3_events::PoolCreatedEvent};
 use ethers::{
     abi::Address,
     core::types::U256,
